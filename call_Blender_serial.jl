@@ -35,20 +35,25 @@ include("Estimate_v53.jl")  #https://docs.julialang.org/en/v1/manual/code-loadin
 # 1. Setup inputs and output directories and file locations
 # select the root directory (this will be different on windows, linux or Mac) 
 host_machine = gethostname()
+println("Host computer machine: $host_machine")
 if occursin("STAFF-BY-M", host_machine)
         root_dir = "C:"  #for windows machine
         base_folder = "$root_dir/Github/Blender"
-elseif occursin("hpc.osc.edu", host_machine)
+elseif occursin(".osc.edu", host_machine)
     root_dir = "/fs/ess/PAS1785/coressd" #homedir()  # OSC
     base_folder = "$root_dir/Blender"
-
-elseif occursin("asc.ohio-state.edu", host_machine)
+elseif occursin(".ohio-state.edu", host_machine)
     root_dir = homedir()  #  Unity
     base_folder = "$root_dir/Github/Blender"
 else
-    println("Unknown computer, manually add root directory before proceeding")
+    println("Unknown computer, manually add root directory before proceeding. Exiting code")
+    exit(1)  # if error, comment this line, add root and base_folder below and run again
 end
-# root_dir = ""  # supply custom root directory
+println("base_folder : $base_folder")
+
+# Supply custom root and base_folder for new machine
+# root_dir = ""  
+# base_folder = "$root_dir/..."
 
 DataDir= "$base_folder/nc_files"
 # TODO: Give users to pass their own output directory through ARGS
