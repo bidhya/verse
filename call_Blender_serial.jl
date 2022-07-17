@@ -49,8 +49,8 @@ end
 base_folder = "$root_dir/Github/Blender"
 DataDir= "$base_folder/nc_files"
 # TODO: Give users to pass their own output directory through ARGS
-tmp_txtDir = "$DataDir/outputs_txt33"    # To save text outputs for each pixel
-nc_outDir = "$DataDir/outputs33"         # To convert text outputs to netcdf file
+tmp_txtDir = "$DataDir/outputs_txt"    # To save text outputs for each pixel
+nc_outDir = "$DataDir/outputs"         # To convert text outputs to netcdf file
 
 # 2. Read the Input netCDF file
 A = RasterStack("$base_folder/nc_files/inputs/merged_proj.nc");
