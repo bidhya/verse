@@ -6,7 +6,7 @@ USAGE: julia call_Blender_serial.jl
 
 The script can be run directly from a code editor, called from terminal, or through Slurm job scheduler.
 
-B. Yadav: July 15, 2022
+B. Yadav: July 17, 2022
 
 Inputs 
 ====== 
@@ -32,14 +32,25 @@ Step4: Convert the text files from exp_dir folder to netcdf file
 using Rasters
 include("Estimate_v53.jl")  #https://docs.julialang.org/en/v1/manual/code-loading/; evaluated in global scope
 
-# 1. Setup and Housekeeping
+# 1. Setup inputs and output directories and file locations
 # select the root directory (this will be different on windows, linux or Mac) 
-root_dir = "C:"  #for windows machine
-# root_dir = homedir()  #  for linux cluster
+host_machine = gethostname()
+if occursin("STAFF-BY-M", host_machine)
+        root_dir = "C:"  #for windows machine
+elseif occursin("hpc.osc.edu", host_machine)
+    root_dir = "/fs/ess/PAS1785/coressd" #homedir()  # OSC
+elseif occursin("asc.ohio-state.edu", host_machine)
+    root_dir = homedir()  #  Unity
+else
+    println("Unknown computer, manually add root directory before proceeding")
+end
+# root_dir = ""  # supply custom root directory
+
 base_folder = "$root_dir/Github/Blender"
 DataDir= "$base_folder/nc_files"
-tmp_txtDir = "$DataDir/outputs_txt"    # To save text outputs for each pixel
-nc_outDir = "$DataDir/outputs"         # To convert text outputs to netcdf file
+# TODO: Give users to pass their own output directory through ARGS
+tmp_txtDir = "$DataDir/outputs_txt33"    # To save text outputs for each pixel
+nc_outDir = "$DataDir/outputs33"         # To convert text outputs to netcdf file
 
 # 2. Read the Input netCDF file
 A = RasterStack("$base_folder/nc_files/inputs/merged_proj.nc");
