@@ -42,7 +42,7 @@ if occursin("STAFF-BY-M", host_machine)
 elseif occursin(".osc.edu", host_machine)
     root_dir = "/fs/ess/PAS1785/coressd" #homedir()  # OSC
     base_folder = "$root_dir/Blender"
-elseif occursin(".ohio-state.edu", host_machine)
+elseif occursin(".unity", host_machine)
     root_dir = homedir()  #  Unity
     base_folder = "$root_dir/Github/Blender"
 else
