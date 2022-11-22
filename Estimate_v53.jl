@@ -13,6 +13,7 @@
 # v52 Prototyping to pass the array directly to function [and fixed tab to 4 spaces]
 # v53 To set tab to 4 spaces (by copying/pasting)
 
+
 using JuMP
 using Ipopt
 using DelimitedFiles
@@ -20,6 +21,7 @@ using DelimitedFiles
 # function blender(DataDir, exp_dir, WRFSWE, WRFP, WRFG, MSCF, AirT)
 function blender(exp_dir, WRFSWE, WRFP, WRFG, MSCF, AirT)
     """
+    Note: keyword argument defined after positional with ; if no default value provided, it is required
     Inputs
     ====== 
     exp_dir: Full path to exporting text outputs; created inside this script if it does not exist
@@ -51,7 +53,7 @@ function blender(exp_dir, WRFSWE, WRFP, WRFG, MSCF, AirT)
     σWRFG=15 # W m^-2
     σWMPmin=.001 #minimum uncertainty in fluxes: 1 mm/day
     σSCF=.1 # combined uncertainty in observed SCF and SDC
-    nt=365  # TODO this need to be updated based on lenght of input vector rather than fixed 365 days
+    nt = length(WRFSWE)  # 366  #365  # TODO this need to be updated based on lenght of input vector rather than fixed 365 days
     t=1:nt
     SWEmin=1.0e-6 #1/1000 mm
     ρnew=100 #density of new snow
@@ -87,7 +89,7 @@ function blender(exp_dir, WRFSWE, WRFP, WRFG, MSCF, AirT)
     
     # 1.3 Match up SWE and MSCF
     for i=1:nt
-        if MSCF[i]==0
+        if MSCF[i]==0  # Nov 04, 2022: "ERROR: LoadError: TypeError: non-boolean (Missing) used in boolean context" because some days there was no MODIS data
             WRFSWE[i] = 0
         end
     end
