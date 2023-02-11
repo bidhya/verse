@@ -127,6 +127,7 @@ elseif occursin(".osc.edu", host_machine)
 elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
     root_dir = homedir()  #  Unity
     base_folder = "$root_dir/Github/Blender"
+    base_folder = "$root_dir/Github/coressd/Blender"
     system_machine = "Slurm"
 else
     println("Unknown computer, manually add root directory before proceeding. Exiting code")
@@ -150,15 +151,18 @@ elseif system_machine == "Slurm" #Sys.islinux()
   # cores = parse(Int, ENV["SLURM_JOB_CPUS_PER_NODE"])  # if one node provided; else we have parse as follows
   subs = Dict("x"=>"*", "(" => "", ")" => "");
   cores = sum(eval(Meta.parse(replace(ENV["SLURM_JOB_CPUS_PER_NODE"], r"x|\(|\)" => s -> subs[s]))))
-#   println("SLURM_NTASKS: $ntasks")
-  println("SLURM_JOB_CPUS_PER_NODE: $ntasks")
-  addprocs(cores-1)  # subtract one becuase master already has one; but seems to work with higher number as well
+  println("SLURM_NTASKS: $ntasks")
+#   println("SLURM_JOB_CPUS_PER_NODE: $ntasks")
+  println("SLURM Cores: $cores")
+  addprocs(cores)  # ; exeflags="--project"subtract one becuase master already has one; but seems to work with higher number as well
+#   addprocs()  # Dec 03, 2022 : testing new
 else
     println("Must be windows or linux system, aborting")
     exit() # <- you can provide exit code if you want
 end
-println("Number of procs: $(nprocs())")  
-
+# println("Number of procs: $(nprocs())")  
+println("Number of processes: ", nprocs())
+println("Number of workers: ", nworkers())
 # Everywhere should come after cores are already added
 @everywhere using Rasters
 @everywhere include("Estimate_v54.jl")  #https://docs.julialang.org/en/v1/manual/code-loading/; evaluated in global scope
@@ -187,8 +191,9 @@ if occursin("STAFF-BY-M", host_machine)
 elseif occursin("borg", host_machine)  # TODO: discover
     A = RasterStack("$DataDir/WY_merged/2016_noahmp_cgf.nc")  #2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 else
-    println("Exiting code. Manually set A (rasterstack) around line 188")
-    exit(1)
+    A = RasterStack("$DataDir/WY_merged/2016_noahmp_cgf.nc")
+    # println("Exiting code. Manually set A (rasterstack) around line 188")
+    # exit(1)
 end
 
 
@@ -233,8 +238,10 @@ println("Processing ", length(ind), " out of ", length(valid_pix_ind))
 xind: 2336 , yind: 941 tind:364
 Non-missing pixel count = 1011329
 """
-
+# @sync makes the code wait for all processes to finish their part of the computation before moving on from the loop
+# ie, without @sync, the on of the processors may move to next while loop is still running, creating error and crash whole script prematurely 
 # Threads.@threads for pix in pixels
+# @distributed for ij in ind
 @sync @distributed for ij in ind
 # for ij in ind
     i = ij[1]
@@ -345,6 +352,7 @@ function text2nc(var, idx)
     write("$nc_outDir/$var.nc", outRaster)
 end
 
+# without sync above one of the processor may move here causing error
 pixels = readdir(tmp_txtDir)  # Danger: Error if we have outputs from prior runs that do not match current A dimensions
 pixels = [pix for pix in pixels if startswith(pix, "Pix")];
 # TODO (Nov 20, 2022): Count if all pixels are processed before invoking this following section below for converting text files to netcdf file
