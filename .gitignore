@@ -25,3 +25,6 @@ Manifest.toml
 
 # For log files that may be created in script run from this location
 *.log
+# This folder get created on HPC machines by the python job submission scripts
+slurm_jobs/
+.flake8
