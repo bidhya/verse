@@ -84,7 +84,7 @@ end_idx = parse(Int64, end_idx)
 println(typeof(start_idx))
 println(typeof(start_idx))
 
-log_filename = string("log_", out_subfolder, "_", start_idx, "_", end_idx, ".txt")  #construct a log filename
+log_filename = string("run_", out_subfolder, "_", start_idx, "_", end_idx, ".log")  #construct a log filename
 # log_filename = string(".out/log_", out_subfolder, "_", start_idx, "_", end_idx, ".txt")  #construct a log filename
 # Nov 20, 2022: Updated logger for finer control; still not working with distributed
 using Logging, LoggingExtras

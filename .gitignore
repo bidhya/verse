@@ -24,4 +24,4 @@ docs/site/
 Manifest.toml
 
 # For log files that may be created in script run from this location
-log_*.txt
+*.log
