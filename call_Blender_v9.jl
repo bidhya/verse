@@ -196,6 +196,8 @@ if occursin("STAFF-BY-M", host_machine)
     A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")  #2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 elseif occursin("borg", host_machine)  # TODO: discover
     A = RasterStack("$DataDir/WY_merged/2016_noahmp_cgf.nc")  #2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
+elseif occursin(".osc.edu", host_machine)
+    A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
 else
     A = RasterStack("$DataDir/WY_merged/2016_noahmp_cgf.nc")
     # println("Exiting code. Manually set A (rasterstack) around line 188")
