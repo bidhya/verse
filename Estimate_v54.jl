@@ -110,7 +110,7 @@ function blender(exp_dir, WRFSWE, WRFP, WRFG, MSCF, AirT)
     DenomSDC=2.5.*z0.*(ρWRF./ρnew).^mf
     
     # 2.3 Uncertainty for accumulation 
-    σWRFP=zeros(nt,1)
+    σWRFP=zeros(nt,1) 
     for i=1:nt
         if WRFP[i]==0.
             σWRFP[i]=σWMPmin
@@ -118,6 +118,20 @@ function blender(exp_dir, WRFSWE, WRFP, WRFG, MSCF, AirT)
             σWRFP[i]=WRFP[i]*RelPUnc
         end
     end
+    
+    # New-BNY For Arctic night [Feb 14, 2023] 
+    # Set the vector to 15 everythere unless SCF is undefined for Arctic Nights, then set to large number
+    σWRFG=zeros(nt,1) .+ 15  # default of 15 everywhere
+    for i=1:nt
+        # if MSCF[i] == 0.
+        if ismissing(MSCF[i])
+            # TODO: Check whether these values are NaN, missing, 0 or sth else
+            σWRFG[i] = 1e9
+        # else
+        #     σWRFG[i] = 15
+        end
+    end
+
     
     # 3. Solve
     # 3.1 Solve for G    
