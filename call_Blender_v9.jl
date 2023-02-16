@@ -158,10 +158,9 @@ elseif system_machine == "Slurm" #Sys.islinux()
   println("SLURM_NTASKS: $ntasks")
 #   println("SLURM_JOB_CPUS_PER_NODE: $ntasks")
   println("SLURM Cores: $cores")
+#   addprocs()  # Not working. using all cores even though not allocated for use
 #   addprocs(cores)  # ; exeflags="--project"subtract one becuase master already has one; but seems to work with higher number as well
-#   addprocs()  # Dec 03, 2022 : testing new
-  addprocs(SlurmManager())  # Dec 03, 2022 : testing new
-
+  addprocs(SlurmManager())  # to use all available nodes and cores automatically. comment this line and uncomment one above this to match _v8.jl
 else
     println("Must be windows or linux system, aborting")
     exit() # <- you can provide exit code if you want
