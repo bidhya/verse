@@ -43,13 +43,9 @@ logging.basicConfig(filename='ard.log', level=logging.INFO, format='%(asctime)s:
 coressd_folder = "/discover/nobackup/projects/coressd"
 coressd_folder = "/fs/project/howat.4/yadav.111/coressd"
 base_folder = f"{coressd_folder}/Blender"
-# # Get Watershed boundary. Make sure this is in geographic crs
-# gdf = gpd.read_file(f"{base_folder}/coordinates/TuolumneWatershed/GlobalWatershed.shp")  # already projected: NAD_1983_Albers
-# gdf.to_crs("EPSG:4326", inplace=True)  # unproject to lat/lon
-gdf = gpd.read_file(f"{base_folder}/coordinates/sample_ak.gpkg")  # Sample file from Alaska to test Polar Nights
-
-
-
+# Get Watershed boundary. Make sure this is in geographic crs
+gdf = gpd.read_file(f"{base_folder}/coordinates/TuolumneWatershed/GlobalWatershed.shp")  # already projected: NAD_1983_Albers
+gdf.to_crs("EPSG:4326", inplace=True)  # unproject to lat/lon
 
 # Clip Annual merged SEUP data
 # Read SEUP Data
@@ -151,11 +147,8 @@ seup_ds.to_netcdf(f"{base_folder}/NoahMP/WY_merged/2016_noahmp_cgf_new2.nc")  # 
 logging.info("Fished preparing ARD for Blender")
 del ds  # clear from memory
 # UPTO THIS PART FOR CONCATENATING MODIS CGF FOR NORTH AMERICA
-# sys.exit(0)
+sys.exit(0)
 # -----------------------------------------------------------------------------------------------------------------------------------
-
-
-
 
 modis_ws_folder = f"{base_folder}/CGF_NDSI_Snow_Cover/ws"  # Save MODIS data clipped to watershed; just intermediate step; not directly used by Blender
 os.makedirs(modis_ws_folder, exist_ok=True)

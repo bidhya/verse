@@ -1,5 +1,17 @@
 # blender
 
+Feb 23, 2023 
+============ 
+After using data with missing values on SWE due to polar nights, we have problem in 
+Estimate_v54.jl line 93. Will have similar errors for other if condtion checks.  
+    # 1.3 Match up SWE and MSCF
+    for i=1:nt
+        if MSCF[i]==0  # Nov 04, 2022: "ERROR: LoadError: TypeError: non-boolean (Missing) used in boolean context" because some days there was no MODIS data
+            WRFSWE[i] = 0
+        end
+    end
+
+
 Feb 20, 2023 
 ============ 
 Refactoring and reorganization codes into Julia, Python subfolders
@@ -26,7 +38,7 @@ I: To Prepare data
 2. process_modis_cgf.py
     Extract NA (North America) scale daily Modis_CGF matching the SEUP rasters
 
-3. clip_by_watershed.py
+3. merge_modis_seup.py [old name: clip_by_watershed.py]
     Part I: Concatenate MODIS along time dim then append to SEUP varaibles, making it ARD for Blender run
         and save nc file: ../NoahMP/WY_merged/2016_clip_noahmp_cgf.nc
     Part II: [Optional] Clip by watershed and 
