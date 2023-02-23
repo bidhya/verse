@@ -7,6 +7,14 @@
         TODO: Check if better to interpolate between two values
     Nov 08, 2022: Updating for North America MODIS CGF that I newly generated rioxarray array merge
     Nov 19, 2022: Updating to generate Blender ready data for whole North America; ie, NoahMP + MODIS_CGF in on nc file
+
+    1. Concatenate NA-MODIS files along time dimension
+    2. Back and Forward fill missing data
+    3. Combine with SEUP data and save the file that is ready for Blender Run
+    4. [optional] Clip with watershed is currently not active
+
+    TODO: pass hpc name using args
+            separate/reorganize clip by watershed section of code
 """
 import os
 import sys
@@ -33,6 +41,7 @@ logging.basicConfig(filename='ard.log', level=logging.INFO, format='%(asctime)s:
 # root_dir = "C:"  # "/mnt/c"
 # base_folder = f"{root_dir}/Github/coressd/Blender"
 coressd_folder = "/discover/nobackup/projects/coressd"
+coressd_folder = "/fs/project/howat.4/yadav.111/coressd"
 base_folder = f"{coressd_folder}/Blender"
 # Get Watershed boundary. Make sure this is in geographic crs
 gdf = gpd.read_file(f"{base_folder}/coordinates/TuolumneWatershed/GlobalWatershed.shp")  # already projected: NAD_1983_Albers
@@ -41,10 +50,11 @@ gdf.to_crs("EPSG:4326", inplace=True)  # unproject to lat/lon
 # Clip Annual merged SEUP data
 # Read SEUP Data
 seup_ds = xr.open_dataset(f"{base_folder}/NoahMP/WY_merged/2016.nc")
-seup_ds.rio.write_crs(gdf.crs, inplace=True)  # This data again must of crs defined for rio.clip operation
+seup_ds.rio.write_crs(gdf.crs, inplace=True)  # Must for rio.clip operation TODO: replace gdf.crs with explicit crs
 
-seup_ds_clipped = seup_ds.rio.clip(gdf.geometry.apply(mapping), gdf.crs)  # A list of geojson geometry dicts
-seup_ds_clipped.to_netcdf(f'{base_folder}/NoahMP/WY_merged/2016_clip.nc')
+# # Why this is needed here?
+# seup_ds_clipped = seup_ds.rio.clip(gdf.geometry.apply(mapping), gdf.crs)  # A list of geojson geometry dicts
+# seup_ds_clipped.to_netcdf(f'{base_folder}/NoahMP/WY_merged/2016_clip.nc')
 
 # ================================================================================================
 # Clip MODIS CGF for watershed using reprojection match
@@ -56,9 +66,7 @@ seup_ds_clipped.to_netcdf(f'{base_folder}/NoahMP/WY_merged/2016_clip.nc')
 
 # modis_folder = f"C:/Github/Blender/MOD10A1F/WY16"  #Github/Blender
 # modis_folder = f"{base_folder}/MOD10A1F.061_clip/WY16"  # C:/Github/Blender/MOD10A1F/WY16"  # ones processed by sarith copied here for prototyping convenience
-modis_folder = f"{coressd_folder}/CGF_NDSI_Snow_Cover/NA"  # 
-modis_ws_folder = f"{coressd_folder}/CGF_NDSI_Snow_Cover/ws"  # Save MODIS data clipped to watershed; just intermediate step; not directly used by Blender
-os.makedirs(modis_ws_folder, exist_ok=True)
+modis_folder = f"{base_folder}/CGF_NDSI_Snow_Cover/NA"  # 
 
 # hdf_files = [f for f in os.listdir(modis_folder) if f.endswith(".nc4") and f.startswith("MOD10A1F")]  # sarith has nc4 extension
 hdf_files = [f for f in os.listdir(modis_folder) if f.endswith(".nc") and f.startswith("MOD10A1F")]  # I have nc extension
@@ -92,11 +100,11 @@ for hdf_file in hdf_files:
     count += 1
 
 logging.info(da.shape)
-da = da.drop_duplicates(dim="time") # required for Sarith script; may not be required for mine as there should be no duplicate dates 
+da = da.drop_duplicates(dim="time")  # required for Sarith script; may not be required for mine as there should be no duplicate dates 
 # Nov 19, 2022: Saved concatenated (WY) data with origianl flags for QA/QC in future; but not really necessary for this or other workflow
 ds = xr.Dataset({"MODSCAG":da})  # so we can save to netcdf or append to SEUP dataset
-ds.to_netcdf(f"{coressd_folder}/CGF_NDSI_Snow_Cover/modis_cgf_NA_original.nc")
-logging.info(f"Saved NA WaterYear MODIS_CGF with original flags: {coressd_folder}/CGF_NDSI_Snow_Cover/modis_cgf_NA_original.nc")
+ds.to_netcdf(f"{base_folder}/CGF_NDSI_Snow_Cover/modis_cgf_NA_original.nc")
+logging.info(f"Saved NA WaterYear MODIS_CGF with original flags: {base_folder}/CGF_NDSI_Snow_Cover/modis_cgf_NA_original.nc")
 del ds  # clear from memory
 
 # # Fill in All_Nan days: due to all nans, this creates problem in Blender, so fill them with previous day of data
@@ -107,14 +115,14 @@ del ds  # clear from memory
 logging.info(da.shape)
 logging.info(f"CRS for concatenated da: {da.rio.crs}")
 
-# Replace fillvalues with Nans and various flags with zero
+# Replace fillvalues with Nans and various flags with zero [Replacements already done in prior script]
 da.data = da.data.astype(float)
 # Replace with Nans: They both look to give same result
 # da.data[da.data >100] = np.nan  #this causes most of the pixels to be nan. Hence, cannot be used in Blender
-da.data[da.data == da._FillValue] = np.nan  # TODO : maybe this is creating inconsitent missing values in Blender, comment this line
-da.data[da.data > 100] = 0  # Give rest of the flags value of zero snow!
+# da.data[da.data == da._FillValue] = np.nan  # [Alreay done in prior script] TODO : comment this line
+# da.data[da.data > 100] = 0  # Give rest of the flags value of zero snow! [Alreay done in prior script]
 # da.data[da>100] = np.nan  # this does not work for multidimensional data (ie, da concatenated with more than 1 time period)
-logging.info("2 converted nans ans zeros")
+# logging.info("2 converted nans ans zeros")
 # Now ffil and/or Bfill to missing/corrupt pixels  
 # ffill : Fill NaN values by propagating values forward; need bottleneck
 da = da.ffill(dim="time", limit=1)
@@ -123,8 +131,8 @@ logging.info(f"CRS for concatenated da: {da.rio.crs}")
 
 # Nov 19, 2022: Save this one round before chaning pixel values; this may directly be used in final run after updating no-data pixel values
 ds = xr.Dataset({"MODSCAG":da})  # so we can save to netcdf or append to SEUP dataset
-ds.to_netcdf(f"{coressd_folder}/CGF_NDSI_Snow_Cover/modis_cgf_NA.nc")
-logging.info(f"Saved NA WaterYear MODIS_CGF with original flags: {coressd_folder}/CGF_NDSI_Snow_Cover/modis_cgf_NA.nc")
+ds.to_netcdf(f"{base_folder}/CGF_NDSI_Snow_Cover/modis_cgf_NA.nc")
+logging.info(f"Saved NA WaterYear MODIS_CGF with original flags: {base_folder}/CGF_NDSI_Snow_Cover/modis_cgf_NA.nc")
 
 ds = ds.reset_coords(drop=True)
 seup_ds = seup_ds.sel(time=ds.time)  # if same, this should also organize data in some order
@@ -135,12 +143,15 @@ seup_ds["MODSCAG"] = ds["MODSCAG"]  # ValueError: cannot reindex or align along 
 # seup_ds_clipped = seup_ds_clipped.sel(time=noah_ds_clip2.time)  # TODO: or select time explicitly here
 # seup_ds_clipped = seup_ds_clipped.sel(time=slice("2015-10-01", "2016-09-29"))  # KeyError: "cannot represent labeled-based slice indexer for coordinate 'time' with a slice over integer positions; the index is unsorted or non-unique"
 seup_ds = seup_ds.isel(time=slice(None, -2))  # perhaps only for Sarith's
-seup_ds.to_netcdf(f"{base_folder}/NoahMP/WY_merged/2016_noahmp_cgf.nc")  # use this for Blender run for NoahMP
-logging.info("6 Fished preparing ARD for Blender")
+seup_ds.to_netcdf(f"{base_folder}/NoahMP/WY_merged/2016_noahmp_cgf_new2.nc")  # use this for Blender run for NoahMP
+logging.info("Fished preparing ARD for Blender")
 del ds  # clear from memory
 # UPTO THIS PART FOR CONCATENATING MODIS CGF FOR NORTH AMERICA
 sys.exit(0)
 # -----------------------------------------------------------------------------------------------------------------------------------
+
+modis_ws_folder = f"{base_folder}/CGF_NDSI_Snow_Cover/ws"  # Save MODIS data clipped to watershed; just intermediate step; not directly used by Blender
+os.makedirs(modis_ws_folder, exist_ok=True)
 
 # CONTINUE NEXT PORTION FOR CLIPPING BY WATERSHED
 # Reprojection match with SEUP Data and Clip by Tuolumne Watershed (cannot yet work with whole North America as we do not have all the tiles merged to NA
@@ -193,7 +204,7 @@ logging.info("5 opened clipped files")
 # Drop band from coordinates
 # MODSCAG_clipped.drop_vars("band") : this also works
 MODSCAG_clipped = MODSCAG_clipped.reset_coords(drop=True)
-seup_ds_clipped = seup_ds_clipped.sel(time=MODSCAG_clipped.time)  #if same, this should also align time in some order
+seup_ds_clipped = seup_ds_clipped.sel(time=MODSCAG_clipped.time)  # if same, this should also align time in some order
 # MODSCAG_clipped = MODSCAG_clipped.drop_duplicates(dim="time")  # we have one duplicate time value; remove else error in next step
 # TODO: duplicate values were from mapping MOD10A1F.061_2015366.nc4 and MOD10A1F.061_2016001.nc4 to 2016/01/01. Serious issue. 
 # Investigate further what is causing this: original MODIS data or the processed ones  

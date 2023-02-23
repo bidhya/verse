@@ -59,7 +59,7 @@ def create_job(jobname='txt2nc.job', cores=1, memory='16gb', runtime='06:00:00',
         # Call the main julia script to run by this slurm script
         # fh.writelines(f"julia /discover/nobackup/byadav/Github/giuh/scripts/verse/Julia/call_Blender_v8.jl NA2 {start_idx} {end_idx}\n\n")
         # fh.writelines(f"julia /discover/nobackup/byadav/Github/giuh/scripts/verse/Julia/combine_txt2csv.jl NA2 {var_name} {var_idx}\n\n")        
-        fh.writelines(f"julia /discover/nobackup/byadav/Github/verse/combine_txt2csv.jl NA2 {var_name} {var_idx}\n\n")
+        fh.writelines(f"julia /discover/nobackup/byadav/Github/verse/Julia/combine_txt2csv.jl NA2 {var_name} {var_idx}\n\n")
         fh.writelines("echo Finished Slurm job \n")
     # submit the job
     os.system(f"sbatch {job_file}")

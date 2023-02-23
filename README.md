@@ -18,15 +18,19 @@ I: To Prepare data
 ==================  
 1. paper_seup.py : Process SEUP data using papermill/jupyter notebook combination
     Use multiple cores
+    Outputs:
+        combined/
+        WY/
+        WY_merged/
 
 2. process_modis_cgf.py
     Extract NA (North America) scale daily Modis_CGF matching the SEUP rasters
 
 3. clip_by_watershed.py
-    First Part will concatenate MODIS to SEUP
-    Part II: Extract data for watershed and make it Analysis Ready for Blender run
-    nc file saved here: ../NoahMP/WY_merged/2016_clip_noahmp_cgf.nc
-
+    Part I: Concatenate MODIS along time dim then append to SEUP varaibles, making it ARD for Blender run
+        and save nc file: ../NoahMP/WY_merged/2016_clip_noahmp_cgf.nc
+    Part II: [Optional] Clip by watershed and 
+    
 TODO: Generate Analysis ready data for North America by merging SEUP and MODIS_CGF
     This can be intermediate step of clip_by_watershed script
     So that extraction part can be separated  
@@ -47,4 +51,4 @@ II: To Run
 - Locally for small area: julia call_Blender_vx.jl output_folder start_index end_index
 - on HPC 				: python submit_blender_job.py -> This will generate several slurm jobs that calls julia call_Blender_vx.jl output_folder start_index end_index
 							Modify and update this Python script before running.
-						: python submit_txt2nc_job.py -> Combine temporary text files into a netcdf file.  
+						: python submit_txt2nc_job.py -> Combine temporary text files into a netcdf file. Separately for each variable.   

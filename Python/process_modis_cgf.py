@@ -8,6 +8,7 @@
     Usage: python ../process_modis_cgf.py 2016 --cores 8
     Resources
     =========
+    Need ~28 GB per core
     For 1 year with 32 GB/8cores runtime ~20 minutes, with output of ~6GB
 
     TODO: Decide on what to do with cores; pass it or hardcode to -1
@@ -17,21 +18,12 @@ import os
 import datetime
 import pandas as pd
 
-from giuh_helpers import tic, toc
+# from giuh_helpers import tic, toc
 import numpy as np
 import xarray as xr
 import rioxarray
 from rioxarray.merge import merge_arrays
 from rasterio.enums import Resampling  # for cubic, bilinear resampling etc during reprojection
-
-# import os
-# # from datetime import timedelta
-# import datetime
-# from giuh_helpers import tic, toc
-# import numpy as np
-# import xarray as xr
-# import rioxarray
-# # from rasterio.enums import Resampling  # for cubic, bilinear resampling etc during reprojection
 import logging
 import argparse
 from joblib import Parallel, delayed
@@ -47,9 +39,9 @@ args = parser.parse_args()
 year = args.year
 log_name = args.log_name
 cores = args.cores
-cores = -1  # defualt should be -1 or just not pass
+# cores = -1  # defualt should be -1 or just not pass
+# log_name = 'modis_cgf_clip.log'
 
-log_name = 'modis_cgf_clip.log'
 logging.basicConfig(filename=f'{log_name}', level=logging.INFO, format='%(asctime)s:%(message)s')
 logging.info('  ')
 logging.info('-------------------------START LOGGING--------------------------------------')
@@ -88,13 +80,13 @@ def main():
     # modis_folder = f"/discover/nobackup/projects/coressd/OSU/MOD10A1F.061/{year}"
     # clip_folder = f"/discover/nobackup/projects/coressd/OSU/MOD10A1F.061_clip/{year}"
     # New folders
-    root_dir = "C:"  # "/mnt/c"
-    base_folder = f"{root_dir}/Github/coressd"
+    # root_dir = "C:"  # "/mnt/c"
+    # base_folder = f"{root_dir}/Github/coressd"
     base_folder = "/discover/nobackup/projects/coressd"
     modis_download_folder = f"{base_folder}/OSU/MOD10A1F.061/MODIS_Proc/download_snow"  # /2016001/001
     # Generate the date range for WY2016 and convert to DOY format of MODIS naming convention
-    start_date = datetime.datetime.strptime("2015-10-01", "%Y-%m-%d")
-    end_date = datetime.datetime.strptime("2016-09-30", "%Y-%m-%d")
+    start_date = datetime.datetime.strptime("2015-10-01", "%Y-%m-%d")  # 2015-10-01
+    end_date = datetime.datetime.strptime("2016-09-30", "%Y-%m-%d")  # 2016-09-30
     date_generated = pd.date_range(start_date, end_date)
     # print(date_generated.strftime("%d-%m-%Y"))
     year_doy_list = list(date_generated.strftime("%Y%j"))
@@ -114,10 +106,10 @@ def main():
     # DATAFIELD_NAME = variables[0]  # for now just check one important varialbes; may need to check all
     DATAFIELD_NAME = "CGF_NDSI_Snow_Cover"  # or just hardcode the variable of interest
     # Create clip folder to save clipped modis files
-    clip_folder = f"{base_folder}/{DATAFIELD_NAME}/NA"
+    clip_folder = f"{base_folder}/Blender/{DATAFIELD_NAME}/NA"
     os.makedirs(clip_folder, exist_ok=True)
-    mosaic_tif_folder = f"{base_folder}/{DATAFIELD_NAME}/mosaic_tif"
-    os.makedirs(mosaic_tif_folder, exist_ok=True)
+    # mosaic_tif_folder = f"{base_folder}/{DATAFIELD_NAME}/mosaic_tif"
+    # os.makedirs(mosaic_tif_folder, exist_ok=True)
 
     def extract_modis(download_folder):
         """ Extract the MODIS CGF matching the SEUP data ready for Blender Julia run
@@ -134,53 +126,47 @@ def main():
         logging.info(f"\t For {year_doy}, total number of tiles = {len(files)} and subset file count = {len(subset)}")
 
         out_tif_name = f"{product}.{version}_{year_doy[1:]}"
-        da = merge_arrays([rioxarray.open_rasterio(f'{download_folder}/{tif}')[DATAFIELD_NAME] for tif in subset])  # chunks={'x':2**13, 'y':2**13}
-        da = da.squeeze()
-        # da.rio.write_crs("epsg:4326", inplace=True)  # not used yet
-        # mosaic_tif = f"{mosaic_tif_folder}/{out_tif_name}.tif"  # This only temporary to make sure everything checks out
-        # da.rio.to_raster(mosaic_tif)
-        # More processing before reprojection_match operation
-        da.data = da.data.astype(float)
-        # Replace with Nans: They both look to give same result
-        # da.data[da.data >100] = np.nan  #this causes most of the pixels to be nan. Hence, cannot be used in Blender
-        da.data[da.data == da._FillValue] = np.nan  # TODO : maybe this is creating inconsitent missing values in Blender, comment this line
-        da.data[da.data > 100] = 0  # Give rest of the flags value of zero snow!
-        # da.data = da.data/100  # mabye do at the end
-        # Clip on original globa data was >2 minutes
-        da_clipped = da.rio.reproject_match(template_raster)  # seems similar to ds 
-        # TODO: We will get some 255 values for nodata; check if other values also included (due to interpolation)
-        da_clipped.data[nan_mask] = np.nan  # done again, because reproj match will fill new nodata with 255 (perhaps this value from attrs)
-        da_clipped.data = da_clipped.data / 100
-        # TODO: Fix attrs, no-data etc here so that data is self-describing
-        # Conver to Dataset, so this is proper nc file
-        ds_clipped = xr.Dataset({DATAFIELD_NAME: da_clipped})
-        ds_clipped.to_netcdf(f"{clip_folder}/{out_tif_name}.nc")
-        # noah_ds_clip[var] = da_clipped  # Append Modis data to clipped dataset
+        if not os.path.exists(f"{clip_folder}/{out_tif_name}.nc"):
+            da = merge_arrays([rioxarray.open_rasterio(f'{download_folder}/{tif}')[DATAFIELD_NAME] for tif in subset])  # chunks={'x':2**13, 'y':2**13}
+            da = da.squeeze()
+            # da.rio.write_crs("epsg:4326", inplace=True)  # not used yet
+            # mosaic_tif = f"{mosaic_tif_folder}/{out_tif_name}.tif"  # This only temporary to make sure everything checks out
+            # da.rio.to_raster(mosaic_tif)
+            # More processing before reprojection_match operation
+            da.data = da.data.astype(float)
+            # Replace with Nans: They both look to give same result
+            # da.data[da.data >100] = np.nan  #this causes most of the pixels to be nan. Hence, cannot be used in Blender
+            da.data[da.data == da._FillValue] = np.nan
+            da.data[da.data == 211] = np.nan  # Night 
+            da.data[da.data == 239] = np.nan  # Ocean 
 
-    tic()
+            da.data[da.data > 100] = 0  # Give rest of the flags value of zero snow! TODO: change to nan because blender can handle missing now  
+            # da.data = da.data/100  # mabye do at the end
+            # Clip on original globa data was >2 minutes
+            da_clipped = da.rio.reproject_match(template_raster)  # seems similar to ds 
+            # TODO: We will get some 255 values for nodata; check if other values also included (due to interpolation)
+            da_clipped.data[nan_mask] = np.nan  # done again, because reproj match will fill new nodata with 255 (perhaps this value from attrs)
+            da_clipped.data = da_clipped.data / 100
+            # TODO: Fix attrs, no-data etc here so that data is self-describing
+            # Conver to Dataset, so this is proper nc file
+            ds_clipped = xr.Dataset({DATAFIELD_NAME: da_clipped})
+            ds_clipped.to_netcdf(f"{clip_folder}/{out_tif_name}.nc")
+            # noah_ds_clip[var] = da_clipped  # Append Modis data to clipped dataset
+
+    # Make of List of downloaded sub-folder. To make it easy to parallelize using Joblib
+    download_folder_list = []
     for year_doy in year_doy_list:
         year = year_doy[:4]  # "2016"
         doy = year_doy[4:]  # "215"
         download_folder = f"{modis_download_folder}/{year}{doy}/{doy}"
-        extract_modis(download_folder)
-    toc()
-
-    # tic()
-    # if cores == 1:
-    #     logging.info(f"Serial Processing for {year}")
-    #     for fname in files[4:16]:
-    #         file_path = f"{modis_folder}/{fname}"
-    #         if not os.path.isfile(f"{clip_folder}/{fname}"):
-    #             extract_modis(file_path)
-    #             logging.info(fname)
-    # else:
-    #     logging.info(f"Parallel Processing for {year} with {cores} cores")
-    #     Parallel(n_jobs=-1)(delayed(extract_modis) (file_path=f"{modis_folder}/{fname}") for fname in files)
-    # toc()
+        download_folder_list.append(download_folder)
+        # extract_modis(download_folder)
+    # for download_folder in download_folder_list:
+    #     extract_modis(download_folder)  # Serial processing
+    Parallel(n_jobs=cores)(delayed(extract_modis) (download_folder) for download_folder in download_folder_list)
 
 
 if __name__ == "__main__":
     """ Call the main function to get MODIS_CGF north America matching SEUP resolution
     """
     main()
-    
