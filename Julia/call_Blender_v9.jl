@@ -67,13 +67,14 @@ Find better way of indexing/iterating through 2D-array rather than with two for 
 # Base.ARGS :: Vector{String} >>>>> An array of the command line arguments passed to Julia, as strings.
 
 arg_len = length(ARGS)
-if arg_len == 0
-    # no argument passed from command line
-    # set default output folder 
-    out_subfolder = "NoahMP_CGF"
-else
-    out_subfolder = ARGS[1]     # output subfolder relative to input files; temp text and nc_outputs saved here
-end
+# if arg_len == 0
+#     # no argument passed from command line
+#     # set default output folder 
+#     out_subfolder = "NoahMP_CGF"
+# else
+#     out_subfolder = ARGS[1]
+# end
+out_subfolder = ARGS[1]  # output subfolder relative to input files; temp text and nc_outputs saved here
 start_idx = ARGS[2]
 end_idx = ARGS[3]
 println(typeof(start_idx))
@@ -178,7 +179,7 @@ println("Number of workers: ", nworkers())
 DataDir = "$base_folder/NoahMP"  # must exist
 
 # Folder for saving outputs of run. out_subfolder can be passed as ARGS. Folder/subfolders will be created if non-existent
-out_folder = "$DataDir/Runs/$out_subfolder"
+out_folder = "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
 println("Output_folder : $out_folder")
 
 tmp_txtDir = "$out_folder/outputs_txt"    # To save text outputs for each pixel
@@ -198,8 +199,8 @@ elseif occursin("borg", host_machine)  # TODO: discover
 elseif occursin(".osc.edu", host_machine)
     A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
 else
-    A = RasterStack("$DataDir/WY_merged/2016_noahmp_cgf.nc")
-    # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
+    # A = RasterStack("$DataDir/WY_merged/2016_noahmp_cgf.nc")
+    A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
     # println("Exiting code. Manually set A (rasterstack) around line 188")
     # exit(1)
 end

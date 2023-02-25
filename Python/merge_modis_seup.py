@@ -7,15 +7,16 @@
         TODO: Check if better to interpolate between two values
     Nov 08, 2022: Updating for North America MODIS CGF that I newly generated rioxarray array merge
     Nov 19, 2022: Updating to generate Blender ready data for whole North America; ie, NoahMP + MODIS_CGF in on nc file
+    Feb 25, 2023: Last successful run incorporating Polar Nights Fix
 
     1. Concatenate NA-MODIS files along time dimension
     2. Back and Forward fill missing data
     3. Combine with SEUP data and save the file that is ready for Blender Run
     4. [optional] Clip with watershed is currently not active
+    5. Runtime: 15 mins with 30 GB and 1 core on Discover
 
-    TODO: pass hpc name using args
-            separate/reorganize clip by watershed section of code
 """
+import platform
 import os
 import sys
 import datetime
@@ -26,7 +27,11 @@ import geopandas as gpd
 import xarray as xr
 import rioxarray
 import logging
-logging.basicConfig(filename='ard.log', level=logging.INFO, format='%(asctime)s:%(message)s')
+
+ss = platform.system()
+node = platform.node()
+logging.basicConfig(filename='merge_modis_seup.log', level=logging.INFO, format='%(asctime)s:%(message)s')
+
 # parser = argparse.ArgumentParser(description='Check corrupt MODIS CGF corrupt files.')
 # parser.add_argument('year', help='Year of modis to process', type=str)
 # parser.add_argument('--log_name', help='Name of Log file', type=str, default='modis_cgf_clip.log')
@@ -40,17 +45,33 @@ logging.basicConfig(filename='ard.log', level=logging.INFO, format='%(asctime)s:
 
 # root_dir = "C:"  # "/mnt/c"
 # base_folder = f"{root_dir}/Github/coressd/Blender"
-coressd_folder = "/discover/nobackup/projects/coressd"
-coressd_folder = "/fs/project/howat.4/yadav.111/coressd"
+# coressd_folder = "/discover/nobackup/projects/coressd"
+# coressd_folder = "/fs/project/howat.4/yadav.111/coressd"
+if 'STAFF-BY-M01' in node and "Windows" in ss:
+    coressd_folder = "C:/Github/coressd"
+elif 'STAFF-BY-M01' in node and "Linux" in ss:
+    coressd_folder = "/mnt/c/Github/coressd"
+elif "borg" in node and "Linux" in ss:
+    coressd_folder = "/discover/nobackup/projects/coressd"
+elif "asc.ohio-state.edu" in node and "Linux" in ss:
+    coressd_folder = "/fs/project/howat.4/yadav.111/coressd"
+elif ".osc.edu" in node and "Linux" in ss:
+    coressd_folder = "/fs/ess/PAS1785/coressd"
+else:
+    print("Unknow computer system. coressd folder NOT set")
+    assert(False)
 base_folder = f"{coressd_folder}/Blender"
-# Get Watershed boundary. Make sure this is in geographic crs
-gdf = gpd.read_file(f"{base_folder}/coordinates/TuolumneWatershed/GlobalWatershed.shp")  # already projected: NAD_1983_Albers
-gdf.to_crs("EPSG:4326", inplace=True)  # unproject to lat/lon
+logging.info(f"base_folder: {base_folder}")
+
+# # Get Watershed boundary. Make sure this is in geographic crs
+# gdf = gpd.read_file(f"{base_folder}/coordinates/TuolumneWatershed/GlobalWatershed.shp")  # already projected: NAD_1983_Albers
+# gdf.to_crs("EPSG:4326", inplace=True)  # unproject to lat/lon
 
 # Clip Annual merged SEUP data
 # Read SEUP Data
-seup_ds = xr.open_dataset(f"{base_folder}/NoahMP/WY_merged/2016.nc")
-seup_ds.rio.write_crs(gdf.crs, inplace=True)  # Must for rio.clip operation TODO: replace gdf.crs with explicit crs
+seup_ds = xr.open_dataset(f"{base_folder}/NoahMP/WY_merged/2016_seup.nc", decode_coords="all")  # updated from [2016.nc ==> 2016_seup.nc]
+# seup_ds.rio.write_crs(gdf.crs, inplace=True)  # Must for rio.clip operation but not necessary after decoding_coords
+# seup_ds.rio.write_crs("epsg:4326", inplace=True)  # Explicit crs is better  
 
 # # Why this is needed here?
 # seup_ds_clipped = seup_ds.rio.clip(gdf.geometry.apply(mapping), gdf.crs)  # A list of geojson geometry dicts
@@ -66,7 +87,7 @@ seup_ds.rio.write_crs(gdf.crs, inplace=True)  # Must for rio.clip operation TODO
 
 # modis_folder = f"C:/Github/Blender/MOD10A1F/WY16"  #Github/Blender
 # modis_folder = f"{base_folder}/MOD10A1F.061_clip/WY16"  # C:/Github/Blender/MOD10A1F/WY16"  # ones processed by sarith copied here for prototyping convenience
-modis_folder = f"{base_folder}/CGF_NDSI_Snow_Cover/NA"  # 
+modis_folder = f"{base_folder}/CGF_NDSI_Snow_Cover/NA"  # Read daily North America mosaicked ModisCGF.   
 
 # hdf_files = [f for f in os.listdir(modis_folder) if f.endswith(".nc4") and f.startswith("MOD10A1F")]  # sarith has nc4 extension
 hdf_files = [f for f in os.listdir(modis_folder) if f.endswith(".nc") and f.startswith("MOD10A1F")]  # I have nc extension
@@ -142,8 +163,8 @@ seup_ds = seup_ds.sel(time=ds.time)  # if same, this should also organize data i
 seup_ds["MODSCAG"] = ds["MODSCAG"]  # ValueError: cannot reindex or align along dimension 'time' because the (pandas) index has duplicate values
 # seup_ds_clipped = seup_ds_clipped.sel(time=noah_ds_clip2.time)  # TODO: or select time explicitly here
 # seup_ds_clipped = seup_ds_clipped.sel(time=slice("2015-10-01", "2016-09-29"))  # KeyError: "cannot represent labeled-based slice indexer for coordinate 'time' with a slice over integer positions; the index is unsorted or non-unique"
-seup_ds = seup_ds.isel(time=slice(None, -2))  # perhaps only for Sarith's
-seup_ds.to_netcdf(f"{base_folder}/NoahMP/WY_merged/2016_noahmp_cgf_new2.nc")  # use this for Blender run for NoahMP
+# seup_ds = seup_ds.isel(time=slice(None, -2))  # perhaps only for Sarith's
+seup_ds.to_netcdf(f"{base_folder}/NoahMP/WY_merged/2016_noahmp_cgf.nc")  # use this for Blender run for NoahMP
 logging.info("Fished preparing ARD for Blender")
 del ds  # clear from memory
 # UPTO THIS PART FOR CONCATENATING MODIS CGF FOR NORTH AMERICA

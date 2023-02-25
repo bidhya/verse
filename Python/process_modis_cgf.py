@@ -23,7 +23,7 @@ import numpy as np
 import xarray as xr
 import rioxarray
 from rioxarray.merge import merge_arrays
-from rasterio.enums import Resampling  # for cubic, bilinear resampling etc during reprojection
+# from rasterio.enums import Resampling  # for cubic, bilinear resampling etc during reprojection
 import logging
 import argparse
 from joblib import Parallel, delayed
@@ -163,7 +163,7 @@ def main():
         # extract_modis(download_folder)
     # for download_folder in download_folder_list:
     #     extract_modis(download_folder)  # Serial processing
-    Parallel(n_jobs=cores)(delayed(extract_modis) (download_folder) for download_folder in download_folder_list)
+    Parallel(n_jobs=cores)(delayed(extract_modis)(download_folder) for download_folder in download_folder_list)
 
 
 if __name__ == "__main__":

@@ -71,14 +71,14 @@
 # long_name :  soil heat flux  
 # 
 
-# In[1]:
+# In[ ]:
 
 
 # This cell is parameters passed from outside
 cores = 10  # hardcoded to -1 below, so this has no effect currently
 
 
-# In[2]:
+# In[ ]:
 
 
 import matplotlib.pyplot as plt
@@ -108,7 +108,7 @@ ss = platform.system()
 node = platform.node()
 
 
-# In[3]:
+# In[ ]:
 
 
 if 'STAFF-BY-M01' in node and "Windows" in ss:
@@ -136,7 +136,7 @@ print(f"out_folder : {out_folder}")
 # # 1. Generate Daily Data
 # By concatenating 3-hourly datasets  
 
-# In[4]:
+# In[ ]:
 
 
 # yr_mon_list = os.listdir(f"{base_folder}/3hourly")
@@ -145,7 +145,7 @@ yr_mon_list = ['201510', '201511', '201512', '201601', '201602', '201603', '2016
 variables = ["Snowf_tavg", "SWE_tavg", "Tair_f_tavg", "Qg_tavg"]  #"Rainf_tavg", 
 
 
-# In[5]:
+# In[ ]:
 
 
 def combine_seup(in_folder, month_subfolder, out_folder):
@@ -228,7 +228,7 @@ def combine_seup(in_folder, month_subfolder, out_folder):
             daily.to_netcdf(combined_nc_file)  #260 MB size
 
 
-# In[6]:
+# In[ ]:
 
 
 # To procecess sequentially (in series)
@@ -249,7 +249,7 @@ daily = None
 # Independent of above code
 # Here, each variable is in sepate folder/file
 
-# In[7]:
+# In[ ]:
 
 
 # Find way to manually generate this year_month file pre-fixes and in ascending order; 
@@ -297,7 +297,7 @@ wy_ds_merged = xr.merge([xr.open_dataset(f"{out_folder}/WY/{v}/{year}.nc") for v
 merged_wy_folder = f'{out_folder}/WY_merged'
 # if not os.path.exists(merged_wy_folder):
 os.makedirs(merged_wy_folder, exist_ok=True)
-merged_nc_file = f'{merged_wy_folder}/{year}.nc' #appended monthly to indicate this is monthly mean data
+merged_nc_file = f'{merged_wy_folder}/{year}_seup.nc' # this is later combined with MODIS-CGF for Blender Run
 # if not os.path.exists(merged_nc_file):
 wy_ds_merged.to_netcdf(merged_nc_file)  #12.6 GB size
     
