@@ -52,9 +52,6 @@ Dec 03, 2022 : Trying multinodes with ClusterManagers.jl
 # in the shell script the arg is increased by a step counter
 # same arg moves the pix number directory in each seq run
 
-TODO 
-====
-Find better way of indexing/iterating through 2D-array rather than with two for loops with i and j.
 """
 # DataDir= "/users/PAS0503/jldechow/foursix/AllTuolomne46/Pix3252"
 # DataDir = ARGS[1]
@@ -66,6 +63,7 @@ Find better way of indexing/iterating through 2D-array rather than with two for 
 # end_idx = parse(Int16, ARGS[2])
 # Base.ARGS :: Vector{String} >>>>> An array of the command line arguments passed to Julia, as strings.
 
+# sleep(60)  # To prevent scheduling job on more than 1 node on Discover Slurm cluster  
 arg_len = length(ARGS)
 # if arg_len == 0
 #     # no argument passed from command line
@@ -85,7 +83,8 @@ end_idx = parse(Int64, end_idx)
 println(typeof(start_idx))
 println(typeof(start_idx))
 
-log_filename = string("run_", out_subfolder, "_", start_idx, "_", end_idx, ".log")  #construct a log filename
+log_filename = string(start_idx, "_", end_idx, ".log")  #construct a log filename
+# log_filename = string("run_", out_subfolder, "_", start_idx, "_", end_idx, ".log")  #construct a log filename
 # log_filename = string(".out/log_", out_subfolder, "_", start_idx, "_", end_idx, ".txt")  #construct a log filename
 # Nov 20, 2022: Updated logger for finer control; still not working with distributed
 using Logging, LoggingExtras
@@ -98,7 +97,6 @@ logger = FormatLogger(open(log_filename, "w"), 0) do io, args
     println(io, args._module, " | ", "[", args.level, "] ", args.message)
 end
 global_logger(logger)  # Set the global logger to logger; else logs doing directly to console
-
 
 using Distributed  # otherwise everywhere macro won't work
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -161,7 +159,9 @@ elseif system_machine == "Slurm" #Sys.islinux()
   println("SLURM Cores: $cores")
 #   addprocs()  # Not working. using all cores even though not allocated for use
 #   addprocs(cores)  # ; exeflags="--project"subtract one becuase master already has one; but seems to work with higher number as well
+  sleep(60+cores)  # To prevent scheduling job on more than 1 node on Discover Slurm cluster  
   addprocs(SlurmManager())  # to use all available nodes and cores automatically. comment this line and uncomment one above this to match _v8.jl
+
 else
     println("Must be windows or linux system, aborting")
     exit() # <- you can provide exit code if you want
@@ -259,8 +259,8 @@ Non-missing pixel count = 1011329
     exp_dir = string("$tmp_txtDir/", "Pix_", i, "_", j)  # full path to folder for saving (temporary) text files   
     # if !isdir(exp_dir)  # process only if the pixel is not already processed
     # if !ispath(exp_dir * "/SWEpv.txt") # ispath is generic for both file and folder
-    # if !isfile(exp_dir * "/SWEpv.txt") # This is better check: process the pixel only if the last file exported by optimzer (SWEpv.txt) does not yet exist
-    if !isfile(exp_dir * "/out_vars.txt") # This is better check: process the pixel only if the last file exported by optimzer (SWEpv.txt) does not yet exist
+    # if !isfile(exp_dir * "/SWEpv.txt")  # This is better check: process the pixel only if the last file exported by optimzer (SWEpv.txt) does not yet exist
+    if !isfile(exp_dir * "/out_vars.txt")  # may still be problem if scrip ended prematurely without writing the full file
         # extract each of the input variables separately (trying to match of processing was done in prior version with text inputs)
         # but this approach is also useful if we decide to save each input netcdf file separately
         WRFSWE = A["SWE_tavg"][X=i, Y=j].data  # Here "data" is an AbstractArray.

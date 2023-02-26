@@ -15,6 +15,7 @@
 import os
 import logging
 import time
+import platform
 
 
 def mkdir_p(folder):
@@ -80,7 +81,7 @@ def create_job(hpc, jobname='test', cores=15, memory='60gb', runtime='12:00:00',
         fh.writelines("\n")
         # Call the main julia script to run by this slurm script
         # fh.writelines(f"julia /discover/nobackup/byadav/Github/giuh/scripts/verse/Julia/call_Blender_v8.jl NA_temp {start_idx} {end_idx}\n\n")        
-        # fh.writelines(f"julia /discover/nobackup/byadav/Github/verse/Julia/call_Blender_v9.jl {out_subfolder} {start_idx} {end_idx}\n\n")        
+        # fh.writelines(f"julia /discover/nobackup/byadav/Github/verse/Julia/call_Blender_v9.jl {out_subfolder} {start_idx} {end_idx}\n\n")
         fh.writelines(f"julia /discover/nobackup/projects/coressd/Blender/verse/Julia/call_Blender_v9.jl {out_subfolder} {start_idx} {end_idx}\n\n")        
         # fh.writelines(f"julia ~/Github/verse/Julia/call_Blender_v9.jl {out_subfolder} {start_idx} {end_idx}\n\n")        
         fh.writelines("echo Finished Slurm job \n")
@@ -101,13 +102,22 @@ def main():
     """
     # 1. MAIN BLENDER RUN JOB
     import numpy as np
+    node = platform.node()
+    if "borg" in node:
+        hpc_name = "discover"
+    elif "asc.ohio-state.edu" in node:
+        hpc_name = "unity"
+    elif ".osc.edu" in node:
+        hpc_name = "osc"
+    else:
+        print("Unknow computer system. coressd folder NOT set")
+        assert(False)
     logging.basicConfig(filename='job_submission.log', level=logging.INFO, format='%(asctime)s:%(levelname)s:%(message)s')
     logging.info('\n')
     logging.info('--------------------------------------Job Creation/Submission info----------------------------------------------')   
     # =======================================================================================================================================
     # Run for one or multiple regions based on integer index; 
     # the indexing is based on ascending order sorted glacier area (done inside the main script)
-
     # start at 0 in the beginning. Later can be be changed to whatever value depending on 
     # avilability of cores, runtime limitation etc.
     start = 0  # 625000  # 375000  # 250000  # 0
@@ -120,13 +130,12 @@ def main():
         jobname = f"{start_idx}_{end_idx}"
         # hpc = unity osc discover
         # create_job(hpc="unity", jobname=jobname, out_subfolder="NA4", start_idx=start_idx, end_idx=end_idx, cores=24, memory='56gb', runtime='12:00:00')
-        create_job(hpc="discover", jobname=jobname, out_subfolder="NA_2016", start_idx=start_idx, end_idx=end_idx, cores=40, memory='64gb', runtime='12:00:00')
+        create_job(hpc=hpc_name, jobname=jobname, out_subfolder="NA_2016", start_idx=start_idx, end_idx=end_idx, cores=46, memory='64gb', runtime='12:00:00')
+        # for Discover, usable node: Haswell=28; Skylake=36; Cascade=46
         logging.info(f"jobname={jobname}, start_idx={start_idx}, end_idx={end_idx}, cores=40, memory=64gb, runtime=12:00:00 ")
         time.sleep(2)
-
     # Final Sanity Check to see if all pixels are processed
-    # create_job(jobname="final_check.job", start_idx=1, end_idx=1011329, cores=24, memory='56gb', runtime='12:00:00')
-    # create_job(jobname="1_600000", start_idx=1, end_idx=600000, cores=34, memory='56gb', runtime='12:00:00')
+    # create_job(hpc=hpc_name, jobname="final_check.job", out_subfolder="NA_2016", start_idx=1, end_idx=1011329, cores=46, memory='64gb', runtime='12:00:00')
     logging.info("Job submission complete\n")
 
 
