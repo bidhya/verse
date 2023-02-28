@@ -60,7 +60,7 @@ def create_job(hpc, jobname='test', cores=15, memory='60gb', runtime='12:00:00',
         # fh.writelines(f"#SBATCH --error=.out/{jobname}.err\n")
         fh.writelines(f"#SBATCH --time={runtime}\n")        
         # fh.writelines(f"#SBATCH --cpus-per-task={cores}\n")
-        fh.writelines(f"#SBATCH --nodes=4 --ntasks-per-node={cores}\n")
+        fh.writelines(f"#SBATCH --nodes=2 --ntasks-per-node={cores}\n")
         fh.writelines(f"#SBATCH --mem={memory}\n")
         # fh.writelines("#SBATCH --qos=normal\n")
         fh.writelines("#SBATCH --mail-type=ALL\n")
@@ -76,14 +76,17 @@ def create_job(hpc, jobname='test', cores=15, memory='60gb', runtime='12:00:00',
 
         # Julia script specific inputs and parameters
         fh.writelines(f"echo Blender run for {out_subfolder} start_idx = {start_idx} end_idx = {end_idx}\n\n")
+        fh.writelines("sleep 60\n")  # for slurm error when scheduling on multi nodes
         # fh.writelines(f"cores={cores} #we can only run 30 jobs concurrently on Unity\n")
         # fh.writelines(f"log_name=.out/{jobname}.log\n")
         fh.writelines("\n")
         # Call the main julia script to run by this slurm script
-        # fh.writelines(f"julia /discover/nobackup/byadav/Github/giuh/scripts/verse/Julia/call_Blender_v8.jl NA_temp {start_idx} {end_idx}\n\n")        
-        # fh.writelines(f"julia /discover/nobackup/byadav/Github/verse/Julia/call_Blender_v9.jl {out_subfolder} {start_idx} {end_idx}\n\n")
-        fh.writelines(f"julia /discover/nobackup/projects/coressd/Blender/verse/Julia/call_Blender_v9.jl {out_subfolder} {start_idx} {end_idx}\n\n")        
-        # fh.writelines(f"julia ~/Github/verse/Julia/call_Blender_v9.jl {out_subfolder} {start_idx} {end_idx}\n\n")        
+        if hpc == "discover":
+            fh.writelines("#SBATCH --account=s2701\n")  # for DISCOVER
+            # fh.writelines(f"julia /discover/nobackup/byadav/Github/giuh/scripts/verse/Julia/call_Blender_v8.jl NA_temp {start_idx} {end_idx}\n\n")
+            fh.writelines(f"julia /discover/nobackup/projects/coressd/Blender/verse/Julia/call_Blender_v9.jl {out_subfolder} {start_idx} {end_idx}\n\n")        
+        else:
+            fh.writelines(f"julia ~/Github/verse/Julia/call_Blender_v9.jl {out_subfolder} {start_idx} {end_idx}\n\n")        
         fh.writelines("echo Finished Slurm job \n")
     # submit the job
     os.system(f"sbatch {job_file}")
@@ -103,7 +106,9 @@ def main():
     # 1. MAIN BLENDER RUN JOB
     import numpy as np
     node = platform.node()
-    if "borg" in node:
+    print(f"Node Name: {node}")
+    if "discover" in node:
+        # on login node node name is discover, not borg
         hpc_name = "discover"
     elif "asc.ohio-state.edu" in node:
         hpc_name = "unity"
@@ -121,8 +126,8 @@ def main():
     # start at 0 in the beginning. Later can be be changed to whatever value depending on 
     # avilability of cores, runtime limitation etc.
     start = 0  # 625000  # 375000  # 250000  # 0
-    step = 100000  # 20000 number of pixels to process
-    end = start + 11 * step  # 500000  # 1011329 + 1
+    step = 100000  # 100000 (4 nodes); 20000 number of pixels to process
+    end = start + 2 * step  # 500000  # 1011329 + 1
     for i in np.arange(start, end, step):
         start_idx = i + 1
         end_idx = i + step
@@ -130,12 +135,12 @@ def main():
         jobname = f"{start_idx}_{end_idx}"
         # hpc = unity osc discover
         # create_job(hpc="unity", jobname=jobname, out_subfolder="NA4", start_idx=start_idx, end_idx=end_idx, cores=24, memory='56gb', runtime='12:00:00')
-        create_job(hpc=hpc_name, jobname=jobname, out_subfolder="NA_2016", start_idx=start_idx, end_idx=end_idx, cores=46, memory='64gb', runtime='12:00:00')
+        create_job(hpc=hpc_name, jobname=jobname, out_subfolder="NA_2016_x", start_idx=start_idx, end_idx=end_idx, cores=20, memory='64gb', runtime='01:00:00')
         # for Discover, usable node: Haswell=28; Skylake=36; Cascade=46
         logging.info(f"jobname={jobname}, start_idx={start_idx}, end_idx={end_idx}, cores=40, memory=64gb, runtime=12:00:00 ")
         time.sleep(2)
     # Final Sanity Check to see if all pixels are processed
-    # create_job(hpc=hpc_name, jobname="final_check.job", out_subfolder="NA_2016", start_idx=1, end_idx=1011329, cores=46, memory='64gb', runtime='12:00:00')
+    # create_job(hpc=hpc_name, jobname="final_check", out_subfolder="NA_2016", start_idx=1, end_idx=1011329, cores=46, memory='64gb', runtime='12:00:00')
     logging.info("Job submission complete\n")
 
 

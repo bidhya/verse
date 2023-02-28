@@ -369,6 +369,7 @@ if length(pixels) == valid_pix_count  # length(valid_pix_ind)
     @info("Creating OUTPUT NETCDF FILES")
     # Call the function for creating netcdf for each of the text output files separately
     # Use the name of text file that was saved; Change the filename in main script if so required
+    # TODO Parallelize this. Convenient when using multiple nodes to solve whole year in one go. 
     text2nc("SWE", 1)
     text2nc("Gmelt", 2)
     text2nc("G", 3)

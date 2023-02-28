@@ -85,9 +85,9 @@ elseif occursin(".osc.edu", host_machine)
     system_machine = "Slurm"
 
 elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
-    root_dir = homedir()  #  Unity
-    # base_folder = "$root_dir/Github/Blender"
-    base_folder = "$root_dir/Github/coressd/Blender"
+    root_dir = "/fs/project/howat.4/yadav.111/coressd"  # homedir()  #  Unity
+    # base_folder = "/home/yadav.111/Github/Blender"  # old
+    base_folder = "$root_dir/Blender"  # "$root_dir/Github/coressd/Blender"
     system_machine = "Slurm"
 else
     println("Unknown computer, manually add root directory before proceeding. Exiting code")
@@ -99,7 +99,7 @@ println("base_folder : $base_folder")
 # DataDir= "$base_folder/nc_files"
 DataDir = "$base_folder/NoahMP"  # must exist
 # Folder for saving outputs of run. out_subfolder can be passed as ARGS. Folder/subfolders will be created if non-existent
-out_folder = "$DataDir/Runs/$out_subfolder"
+out_folder = "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
 println("Output_folder : $out_folder")
 
 tmp_txtDir = "$out_folder/outputs_txt" # Fullpath to processed text files
