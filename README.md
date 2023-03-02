@@ -5,17 +5,17 @@ Order of Script Execution for coressd project
 1. paper_seup.py : Process SEUP data using papermill/jupyter notebook combination
     Use multiple cores
     Outputs:
-        combined/
-        WY/
-        WY_merged/
+        combined/  
+        WY/  
+        WY_merged/  
 
-2. process_modis_cgf.py
+2. process_modis_cgf.py  
     Extract NA (North America) scale daily Modis_CGF matching the SEUP rasters
 
-3. merge_modis_seup.py [old name: clip_by_watershed.py]
+3. merge_modis_seup.py [old name: clip_by_watershed.py]  
     Part I: Concatenate MODIS along time dim then append to SEUP varaibles, making it ARD for Blender run
         and save nc file: ../NoahMP/WY_merged/2016_clip_noahmp_cgf.nc
-    Part II: [Optional] Clip by watershed and 
+    Part II: [Optional] Clip by watershed
     
 TODO: Generate Analysis ready data for North America by merging SEUP and MODIS_CGF
     This can be intermediate step of clip_by_watershed script
@@ -35,17 +35,16 @@ TODO: Generate Analysis ready data for North America by merging SEUP and MODIS_C
 II: To Run
 ===========  
 - Locally for small area: julia call_Blender_vx.jl output_folder start_index end_index
-- on HPC 				: python submit_blender_job.py -> This will generate several slurm jobs that calls julia call_Blender_vx.jl output_folder start_index end_index
-							Modify and update this Python script before running.
-						: python submit_txt2nc_job.py -> Combine temporary text files into a netcdf file. Separately for each variable.   
+- on HPC 				: python submit_blender_job.py -> This will generate several slurm jobs that calls julia call_Blender_vx.jl output_folder start_index end_index  
+							Modify and update this Python script before running.  
+						: python submit_txt2nc_job.py -> Combine temporary text files into a netcdf file.  Separately for each variable.   
 ### Mar 01, 2023  
 Arctic Polar Nights issue fixed and working  
 Updated python job submisison script to set HPC system automatically  
 Run code on more than one node (use sleep time for nodes to be ready )
 TODO: run text2nc in parallel  
 
-Feb 23, 2023 
-============ 
+### Feb 23, 2023  
 After using data with missing values on SWE due to polar nights, we have problem in 
 Estimate_v54.jl line 93. Will have similar errors for other if condtion checks.  
     # 1.3 Match up SWE and MSCF
@@ -56,8 +55,7 @@ Estimate_v54.jl line 93. Will have similar errors for other if condtion checks.
     end
 
 
-Feb 20, 2023 
-============ 
+### Feb 20, 2023  
 Refactoring and reorganization codes into Julia, Python subfolders
 Main Julia Scripts staged inside the Julia subfolder. These include:  
 Estimate_vxx.jl : Main Blender Script that operate on one pixel at a time
