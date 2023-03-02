@@ -200,7 +200,8 @@ elseif occursin(".osc.edu", host_machine)
     A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
 else
     # A = RasterStack("$DataDir/WY_merged/2016_noahmp_cgf.nc")
-    A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
+    A = RasterStack("$DataDir/WY_merged/ak_polar_fix.nc")
+    # A = RasterStack("$DataDir/WY_merged/ak_polar_fix_no.nc")
     # println("Exiting code. Manually set A (rasterstack) around line 188")
     # exit(1)
 end
