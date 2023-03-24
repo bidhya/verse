@@ -183,7 +183,7 @@ out_folder = "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder
 println("Output_folder : $out_folder")
 
 tmp_txtDir = "$out_folder/outputs_txt"    # To save text outputs for each pixel
-nc_outDir = "$out_folder/outputs"         # To convert text outputs to netcdf file
+nc_outDir = "$out_folder/outputs_parallel"         # To convert text outputs to netcdf file
 # OutDir = "$DataDir/$out_subfolder/outputs_txt"  # To save text outputs for each pixel
 # nc_exp_dir = "$DataDir/$out_subfolder/outputs_nc"  # To convert text outputs to netcdf file
 
@@ -351,9 +351,9 @@ function text2nc(var, idx, outRaster)
     outRaster[:,:,:] .= missing
     # update the name of variable
     outRaster = rebuild(outRaster; name=var)  #:SWEhat
-    @sync @distributed for pix in pixels  # worked
+    # @sync @distributed for pix in pixels  # worked
     # Threads.@threads for pix in pixels  # thread also worked fine 
-    # for pix in pixels
+    for pix in pixels
         pix_xy = split(pix, "_")
         x = parse(Int16, pix_xy[2])
         y = parse(Int16, pix_xy[3])
