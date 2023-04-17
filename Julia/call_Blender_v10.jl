@@ -106,14 +106,14 @@ host_machine = gethostname()
 println("Host computer machine: $host_machine")
 if occursin("STAFF-BY-M", host_machine)
     if Sys.iswindows()
-        root_dir = "C:"  #for windows machine
+        root_dir = "D:"  #for windows machine
     elseif Sys.islinux()
-        root_dir = "/mnt/c"  #for Ubuntu (WSL2 on windows machine
+        root_dir = "/mnt/d"  #for Ubuntu (WSL2 on windows machine
     else
         println("Unknown system on windows, manually add root directory before proceeding. Exiting code")
         exit(1)    
     end
-    base_folder = "$root_dir/Github/coressd/Blender"
+    base_folder = "$root_dir/coressd/Blender"
     # Get info on system machine. We use this info to farm number of processors. 
     system_machine = "Windows"  # a bit misnomer flag because this flag also works for WLS linux. Better flag could be local vs hpc/remote execution
 elseif occursin("borg", host_machine)  # TODO: discover
