@@ -104,7 +104,8 @@ using Distributed  # otherwise everywhere macro won't work
 # select the root directory (this will be different on windows, linux or Mac) 
 host_machine = gethostname()
 println("Host computer machine: $host_machine")
-if occursin("STAFF-BY-M", host_machine)
+# if occursin("STAFF-BY-M", host_machine)
+if occursin("L-JY0R5X3", host_machine)
     if Sys.iswindows()
         root_dir = "D:"  #for windows machine
     elseif Sys.islinux()
@@ -192,7 +193,7 @@ nc_outDir = "$out_folder/outputs_parallel"         # To convert text outputs to 
 # For NoahMP
 # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_modscag.nc")  #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 # Following check are for prototyping only when running code locally, because I do not yet have NorthAmerica netcdf file
-if occursin("STAFF-BY-M", host_machine)
+if occursin("L-JY0R5X3", host_machine)  # STAFF-BY-M
     A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")  #2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 elseif occursin("borg", host_machine)  # TODO: discover
     A = RasterStack("$DataDir/WY_merged/2016_noahmp_cgf.nc")  #2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
