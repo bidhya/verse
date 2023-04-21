@@ -1,0 +1,6 @@
+[flake8]
+# https://flake8.pycqa.org/en/latest/user/configuration.html
+ignore = E501, W291 
+# per-file-ignores = Julia/inputs_generation.py:E501, F401, E262, E302
+per-file-ignores = app.py:E266, E231, E722, E302, E128, E261
+

@@ -27,5 +27,5 @@ Manifest.toml
 *.log
 # This folder get created on HPC machines by the python job submission scripts
 slurm_jobs/
-.flake8
+#.flake8
 .ipynb_checkpoints
