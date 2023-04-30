@@ -16,7 +16,8 @@ cores = args.cores  # -1 number of cores for pararallel processing
 # log_name = args.log_name
 
 # Generate full path to destination notebook
-destination = source.replace('giuh', 'giuh/paper_outputs')
+# destination = source.replace('giuh', 'giuh/paper_outputs')
+destination = source.replace('verse/Python', 'Slurm/paper_outputs')
 
 print(source)
 print(destination)
