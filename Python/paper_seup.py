@@ -6,7 +6,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Run Jupyter notebook using papermill.')  # noqa
 parser.add_argument('source', help='Fullpath to jupyter notebook', type=str)
 parser.add_argument('--cores', help='Number of cores to use for multiprocessing', type=int, default=1)
-parser.add_argument('--log_name', help='Name of Log file', type=str, default='hydrogen.log')
+parser.add_argument('--log_name', help='Name of Log file', type=str, default='seup_paper.log')
 
 # parser.add_argument('--start_index', help='Region name to start running code', type=int)
 args = parser.parse_args()
@@ -17,7 +17,7 @@ cores = args.cores  # -1 number of cores for pararallel processing
 
 # Generate full path to destination notebook
 # destination = source.replace('giuh', 'giuh/paper_outputs')
-destination = source.replace('verse/Python', 'Slurm/paper_outputs')
+destination = source.replace('verse/Python', '03_Blender/paper_outputs')
 
 print(source)
 print(destination)
