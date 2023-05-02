@@ -1,11 +1,11 @@
 #!usr/bin/env python
 
 """ Clip SEUP and MODIS CGF over North America by watershed polygon to generate Analysis Ready Data for Blender
-    Usage: python ../clip_by_watershed.py
+    Usage: python ../merge_modis_seup.py   # OLD: clip_by_watershed.py
     Nov 04, 2022: Populated missing days of data from previous day; this was causing error in Blender run
     Nov 06, 2022: Updated with ffill and bfill with limit=1 for missing days. 
         TODO: Check if better to interpolate between two values
-    Nov 08, 2022: Updating for North America MODIS CGF that I newly generated rioxarray array merge
+    Nov 08, 2022: Updating for North America MODIS CGF that I newly generated using rioxarray array_merge
     Nov 19, 2022: Updating to generate Blender ready data for whole North America; ie, NoahMP + MODIS_CGF in on nc file
     Feb 25, 2023: Last successful run incorporating Polar Nights Fix
 
@@ -14,6 +14,13 @@
     3. Combine with SEUP data and save the file that is ready for Blender Run
     4. [optional] Clip with watershed is currently not active
     5. Runtime: 15 mins with 30 GB and 1 core on Discover
+
+    Outputs
+    =======
+    1. f"{base_folder}/CGF_NDSI_Snow_Cover/modis_cgf_NA_original.nc" : intermediate/temporary
+    2. f"{base_folder}/CGF_NDSI_Snow_Cover/modis_cgf_NA.nc" : intermediate
+    3. f"{base_folder}/NoahMP/WY_merged/2016_seup_modis.nc")  # use this for Blender run for NoahMP
+
 
 """
 import platform
@@ -47,10 +54,10 @@ logging.basicConfig(filename='merge_modis_seup.log', level=logging.INFO, format=
 # base_folder = f"{root_dir}/Github/coressd/Blender"
 # coressd_folder = "/discover/nobackup/projects/coressd"
 # coressd_folder = "/fs/project/howat.4/yadav.111/coressd"
-if 'STAFF-BY-M01' in node and "Windows" in ss:
-    coressd_folder = "C:/Github/coressd"
-elif 'STAFF-BY-M01' in node and "Linux" in ss:
-    coressd_folder = "/mnt/c/Github/coressd"
+if 'L-JY0R5X3' in node and "Windows" in ss:
+    coressd_folder = "D:/coressd"
+elif 'L-JY0R5X3' in node and "Linux" in ss:
+    coressd_folder = "/mnt/d/coressd"
 elif "borg" in node and "Linux" in ss:
     coressd_folder = "/discover/nobackup/projects/coressd"
 elif "asc.ohio-state.edu" in node and "Linux" in ss:
@@ -164,7 +171,8 @@ seup_ds["MODSCAG"] = ds["MODSCAG"]  # ValueError: cannot reindex or align along 
 # seup_ds_clipped = seup_ds_clipped.sel(time=noah_ds_clip2.time)  # TODO: or select time explicitly here
 # seup_ds_clipped = seup_ds_clipped.sel(time=slice("2015-10-01", "2016-09-29"))  # KeyError: "cannot represent labeled-based slice indexer for coordinate 'time' with a slice over integer positions; the index is unsorted or non-unique"
 # seup_ds = seup_ds.isel(time=slice(None, -2))  # perhaps only for Sarith's
-seup_ds.to_netcdf(f"{base_folder}/NoahMP/WY_merged/2016_noahmp_cgf.nc")  # use this for Blender run for NoahMP
+# seup_ds.to_netcdf(f"{base_folder}/NoahMP/WY_merged/2016_noahmp_cgf.nc")  # use this for Blender run for NoahMP
+seup_ds.to_netcdf(f"{base_folder}/NoahMP/WY_merged/2016_seup_modis.nc")  # use this for Blender run for NoahMP
 logging.info("Fished preparing ARD for Blender")
 del ds  # clear from memory
 # UPTO THIS PART FOR CONCATENATING MODIS CGF FOR NORTH AMERICA
