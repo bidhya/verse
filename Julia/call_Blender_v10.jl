@@ -47,6 +47,7 @@ Nov 22, 2022 : v8 is using Estimate_v54 where 9 text outputs are combined into 1
 Nov 22, 2022 : Updating text2nc function to create nc file from the combined text file
 Nov 27, 2022 : Checking the output file before loading Rasters array; should save (signficantly) time for pixels already processed
 Dec 03, 2022 : Trying multinodes with ClusterManagers.jl
+May 02, 2023 : ../WY_merged/2016_seup_modis.nc is the new input files with NDSI converted to SCF   
 
 #datadir is a moving directory containing an argument given in the job file
 # in the shell script the arg is increased by a step counter
@@ -196,7 +197,7 @@ nc_outDir = "$out_folder/outputs_parallel"         # To convert text outputs to 
 if occursin("L-JY0R5X3", host_machine)  # STAFF-BY-M
     A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")  #2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 elseif occursin("borg", host_machine)  # TODO: discover
-    A = RasterStack("$DataDir/WY_merged/2016_noahmp_cgf.nc")  #2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
+    A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")  # 2016_noahmp_cgf 2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 elseif occursin(".osc.edu", host_machine)
     A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
 else
@@ -369,6 +370,7 @@ end
 # without sync above one of the processor to the next step (combining text files to netcdf) which will cause error
 
 # Count if all pixels are processed before calling the following section for converting text files to netcdf file
+sleep(30)
 if length(pixels) == valid_pix_count  # length(valid_pix_ind)
     @info("Creating OUTPUT NETCDF FILES")
     outRaster = copy(A[:SWE_tavg])
