@@ -14,7 +14,7 @@ Order of Script Execution for coressd project
 
 3. merge_modis_seup.py [old name: clip_by_watershed.py]  
     Part I: Concatenate MODIS along time dim then append to SEUP varaibles, making it ARD for Blender run
-        and save nc file: ../NoahMP/WY_merged/2016_clip_noahmp_cgf.nc
+        and save nc file: ../NoahMP/WY_merged/2016_seup_modis.nc  #2016_clip_noahmp_cgf.nc
     Part II: [Optional] Clip by watershed
     
 TODO: Generate Analysis ready data for North America by merging SEUP and MODIS_CGF
@@ -38,6 +38,11 @@ II: To Run
 - on HPC 				: python submit_blender_job.py -> This will generate several slurm jobs that calls julia call_Blender_vx.jl output_folder start_index end_index  
 							Modify and update this Python script before running.  
 						: python submit_txt2nc_job.py -> Combine temporary text files into a netcdf file.  Separately for each variable.   
+### May 02, 2023  
+Refractor: update file names; used newer xarray (warning but data still same), pandas etc.    
+Convert NDSI to Snow cover fraction    
+
+
 ### Mar 01, 2023  
 Arctic Polar Nights issue fixed and working  
 Updated python job submisison script to set HPC system automatically  

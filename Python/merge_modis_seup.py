@@ -17,9 +17,9 @@
 
     Outputs
     =======
-    1. Blender/CGF_NDSI_Snow_Cover/modis_cgf_NA_original.nc     # intermediate/temporary
-    2. Blender/CGF_NDSI_Snow_Cover/modis_cgf_NA.nc              # intermediate
-    3. Blender/NoahMP/WY_merged/2016_seup_modis.nc              # Use for Blender run. Final
+    1. Blender/CGF_NDSI_Snow_Cover/modis_cgf_original.nc    # intermediate/temporary
+    2. Blender/CGF_NDSI_Snow_Cover/modis_scf.nc             # intermediate
+    3. Blender/NoahMP/WY_merged/2016_seup_modis.nc          # Use for Blender run. Final
 
 
 """
@@ -37,7 +37,7 @@ import logging
 
 ss = platform.system()
 node = platform.node()
-logging.basicConfig(filename='merge_modis_seup.log', level=logging.INFO, format='%(asctime)s:%(message)s')
+logging.basicConfig(filename='out/merge_modis_seup.log', level=logging.INFO, format='%(asctime)s:%(message)s')
 
 # parser = argparse.ArgumentParser(description='Check corrupt MODIS CGF corrupt files.')
 # parser.add_argument('year', help='Year of modis to process', type=str)
@@ -49,11 +49,6 @@ logging.basicConfig(filename='merge_modis_seup.log', level=logging.INFO, format=
 # cores = args.cores
 # cores = -1  # defualt should be -1 or just not pass
 
-
-# root_dir = "C:"  # "/mnt/c"
-# base_folder = f"{root_dir}/Github/coressd/Blender"
-# coressd_folder = "/discover/nobackup/projects/coressd"
-# coressd_folder = "/fs/project/howat.4/yadav.111/coressd"
 if 'L-JY0R5X3' in node and "Windows" in ss:
     coressd_folder = "D:/coressd"
 elif 'L-JY0R5X3' in node and "Linux" in ss:
@@ -108,7 +103,7 @@ da = da.drop_duplicates(dim="time")  # required for Sarith script; may not be re
 # Nov 19, 2022: Saved concatenated (WY) data with origianl flags for QA/QC in future; but not really necessary for this or other workflow
 ds = xr.Dataset({"MODSCAG":da})  # so we can save to netcdf or append to SEUP dataset
 ds.to_netcdf(f"{base_folder}/CGF_NDSI_Snow_Cover/modis_cgf_NA_original.nc")
-logging.info(f"Saved NA WaterYear MODIS_CGF with original flags: {base_folder}/CGF_NDSI_Snow_Cover/modis_cgf_NA_original.nc")
+logging.info(f"Saved NA WaterYear MODIS_CGF with original flags: {base_folder}/CGF_NDSI_Snow_Cover/modis_cgf_original.nc")
 del ds  # clear from memory
 # # Fill in All_Nan days: due to all nans, this creates problem in Blender, so fill them with previous day of data
 # da.sel(time="2015-10-24").data[:] = da.sel(time="2015-10-23").data
@@ -138,8 +133,8 @@ da = da.bfill(dim="time", limit=1)  # required if first day empty. If two consec
 logging.info(f"CRS for concatenated da: {da.rio.crs}")
 # Nov 19, 2022: Save this one round before chaning pixel values; this may directly be used in final run after updating no-data pixel values
 ds = xr.Dataset({"MODSCAG":da})  # so we can save to netcdf or append to SEUP dataset
-ds.to_netcdf(f"{base_folder}/CGF_NDSI_Snow_Cover/modis_cgf_NA.nc")
-logging.info(f"Saved NA WaterYear MODIS_CGF with original flags: {base_folder}/CGF_NDSI_Snow_Cover/modis_cgf_NA.nc")
+ds.to_netcdf(f"{base_folder}/CGF_NDSI_Snow_Cover/modis_scf.nc")
+logging.info(f"Saved NA WaterYear MODIS_CGF with original flags: {base_folder}/CGF_NDSI_Snow_Cover/modis_scf.nc")
 ds = ds.reset_coords(drop=True)  # required for combining with SEUP
 
 # Part II: Read SEUP Data and combine MODIS-CGF WY to create 1-WY-ARD for Blender Run
