@@ -17,9 +17,9 @@
 
     Outputs
     =======
-    1. f"{base_folder}/CGF_NDSI_Snow_Cover/modis_cgf_NA_original.nc" : intermediate/temporary
-    2. f"{base_folder}/CGF_NDSI_Snow_Cover/modis_cgf_NA.nc" : intermediate
-    3. f"{base_folder}/NoahMP/WY_merged/2016_seup_modis.nc")  # use this for Blender run for NoahMP
+    1. Blender/CGF_NDSI_Snow_Cover/modis_cgf_NA_original.nc     # intermediate/temporary
+    2. Blender/CGF_NDSI_Snow_Cover/modis_cgf_NA.nc              # intermediate
+    3. Blender/NoahMP/WY_merged/2016_seup_modis.nc              # Use for Blender run. Final
 
 
 """
@@ -125,6 +125,12 @@ da.data = da.data.astype(float)
 # da.data[da.data > 100] = 0  # Give rest of the flags value of zero snow! [Alreay done in prior script]
 # da.data[da>100] = np.nan  # this does not work for multidimensional data (ie, da concatenated with more than 1 time period)
 # logging.info("2 converted nans ans zeros")
+# May 02, 2022: Convert NDSI to snow cover fraction (FRA); FRA = 0.06 + 1.21 * NDSI
+da.data = 0.06 + 1.21 * da.data
+# Correct of biases introduced by above equation
+da.data[da.data <= 0.06] = 0
+da.data[da.data > 1] = 1
+
 # Now ffil and/or Bfill to missing/corrupt pixels  
 # ffill : Fill NaN values by propagating values forward; need bottleneck
 da = da.ffill(dim="time", limit=1)
