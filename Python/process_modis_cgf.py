@@ -11,6 +11,11 @@
     Need ~28 GB per core
     For 1 year with 32 GB/8cores runtime ~20 minutes, with output of ~6GB
 
+    NB:
+    ===
+    New May 07, 2023: Save the original DNs. Float, convertion etc in subsequent script. This will also save space
+    ie, no more reprojection match with SEUP in this script
+
     TODO: Decide on what to do with cores; pass it or hardcode to -1
 """
 import os
@@ -42,7 +47,7 @@ cores = args.cores
 # cores = -1  # defualt should be -1 or just not pass
 # log_name = 'modis_cgf_clip.log'
 
-logging.basicConfig(filename=f'{log_name}', level=logging.INFO, format='%(asctime)s:%(message)s')
+logging.basicConfig(filename=f'out/{log_name}', level=logging.INFO, format='%(asctime)s:%(message)s')
 logging.info('  ')
 logging.info('-------------------------START LOGGING--------------------------------------')
 
@@ -105,8 +110,9 @@ def main():
     # variables = ["CGF_NDSI_Snow_Cover", "Cloud_Persistence", "Basic_QA", "Algorithm_Flags_QA", "MOD10A1_NDSI_Snow_Cover"]
     # DATAFIELD_NAME = variables[0]  # for now just check one important varialbes; may need to check all
     DATAFIELD_NAME = "CGF_NDSI_Snow_Cover"  # or just hardcode the variable of interest
-    # Create clip folder to save clipped modis files
-    clip_folder = f"{base_folder}/Blender/{DATAFIELD_NAME}/NA"
+    # Create clip folder to save clipped modis files. Initially clipping from global mosaic, hence, named clipped. 
+    # No more strictly clipping in new workflow because I manually select subset of MODIS tiles  
+    clip_folder = f"{base_folder}/Blender/{DATAFIELD_NAME}/NA_mosaic"
     os.makedirs(clip_folder, exist_ok=True)
     # mosaic_tif_folder = f"{base_folder}/{DATAFIELD_NAME}/mosaic_tif"
     # os.makedirs(mosaic_tif_folder, exist_ok=True)
@@ -129,29 +135,34 @@ def main():
         if not os.path.exists(f"{clip_folder}/{out_tif_name}.nc"):
             da = merge_arrays([rioxarray.open_rasterio(f'{download_folder}/{tif}')[DATAFIELD_NAME] for tif in subset])  # chunks={'x':2**13, 'y':2**13}
             da = da.squeeze()
-            # da.rio.write_crs("epsg:4326", inplace=True)  # not used yet
-            # mosaic_tif = f"{mosaic_tif_folder}/{out_tif_name}.tif"  # This only temporary to make sure everything checks out
-            # da.rio.to_raster(mosaic_tif)
-            # More processing before reprojection_match operation
-            da.data = da.data.astype(float)
-            # Replace with Nans: They both look to give same result
-            # da.data[da.data >100] = np.nan  #this causes most of the pixels to be nan. Hence, cannot be used in Blender
-            da.data[da.data == da._FillValue] = np.nan
-            da.data[da.data == 211] = np.nan  # Night 
-            da.data[da.data == 239] = np.nan  # Ocean 
-
-            da.data[da.data > 100] = 0  # Give rest of the flags value of zero snow! TODO: change to nan because blender can handle missing now  
-            # da.data = da.data/100  # mabye do at the end
-            # Clip on original globa data was >2 minutes
-            da_clipped = da.rio.reproject_match(template_raster)  # seems similar to ds 
-            # TODO: We will get some 255 values for nodata; check if other values also included (due to interpolation)
-            da_clipped.data[nan_mask] = np.nan  # done again, because reproj match will fill new nodata with 255 (perhaps this value from attrs)
-            da_clipped.data = da_clipped.data / 100
-            # TODO: Fix attrs, no-data etc here so that data is self-describing
+            # New May 07, 2023: Save the original DNs. Float, convertion etc in subsequent script. This will also save space
             # Conver to Dataset, so this is proper nc file
-            ds_clipped = xr.Dataset({DATAFIELD_NAME: da_clipped})
-            ds_clipped.to_netcdf(f"{clip_folder}/{out_tif_name}.nc")
-            # noah_ds_clip[var] = da_clipped  # Append Modis data to clipped dataset
+            da = xr.Dataset({DATAFIELD_NAME: da})
+            da.to_netcdf(f"{clip_folder}/{out_tif_name}.nc")
+
+            # # da.rio.write_crs("epsg:4326", inplace=True)  # not used yet
+            # # mosaic_tif = f"{mosaic_tif_folder}/{out_tif_name}.tif"  # This only temporary to make sure everything checks out
+            # # da.rio.to_raster(mosaic_tif)
+            # # More processing before reprojection_match operation
+            # da.data = da.data.astype(float)
+            # # Replace with Nans: They both look to give same result
+            # # da.data[da.data >100] = np.nan  #this causes most of the pixels to be nan. Hence, cannot be used in Blender
+            # da.data[da.data == da._FillValue] = np.nan
+            # da.data[da.data == 211] = np.nan  # Night 
+            # da.data[da.data == 239] = np.nan  # Ocean 
+
+            # da.data[da.data > 100] = 0  # Give rest of the flags value of zero snow! TODO: change to nan because blender can handle missing now  
+            # # da.data = da.data/100  # mabye do at the end
+            # # Clip on original globa data was >2 minutes
+            # da_clipped = da.rio.reproject_match(template_raster)  # seems similar to ds 
+            # # TODO: We will get some 255 values for nodata; check if other values also included (due to interpolation)
+            # da_clipped.data[nan_mask] = np.nan  # done again, because reproj match will fill new nodata with 255 (perhaps this value from attrs)
+            # da_clipped.data = da_clipped.data / 100
+            # # TODO: Fix attrs, no-data etc here so that data is self-describing
+            # # Conver to Dataset, so this is proper nc file
+            # ds_clipped = xr.Dataset({DATAFIELD_NAME: da_clipped})
+            # ds_clipped.to_netcdf(f"{clip_folder}/{out_tif_name}.nc")
+            # # noah_ds_clip[var] = da_clipped  # Append Modis data to clipped dataset
 
     # Make of List of downloaded sub-folder. To make it easy to parallelize using Joblib
     download_folder_list = []

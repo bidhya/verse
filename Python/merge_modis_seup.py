@@ -138,6 +138,7 @@ logging.info(f"Saved NA WaterYear MODIS_CGF with original flags: {base_folder}/C
 ds = ds.reset_coords(drop=True)  # required for combining with SEUP
 
 # Part II: Read SEUP Data and combine MODIS-CGF WY to create 1-WY-ARD for Blender Run
+# Aside: Reproj match with SEUP was already performed in "process_modis_cgf.py" script  
 # ========================================================================================================
 seup_ds = xr.open_dataset(f"{base_folder}/NoahMP/WY_merged/2016_seup.nc", decode_coords="all")  # updated from [2016.nc ==> 2016_seup.nc]
 # Merge Seup and Modis Data

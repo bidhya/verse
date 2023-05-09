@@ -161,7 +161,7 @@ elseif system_machine == "Slurm" #Sys.islinux()
   println("SLURM Cores: $cores")
 #   addprocs()  # Not working. using all cores even though not allocated for use
 #   addprocs(cores)  # ; exeflags="--project"subtract one becuase master already has one; but seems to work with higher number as well
-  sleep(60+cores)  # To prevent scheduling job on more than 1 node on Discover Slurm cluster  
+  sleep(60+cores)  # 60+cores To prevent scheduling job on more than 1 node on Discover Slurm cluster  
   addprocs(SlurmManager())  # to use all available nodes and cores automatically. comment this line and uncomment one above this to match _v8.jl
 
 else

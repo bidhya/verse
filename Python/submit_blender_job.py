@@ -4,7 +4,7 @@
     - Only for HPC.
     - Manually update this script everytime and make sure to change/udpate everything in this script here
 
-    Usage: python ~/Github/verse/submit_txt2nc_job.py
+    Usage: python ~/Github/verse/submit_blender_job.py
     Best usage: Run this python from command line; this script will thus submit the slurm jobs
 
     Approach
@@ -82,14 +82,14 @@ def create_job(hpc, jobname='test', cores=15, memory='60gb', runtime='12:00:00',
         fh.writelines("\n")
         # Call the main julia script to run by this slurm script
         if hpc == "discover":
-            fh.writelines("#SBATCH --account=s2701\n")  # for DISCOVER
+            # fh.writelines("#SBATCH --account=s2701\n")  # for DISCOVER
             # fh.writelines(f"julia /discover/nobackup/byadav/Github/giuh/scripts/verse/Julia/call_Blender_v8.jl NA_temp {start_idx} {end_idx}\n\n")
-            fh.writelines(f"julia /discover/nobackup/projects/coressd/Blender/verse/Julia/call_Blender_v9.jl {out_subfolder} {start_idx} {end_idx}\n\n")        
+            fh.writelines(f"julia /discover/nobackup/projects/coressd/Github/verse/Julia/call_Blender_v10.jl {out_subfolder} {start_idx} {end_idx}\n\n")        
         else:
-            fh.writelines(f"julia ~/Github/verse/Julia/call_Blender_v9.jl {out_subfolder} {start_idx} {end_idx}\n\n")        
+            fh.writelines(f"julia ~/Github/verse/Julia/call_Blender_v10.jl {out_subfolder} {start_idx} {end_idx}\n\n")        
         fh.writelines("echo Finished Slurm job \n")
     # submit the job
-    os.system(f"sbatch {job_file}")
+    # os.system(f"sbatch {job_file}")
 
 
 def main():
@@ -135,7 +135,7 @@ def main():
         jobname = f"{start_idx}_{end_idx}"
         # hpc = unity osc discover
         # create_job(hpc="unity", jobname=jobname, out_subfolder="NA4", start_idx=start_idx, end_idx=end_idx, cores=24, memory='56gb', runtime='12:00:00')
-        create_job(hpc=hpc_name, jobname=jobname, out_subfolder="NA_2016_x", start_idx=start_idx, end_idx=end_idx, cores=20, memory='64gb', runtime='01:00:00')
+        create_job(hpc=hpc_name, jobname=jobname, out_subfolder="WY_2016_x", start_idx=start_idx, end_idx=end_idx, cores=20, memory='64gb', runtime='01:00:00')
         # for Discover, usable node: Haswell=28; Skylake=36; Cascade=46
         logging.info(f"jobname={jobname}, start_idx={start_idx}, end_idx={end_idx}, cores=40, memory=64gb, runtime=12:00:00 ")
         time.sleep(2)
