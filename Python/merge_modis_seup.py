@@ -68,7 +68,7 @@ logging.info(f"base_folder: {base_folder}")
 # Part I: Read daily MODIS-CGF North America mosiaics and create WaterYear data [ie, concatenate by time]
 # ========================================================================================================
 # modis_folder = f"{base_folder}/MOD10A1F.061_clip/WY16"  # C:/Github/Blender/MOD10A1F/WY16"  # ones processed by sarith copied here for prototyping convenience
-modis_folder = f"{base_folder}/CGF_NDSI_Snow_Cover/NA"  # Read daily North America mosaicked ModisCGF.   
+modis_folder = f"{base_folder}/Modis/CGF_NDSI_Snow_Cover/NA_mosaic"  # Read daily North America mosaicked ModisCGF.   
 # hdf_files = [f for f in os.listdir(modis_folder) if f.endswith(".nc4") and f.startswith("MOD10A1F")]  # sarith has nc4 extension
 hdf_files = [f for f in os.listdir(modis_folder) if f.endswith(".nc") and f.startswith("MOD10A1F")]  # I have nc extension
 # Sort in ascending order of data
@@ -102,8 +102,8 @@ logging.info(da.shape)
 da = da.drop_duplicates(dim="time")  # required for Sarith script; may not be required for mine as there should be no duplicate dates 
 # Nov 19, 2022: Saved concatenated (WY) data with origianl flags for QA/QC in future; but not really necessary for this or other workflow
 ds = xr.Dataset({"MODSCAG":da})  # so we can save to netcdf or append to SEUP dataset
-ds.to_netcdf(f"{base_folder}/CGF_NDSI_Snow_Cover/modis_cgf_NA_original.nc")
-logging.info(f"Saved NA WaterYear MODIS_CGF with original flags: {base_folder}/CGF_NDSI_Snow_Cover/modis_cgf_original.nc")
+ds.to_netcdf(f"{base_folder}/Modis/CGF_NDSI_Snow_Cover/modis_cgf_NA_original.nc")
+logging.info(f"Saved NA WaterYear MODIS_CGF with original flags: {base_folder}/Modis/CGF_NDSI_Snow_Cover/modis_cgf_NA_original.nc")
 del ds  # clear from memory
 # # Fill in All_Nan days: due to all nans, this creates problem in Blender, so fill them with previous day of data
 # da.sel(time="2015-10-24").data[:] = da.sel(time="2015-10-23").data
@@ -133,8 +133,8 @@ da = da.bfill(dim="time", limit=1)  # required if first day empty. If two consec
 logging.info(f"CRS for concatenated da: {da.rio.crs}")
 # Nov 19, 2022: Save this one round before chaning pixel values; this may directly be used in final run after updating no-data pixel values
 ds = xr.Dataset({"MODSCAG":da})  # so we can save to netcdf or append to SEUP dataset
-ds.to_netcdf(f"{base_folder}/CGF_NDSI_Snow_Cover/modis_scf.nc")
-logging.info(f"Saved NA WaterYear MODIS_CGF with original flags: {base_folder}/CGF_NDSI_Snow_Cover/modis_scf.nc")
+ds.to_netcdf(f"{base_folder}/Modis/CGF_NDSI_Snow_Cover/modis_scf.nc")
+logging.info(f"Saved NA WaterYear MODIS_CGF with original flags: {base_folder}/Modis/CGF_NDSI_Snow_Cover/modis_scf.nc")
 ds = ds.reset_coords(drop=True)  # required for combining with SEUP
 
 # Part II: Read SEUP Data and combine MODIS-CGF WY to create 1-WY-ARD for Blender Run

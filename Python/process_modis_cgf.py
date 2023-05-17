@@ -112,7 +112,7 @@ def main():
     DATAFIELD_NAME = "CGF_NDSI_Snow_Cover"  # or just hardcode the variable of interest
     # Create clip folder to save clipped modis files. Initially clipping from global mosaic, hence, named clipped. 
     # No more strictly clipping in new workflow because I manually select subset of MODIS tiles  
-    clip_folder = f"{base_folder}/Blender/{DATAFIELD_NAME}/NA_mosaic"
+    clip_folder = f"{base_folder}/Blender/Modis/{DATAFIELD_NAME}/NA_mosaic"
     os.makedirs(clip_folder, exist_ok=True)
     # mosaic_tif_folder = f"{base_folder}/{DATAFIELD_NAME}/mosaic_tif"
     # os.makedirs(mosaic_tif_folder, exist_ok=True)
