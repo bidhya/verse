@@ -28,7 +28,8 @@ def mkdir_p(folder):
 mkdir_p('slurm_jobs/.out')
 os.chdir("slurm_jobs")
 
-def create_job(hpc, jobname='txt2nc', cores=1, memory='16gb', runtime='06:00:00', out_subfolder="NA_2016", var_name=None, var_idx=None):
+
+def create_job(hpc, jobname='txt2nc', cores=1, memory='16gb', runtime='06:00:00', out_subfolder="WY2016", var_name=None, var_idx=None):
 # def create_job(hpc, jobname='test', cores=15, memory='60gb', runtime='12:00:00', out_subfolder="NoahMP_CGF", region=None, start_idx=1, end_idx=100):
     """ Generate and submit slurm job"""
     logging.info(f'jobname = {jobname}    out_subfolder = {out_subfolder}  var_name = {var_name} var_idx = {var_idx}')
@@ -83,7 +84,7 @@ def create_job(hpc, jobname='txt2nc', cores=1, memory='16gb', runtime='06:00:00'
         fh.writelines("\n")
         # Call the main julia script to run by this slurm script
         if hpc == "discover":
-            fh.writelines(f"julia /discover/nobackup/projects/coressd/Blender/verse/Julia/combine_txt2nc.jl {out_subfolder} {var_name} {var_idx}\n\n")
+            fh.writelines(f"julia /discover/nobackup/projects/coressd/Github/verse/Julia/combine_txt2nc.jl {out_subfolder} {var_name} {var_idx}\n\n")
         else:
             fh.writelines(f"julia ~/Github/verse/Julia/combine_txt2nc.jl {out_subfolder} {var_name} {var_idx}\n\n")     
         fh.writelines("echo Finished Slurm job \n")
@@ -118,16 +119,16 @@ def main():
     logging.basicConfig(filename='txt2nc.log', level=logging.INFO, format='%(asctime)s:%(levelname)s:%(message)s')
     logging.info('\n')
     logging.info('--------------------------------------Job Creation/Submission info----------------------------------------------')   
-    out_subfolder = "NA_2016" 
+    out_subfolder = "WY2016"  # "NA_2016" 
     create_job(hpc=hpc_name, jobname="txt2nc1", var_name="SWE", var_idx=1, out_subfolder=out_subfolder, cores=1, memory='16gb', runtime='10:00:00')
-    # create_job(hpc=hpc_name, jobname="txt2nc2", var_name="Gmelt", var_idx=2, out_subfolder=out_subfolder, cores=1, memory='16gb', runtime='10:00:00')
-    create_job(hpc=hpc_name, jobname="txt2nc3", var_name="G", var_idx=3, out_subfolder="NA_2016", cores=1, memory='16gb', runtime='10:00:00')
+    create_job(hpc=hpc_name, jobname="txt2nc2", var_name="Gmelt", var_idx=2, out_subfolder=out_subfolder, cores=1, memory='16gb', runtime='10:00:00')
+    create_job(hpc=hpc_name, jobname="txt2nc3", var_name="G", var_idx=3, out_subfolder="WY2016", cores=1, memory='16gb', runtime='10:00:00')
     create_job(hpc=hpc_name, jobname="txt2nc4", var_name="Precip", var_idx=4, out_subfolder=out_subfolder, cores=1, memory='16gb', runtime='10:00:00')
-    # create_job(hpc=hpc_name, jobname="txt2nc5", var_name="Us", var_idx=5, out_subfolder=out_subfolder, cores=1, memory='16gb', runtime='10:00:00')
-    # create_job(hpc=hpc_name, jobname="txt2nc6", var_name="Gpv", var_idx=6, out_subfolder=out_subfolder, cores=1, memory='16gb', runtime='10:00:00')
-    # create_job(hpc=hpc_name, jobname="txt2nc7", var_name="Gmeltpv", var_idx=7, out_subfolder=out_subfolder, cores=1, memory='16gb', runtime='10:00:00')
-    # create_job(hpc=hpc_name, jobname="txt2nc8", var_name="Upv", var_idx=8, out_subfolder=out_subfolder, cores=1, memory='16gb', runtime='10:00:00')
-    # create_job(hpc=hpc_name, jobname="txt2nc9", var_name="SWEpv", var_idx=9, out_subfolder="NA_2016", cores=1, memory='16gb', runtime='10:00:00')
+    create_job(hpc=hpc_name, jobname="txt2nc5", var_name="Us", var_idx=5, out_subfolder=out_subfolder, cores=1, memory='16gb', runtime='10:00:00')
+    create_job(hpc=hpc_name, jobname="txt2nc6", var_name="Gpv", var_idx=6, out_subfolder=out_subfolder, cores=1, memory='16gb', runtime='10:00:00')
+    create_job(hpc=hpc_name, jobname="txt2nc7", var_name="Gmeltpv", var_idx=7, out_subfolder=out_subfolder, cores=1, memory='16gb', runtime='10:00:00')
+    create_job(hpc=hpc_name, jobname="txt2nc8", var_name="Upv", var_idx=8, out_subfolder=out_subfolder, cores=1, memory='16gb', runtime='10:00:00')
+    create_job(hpc=hpc_name, jobname="txt2nc9", var_name="SWEpv", var_idx=9, out_subfolder="WY2016", cores=1, memory='16gb', runtime='10:00:00')
 
 
 if __name__ == "__main__":

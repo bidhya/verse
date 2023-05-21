@@ -112,10 +112,32 @@ def main():
     DATAFIELD_NAME = "CGF_NDSI_Snow_Cover"  # or just hardcode the variable of interest
     # Create clip folder to save clipped modis files. Initially clipping from global mosaic, hence, named clipped. 
     # No more strictly clipping in new workflow because I manually select subset of MODIS tiles  
-    clip_folder = f"{base_folder}/Blender/Modis/{DATAFIELD_NAME}/NA_mosaic"
+    mosaic_folder = f"{base_folder}/Blender/Modis/{DATAFIELD_NAME}/NA_mosaic"
+    os.makedirs(mosaic_folder, exist_ok=True)
+    clip_folder = f"{base_folder}/Blender/Modis/{DATAFIELD_NAME}/NA"
     os.makedirs(clip_folder, exist_ok=True)
     # mosaic_tif_folder = f"{base_folder}/{DATAFIELD_NAME}/mosaic_tif"
     # os.makedirs(mosaic_tif_folder, exist_ok=True)
+    
+    # Get Tree cover fraction data
+    daF = rioxarray.open_rasterio(f'{base_folder}/Blender/Modis/MOD44B/Percent_Tree_Cover/NA/MOD44B.A2016065.061.nc').squeeze()
+    daF.data = daF.data.astype(float)
+    daF.data[daF.data == daF._FillValue] = np.nan
+    # # da.data[da.data == 200] = np.nan  # water ; maybe it water implies zero forest cover?; so don't use nan here
+    daF.data[daF.data > 100] = 0  # Give rest of the flags value of zero tree cover percent
+    daF.data = daF.data / 100
+    daF = daF.rio.reproject_match(template_raster)  # match directly to seup resolution   
+
+    # TODO: First just merge and save data in original format (both cgf and tree cover), ie, as follows
+    """ Even same just one merged files at temporary template: required for daF reproj match
+    da = merge_arrays([rioxarray.open_rasterio(f'{download_folder}/{tif}')[DATAFIELD_NAME] for tif in subset])  # chunks={'x':2**13, 'y':2**13}
+    da = da.squeeze()
+    # New May 07, 2023: Save the original DNs. Float, convertion etc in subsequent script. This will also save space
+    # Conver to Dataset, so this is proper nc file
+    da = xr.Dataset({DATAFIELD_NAME: da})
+    da.to_netcdf(f"{clip_folder}/{out_tif_name}.nc")
+
+    """
 
     def extract_modis(download_folder):
         """ Extract the MODIS CGF matching the SEUP data ready for Blender Julia run
@@ -137,32 +159,44 @@ def main():
             da = da.squeeze()
             # New May 07, 2023: Save the original DNs. Float, convertion etc in subsequent script. This will also save space
             # Conver to Dataset, so this is proper nc file
-            da = xr.Dataset({DATAFIELD_NAME: da})
-            da.to_netcdf(f"{clip_folder}/{out_tif_name}.nc")
+            ds_mosaic = xr.Dataset({DATAFIELD_NAME: da})
+            ds_mosaic.to_netcdf(f"{mosaic_folder}/{out_tif_name}.nc")
 
-            # # da.rio.write_crs("epsg:4326", inplace=True)  # not used yet
-            # # mosaic_tif = f"{mosaic_tif_folder}/{out_tif_name}.tif"  # This only temporary to make sure everything checks out
-            # # da.rio.to_raster(mosaic_tif)
-            # # More processing before reprojection_match operation
-            # da.data = da.data.astype(float)
-            # # Replace with Nans: They both look to give same result
-            # # da.data[da.data >100] = np.nan  #this causes most of the pixels to be nan. Hence, cannot be used in Blender
-            # da.data[da.data == da._FillValue] = np.nan
-            # da.data[da.data == 211] = np.nan  # Night 
-            # da.data[da.data == 239] = np.nan  # Ocean 
+            # da.rio.write_crs("epsg:4326", inplace=True)  # not used yet
+            # mosaic_tif = f"{mosaic_tif_folder}/{out_tif_name}.tif"  # This only temporary to make sure everything checks out
+            # da.rio.to_raster(mosaic_tif)
+            # More processing before reprojection_match operation
+            da.data = da.data.astype(float)
+            # Replace with Nans: They both look to give same result
+            # da.data[da.data >100] = np.nan  #this causes most of the pixels to be nan. Hence, cannot be used in Blender
+            da.data[da.data == da._FillValue] = np.nan
+            da.data[da.data == 211] = np.nan  # Night 
+            da.data[da.data == 239] = np.nan  # Ocean 
 
-            # da.data[da.data > 100] = 0  # Give rest of the flags value of zero snow! TODO: change to nan because blender can handle missing now  
-            # # da.data = da.data/100  # mabye do at the end
-            # # Clip on original globa data was >2 minutes
-            # da_clipped = da.rio.reproject_match(template_raster)  # seems similar to ds 
-            # # TODO: We will get some 255 values for nodata; check if other values also included (due to interpolation)
-            # da_clipped.data[nan_mask] = np.nan  # done again, because reproj match will fill new nodata with 255 (perhaps this value from attrs)
+            da.data[da.data > 100] = 0  # Give rest of the flags value of zero snow! TODO: change to nan because blender can handle missing now  
+            da.data = da.data / 100  # May 17, 2023: moved this from below: da_clipped.data = da_clipped.data / 100
+            # a) May 16, 2022: Convert NDSI to snow cover fraction (FRA); FRA = 0.06 + 1.21 * NDSI
+            da.data = 0.06 + 1.21 * da.data
+            # Correct of biases introduced by above equation
+            da.data[da.data <= 0.06] = 0
+            da.data[da.data > 1] = 1
+
+            # da.data = da.data/100  # mabye do at the end
+            # Clip on original globa data was >2 minutes
+            da_clipped = da.rio.reproject_match(template_raster)  # seems similar to ds 
+            da_clipped.data[da_clipped.data == da_clipped._FillValue] = np.nan  # because reproj match introduced fill value of 255
+            # b) Correct for Forest Tree Cover Fraction
+            da_clipped.data = da_clipped.data/(1-daF)  # ValueError: operands could not be broadcast together with shapes (14401,24000) (14401,24001)
+            da_clipped.data[da_clipped.data > 1] = 1
+
+            # TODO: We will get some 255 values for nodata; check if other values also included (due to interpolation)
+            da_clipped.data[nan_mask] = np.nan  # done again, because reproj match will fill new nodata with 255 (perhaps this value from attrs)
             # da_clipped.data = da_clipped.data / 100
-            # # TODO: Fix attrs, no-data etc here so that data is self-describing
-            # # Conver to Dataset, so this is proper nc file
-            # ds_clipped = xr.Dataset({DATAFIELD_NAME: da_clipped})
-            # ds_clipped.to_netcdf(f"{clip_folder}/{out_tif_name}.nc")
-            # # noah_ds_clip[var] = da_clipped  # Append Modis data to clipped dataset
+            # TODO: Fix attrs, no-data etc here so that data is self-describing
+            # Conver to Dataset, so this is proper nc file
+            ds_clipped = xr.Dataset({DATAFIELD_NAME: da_clipped})
+            ds_clipped.to_netcdf(f"{clip_folder}/{out_tif_name}.nc")
+            # noah_ds_clip[var] = da_clipped  # Append Modis data to clipped dataset
 
     # Make of List of downloaded sub-folder. To make it easy to parallelize using Joblib
     download_folder_list = []

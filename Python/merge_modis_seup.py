@@ -68,7 +68,7 @@ logging.info(f"base_folder: {base_folder}")
 # Part I: Read daily MODIS-CGF North America mosiaics and create WaterYear data [ie, concatenate by time]
 # ========================================================================================================
 # modis_folder = f"{base_folder}/MOD10A1F.061_clip/WY16"  # C:/Github/Blender/MOD10A1F/WY16"  # ones processed by sarith copied here for prototyping convenience
-modis_folder = f"{base_folder}/Modis/CGF_NDSI_Snow_Cover/NA_mosaic"  # Read daily North America mosaicked ModisCGF.   
+modis_folder = f"{base_folder}/Modis/CGF_NDSI_Snow_Cover/NA"  # Read daily North America mosaicked ModisCGF.   
 # hdf_files = [f for f in os.listdir(modis_folder) if f.endswith(".nc4") and f.startswith("MOD10A1F")]  # sarith has nc4 extension
 hdf_files = [f for f in os.listdir(modis_folder) if f.endswith(".nc") and f.startswith("MOD10A1F")]  # I have nc extension
 # Sort in ascending order of data
@@ -89,12 +89,12 @@ for hdf_file in hdf_files:
     begin_ymd = datetime.datetime(begin_year, 1, 1) + datetime.timedelta(begin_days - 1)
     # dt_list.append(begin_ymd)
     if count == 0:
-        ds = rioxarray.open_rasterio(f"{modis_folder}/{hdf_file}")  # .squeeze()
-        da = ds["CGF_NDSI_Snow_Cover"].squeeze()
+        da = rioxarray.open_rasterio(f"{modis_folder}/{hdf_file}").squeeze()
+        # da = da["CGF_NDSI_Snow_Cover"].squeeze()
         da["time"] = begin_ymd
     else:
-        ds = rioxarray.open_rasterio(f"{modis_folder}/{hdf_file}")  # .squeeze()
-        da_temp = ds["CGF_NDSI_Snow_Cover"].squeeze()
+        da_temp = rioxarray.open_rasterio(f"{modis_folder}/{hdf_file}").squeeze()
+        # da_temp = ds["CGF_NDSI_Snow_Cover"].squeeze()
         da_temp["time"] = begin_ymd
         da = xr.concat([da, da_temp], dim='time')  # , dim='time'
     count += 1
@@ -120,11 +120,11 @@ da.data = da.data.astype(float)
 # da.data[da.data > 100] = 0  # Give rest of the flags value of zero snow! [Alreay done in prior script]
 # da.data[da>100] = np.nan  # this does not work for multidimensional data (ie, da concatenated with more than 1 time period)
 # logging.info("2 converted nans ans zeros")
-# May 02, 2022: Convert NDSI to snow cover fraction (FRA); FRA = 0.06 + 1.21 * NDSI
-da.data = 0.06 + 1.21 * da.data
-# Correct of biases introduced by above equation
-da.data[da.data <= 0.06] = 0
-da.data[da.data > 1] = 1
+# # May 02, 2022: Convert NDSI to snow cover fraction (FRA); FRA = 0.06 + 1.21 * NDSI
+# da.data = 0.06 + 1.21 * da.data
+# # Correct of biases introduced by above equation
+# da.data[da.data <= 0.06] = 0
+# da.data[da.data > 1] = 1  # fix this in process_modis_cgf.py script
 
 # Now ffil and/or Bfill to missing/corrupt pixels  
 # ffill : Fill NaN values by propagating values forward; need bottleneck
