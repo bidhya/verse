@@ -1,6 +1,6 @@
-# blender
+# Blender
 Order of Script Execution for coressd project
-====================================  
+=============================================   
 ## I: To Prepare data  
 1. paper_seup.py : Process SEUP data using papermill/jupyter notebook combination
     Use multiple cores
@@ -15,8 +15,18 @@ Order of Script Execution for coressd project
 3. merge_modis_seup.py [old name: clip_by_watershed.py]  
     Part I: Concatenate MODIS along time dim then append to SEUP varaibles, making it ARD for Blender run
         and save nc file: ../NoahMP/WY_merged/2016_seup_modis.nc  #2016_clip_noahmp_cgf.nc
-    Part II: [Optional] Clip by watershed
-    
+    Part II: [Optional] Clip by watershed  
+
+## II: To Run
+===========  
+- Locally for small area: julia call_Blender_v10.jl output_folder start_index end_index
+- on HPC
+    - python submit_blender_job.py -> This will generate several slurm jobs that calls julia call_Blender_vx.jl output_folder start_index end_index  
+		Modify and update this Python script before running.
+        ~ 48 GB for 45 cores; 11 separate jobs with 100,000 pixels per job  
+	python submit_txt2nc_job.py -> Combine temporary text files into a netcdf file.  Separately for each variable.   
+
+
 TODO: Generate Analysis ready data for North America by merging SEUP and MODIS_CGF
     This can be intermediate step of clip_by_watershed script
     So that extraction part can be separated  
@@ -32,12 +42,15 @@ TODO: Generate Analysis ready data for North America by merging SEUP and MODIS_C
     or ~17 GB per year
     but we will be reading one nc files for each variable separately
     
-II: To Run
-===========  
-- Locally for small area: julia call_Blender_vx.jl output_folder start_index end_index
-- on HPC 				: python submit_blender_job.py -> This will generate several slurm jobs that calls julia call_Blender_vx.jl output_folder start_index end_index  
-							Modify and update this Python script before running.  
-						: python submit_txt2nc_job.py -> Combine temporary text files into a netcdf file.  Separately for each variable.   
+
+### May 23, 2023  
+Uses forest fraction cover for MODIS CGF data  
+
+
+### May 02, 2023  
+Refractor: update file names; used newer xarray (warning but data still same), pandas etc.    
+Convert NDSI to Snow cover fraction    
+
 ### May 02, 2023  
 Refractor: update file names; used newer xarray (warning but data still same), pandas etc.    
 Convert NDSI to Snow cover fraction    

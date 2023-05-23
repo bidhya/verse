@@ -10,6 +10,9 @@
     Approach
     ======== 
     Process a subset of pixels using start and end index. 
+    Requires ~48 GB ram for 45 cores. hopefully using 1 less core can help schedule job faster ..
+    Can use the final_check run with more more memobry (120GB) and JULIA_NUM_THREADS=10 for converting text to nc files in parallel.  
+
 
 """
 import os
@@ -77,6 +80,7 @@ def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00',
 
         # Julia script specific inputs and parameters
         fh.writelines(f"echo Blender run for {out_subfolder} start_idx = {start_idx} end_idx = {end_idx}\n\n")
+        # fh.writelines("export JULIA_NUM_THREADS=10\n")  # uncomment if using threads in final run for creating final nc files from txt files 
         fh.writelines("sleep 30\n")  # for slurm error when scheduling on multi nodes
         # fh.writelines(f"cores={cores} #we can only run 30 jobs concurrently on Unity\n")
         # fh.writelines(f"log_name=.out/{jobname}.log\n")
@@ -87,7 +91,7 @@ def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00',
             # fh.writelines(f"julia /discover/nobackup/byadav/Github/giuh/scripts/verse/Julia/call_Blender_v8.jl NA_temp {start_idx} {end_idx}\n\n")
             fh.writelines(f"julia /discover/nobackup/projects/coressd/Github/verse/Julia/call_Blender_v10.jl {out_subfolder} {start_idx} {end_idx}\n\n")        
         else:
-            fh.writelines(f"julia ~/Github/verse/Julia/call_Blender_v10.jl {out_subfolder} {start_idx} {end_idx}\n\n")        
+            fh.writelines(f"julia ~/Github/verse/Julia/call_Blender_v10.jl {out_subfolder} {start_idx} {end_idx}\n\n")
         fh.writelines("echo Finished Slurm job \n")
     # submit the job
     os.system(f"sbatch {job_file}")
@@ -134,12 +138,12 @@ def main():
         end_idx = i + step
         print(start_idx, end_idx)
         jobname = f"{start_idx}_{end_idx}"
-        create_job(hpc=hpc_name, jobname=jobname, out_subfolder="WY2016", start_idx=start_idx, end_idx=end_idx, cores=36, memory='60gb', runtime='12:00:00')
+        create_job(hpc=hpc_name, jobname=jobname, out_subfolder="WY2016", start_idx=start_idx, end_idx=end_idx, cores=45, memory='48gb', runtime='12:00:00')
         # for Discover, usable node: Haswell=28; Skylake=36; Cascade=46
         logging.info(f"jobname={jobname}, start_idx={start_idx}, end_idx={end_idx}, cores=36, memory=144gb, runtime=12:00:00 ")
         time.sleep(2)
-    # Final Sanity Check to see if all pixels are processed
-    # create_job(hpc=hpc_name, jobname="final_check", out_subfolder="NA_2016", start_idx=1, end_idx=1011329, cores=46, memory='64gb', runtime='12:00:00')
+    # # Final Sanity Check to see if all pixels are processed. Also for creating nc files in new version using thread, thus use more memory here
+    # create_job(hpc=hpc_name, jobname="final_check", out_subfolder="WY2016", start_idx=1, end_idx=1011329, cores=46, memory='120gb', runtime='12:00:00')
     logging.info("Job submission complete\n")
 
 
