@@ -10,8 +10,8 @@
     Approach
     ======== 
     Process a subset of pixels using start and end index. 
-    Requires ~48 GB ram for 45 cores. hopefully using 1 less core can help schedule job faster ..
-    Can use the final_check run with more more memobry (120GB) and JULIA_NUM_THREADS=10 for converting text to nc files in parallel.  
+    Requires ~48 GB ram for 46 cores. discover allocates all cores to for single user/job!
+    Can use the final_check run with more more memobry (120GB) and JULIA_NUM_THREADS=10 for converting text to nc files in parallel. -- still problematic    
 
 
 """
@@ -53,7 +53,9 @@ def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00',
         fh.writelines("#!/usr/bin/env bash\n\n")
         if hpc == "discover":
             fh.writelines("#SBATCH --account=s2701\n")  # for DISCOVER
-        elif hpc=="osc":
+            fh.writelines('#SBATCH --constraint="[cas|sky]"\n')
+            # fh.writelines("#SBATCH --qos=long\n")  # for jobs 12-24 hours.
+        elif hpc == "osc":
             fh.writelines("#SBATCH --account=PAS1785\n")
         else:
             # pass
@@ -138,7 +140,7 @@ def main():
         end_idx = i + step
         print(start_idx, end_idx)
         jobname = f"{start_idx}_{end_idx}"
-        create_job(hpc=hpc_name, jobname=jobname, out_subfolder="WY2016", start_idx=start_idx, end_idx=end_idx, cores=45, memory='48gb', runtime='12:00:00')
+        create_job(hpc=hpc_name, jobname=jobname, out_subfolder="WY2016", start_idx=start_idx, end_idx=end_idx, cores=46, memory='48gb', runtime='12:00:00')
         # for Discover, usable node: Haswell=28; Skylake=36; Cascade=46
         logging.info(f"jobname={jobname}, start_idx={start_idx}, end_idx={end_idx}, cores=36, memory=144gb, runtime=12:00:00 ")
         time.sleep(2)

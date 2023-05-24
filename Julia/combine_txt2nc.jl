@@ -63,16 +63,17 @@ global_logger(logger)  # Set the global logger to logger; else logs doing direct
 # select the root directory (this will be different on windows, linux or Mac) 
 host_machine = gethostname()
 println("Host computer machine: $host_machine")
-if occursin("STAFF-BY-M", host_machine)
+# if occursin("STAFF-BY-M", host_machine)
+if occursin("L-JY0R5X3", host_machine)
     if Sys.iswindows()
-        root_dir = "C:"  #for windows machine
+        root_dir = "D:"  #for windows machine
     elseif Sys.islinux()
-        root_dir = "/mnt/c"  #for Ubuntu (WSL2 on windows machine
+        root_dir = "/mnt/d"  #for Ubuntu (WSL2 on windows machine
     else
         println("Unknown system on windows, manually add root directory before proceeding. Exiting code")
         exit(1)    
     end
-    base_folder = "$root_dir/Github/coressd/Blender"
+    base_folder = "$root_dir/coressd/Blender"
     # Get info on system machine. We use this info to farm number of processors. 
     system_machine = "Windows"  # a bit misnomer flag because this flag also works for WLS linux. Better flag could be local vs hpc/remote execution
 elseif occursin("borg", host_machine)  # TODO: discover
@@ -103,25 +104,32 @@ out_folder = "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder
 println("Output_folder : $out_folder")
 
 tmp_txtDir = "$out_folder/outputs_txt" # Fullpath to processed text files
-nc_outDir = "$out_folder/outputs"      # Fullpath to save output NETCDF files
+nc_outDir = "$out_folder/outputs1"      # Fullpath to save output NETCDF files
 
 # 2. Read the original Input netCDF file
-# Used as template for the output netcdf file
+# # 2. Read the Input netCDF file
 # A = RasterStack("$base_folder/nc_files/inputs/merged.nc");  #merged_proj.nc
 # For NoahMP
 # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_modscag.nc")  #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
-# A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")  #2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
-if occursin("STAFF-BY-M", host_machine)
-    A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")  # 2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
-    # A = RasterStack("$DataDir/WY_merged/2016_noahmp_cgf.nc")
+# Following check are for prototyping only when running code locally, because I do not yet have NorthAmerica netcdf file
+if occursin("L-JY0R5X3", host_machine)  # STAFF-BY-M
+    A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")  #2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 elseif occursin("borg", host_machine)  # TODO: discover
-    A = RasterStack("$DataDir/WY_merged/2016_noahmp_cgf.nc")
+    A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")  # 2016_noahmp_cgf 2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
+elseif occursin(".osc.edu", host_machine)
+    A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
 else
-    A = RasterStack("$DataDir/WY_merged/2016_noahmp_cgf.nc")
+    A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")
+    # A = RasterStack("$DataDir/WY_merged/2016_noahmp_cgf.nc")
+    # A = RasterStack("$DataDir/WY_merged/ak_polar_fix.nc")
+    # A = RasterStack("$DataDir/WY_merged/ak_polar_fix_no.nc")
     # println("Exiting code. Manually set A (rasterstack) around line 188")
     # exit(1)
 end
 
+
+# A = RasterStack("$DataDir/WY_merged/2016_clip3.nc")  # for NoahMP with CGF MODIS
+# Subset only the required variables because the nc file can have extraneous vars that cause problem with julia
 A = A[(:Snowf_tavg, :SWE_tavg, :Tair_f_tavg, :Qg_tavg, :MODSCAG)];  # to remove spatial ref that cause problem during subsetting
 
 start_time = time_ns()
@@ -185,7 +193,9 @@ if length(pixels) == valid_pix_count  # length(valid_pix_ind)
     text2nc(var_name, var_idx);
 
 else
-    @info("OUTPUT NETCDF file not create because all the pixels not yet processed")
+    # @info("OUTPUT NETCDF file not create because all the pixels not yet processed")
+    @info("Creating NETCDF with incomplete run")
+    text2nc(var_name, var_idx);
 end
 end_time = time_ns()
 running_time = (end_time - start_time)/1e9/60
