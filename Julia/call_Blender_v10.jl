@@ -241,6 +241,8 @@ end
 
 # ind = valid_pix_ind  # to process all pixels in one go
 ind = valid_pix_ind[start_idx:end_idx]
+# TODO (May 26, 2026): check the files that are already processed, so processing of those can be skipped
+
 
 println("Non-missing pixel count = ", length(valid_pix_ind))
 @info("Starting with loop: \n")

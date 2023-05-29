@@ -13,7 +13,7 @@ logging.info('  ')
 logging.info('-------------------------START LOGGING--------------------------------------')
 
 base_folder = "/discover/nobackup/projects/coressd"
-tmp_txtDir = f"{base_folder}/Blender/Runs/NA_2016/outputs_txt"    # Outputs are saved here
+tmp_txtDir = f"{base_folder}/Blender/Runs/WY2016/outputs_txt"    # Outputs are saved here
 pixels = os.listdir(tmp_txtDir)
 pixels = [pix for pix in pixels if pix.startswith("Pix")]
 print(len(pixels))

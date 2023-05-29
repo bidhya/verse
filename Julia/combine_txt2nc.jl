@@ -104,7 +104,7 @@ out_folder = "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder
 println("Output_folder : $out_folder")
 
 tmp_txtDir = "$out_folder/outputs_txt" # Fullpath to processed text files
-nc_outDir = "$out_folder/outputs1"      # Fullpath to save output NETCDF files
+nc_outDir = "$out_folder/outputs"      # Fullpath to save output NETCDF files
 
 # 2. Read the original Input netCDF file
 # # 2. Read the Input netCDF file
@@ -161,9 +161,11 @@ function text2nc(var, idx)
             pix_xy = split(pix, "_")
             x = parse(Int16, pix_xy[2])
             y = parse(Int16, pix_xy[3])
-            out_vars = readdlm("$tmp_txtDir/$pix/out_vars.txt")  # read whole combined file for that pixel
-            # outRaster[X=x, Y=y] = readdlm("$tmp_txtDir/$pix/$var.txt");  # Older workflow
-            outRaster[X=x, Y=y] = out_vars[:,idx]
+            if isfile("$tmp_txtDir/$pix/out_vars.txt")  # May 24, 2023: new for testing incomplete runs. ie, folder exist the text file not created.
+                out_vars = readdlm("$tmp_txtDir/$pix/out_vars.txt")  # read whole combined file for that pixel
+                # outRaster[X=x, Y=y] = readdlm("$tmp_txtDir/$pix/$var.txt");  # Older workflow
+                outRaster[X=x, Y=y] = out_vars[:,idx]
+            end
         end
         # Save to nc file; 
         mkpath(nc_outDir)
