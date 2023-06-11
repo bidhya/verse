@@ -42,6 +42,9 @@ TODO: Generate Analysis ready data for North America by merging SEUP and MODIS_C
     or ~17 GB per year
     but we will be reading one nc files for each variable separately
     
+### June 10, 2023
+Pass water_year directly from slurm job for SEUP processing  
+Process save Modis data by water year  
 
 ### May 23, 2023  
 Uses forest fraction cover for MODIS CGF data  

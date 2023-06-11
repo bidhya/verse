@@ -1,19 +1,19 @@
 # To execute a notebook using paperpill
 
-import os
 import papermill as pm
 import argparse
 parser = argparse.ArgumentParser(description='Run Jupyter notebook using papermill.')  # noqa
 parser.add_argument('source', help='Fullpath to jupyter notebook', type=str)
-parser.add_argument('--cores', help='Number of cores to use for multiprocessing', type=int, default=1)
-parser.add_argument('--log_name', help='Name of Log file', type=str, default='seup_paper.log')
+parser.add_argument('water_year', help='Water Year for processing', type=str)
+# parser.add_argument('--cores', help='Number of cores to use for multiprocessing', type=int, default=1)
+# parser.add_argument('--log_name', help='Name of Log file', type=str, default='seup_paper.log')
 
 # parser.add_argument('--start_index', help='Region name to start running code', type=int)
 args = parser.parse_args()
 source = args.source
 # src="/discover/nobackup/byadav/Github/giuh/11_a_Extract_SEUP_monthly.ipynb"
-cores = args.cores  # -1 number of cores for pararallel processing
-# log_name = args.log_name
+water_year = args.water_year
+# cores = args.cores  # -1 number of cores for pararallel processing
 
 # Generate full path to destination notebook
 # destination = source.replace('giuh', 'giuh/paper_outputs')
@@ -29,4 +29,4 @@ print(destination)
 
 # pm.execute_notebook(source, destination, parameters=dict(start=start, end=end, cores=cores, region=region))
 # pm.execute_notebook(source, destination)
-pm.execute_notebook(source, destination, parameters=dict(cores=cores))
+pm.execute_notebook(source, destination, parameters=dict(water_year=water_year))
