@@ -34,22 +34,25 @@ import argparse
 from joblib import Parallel, delayed
 
 parser = argparse.ArgumentParser(description='Extract MODIS CGF files for North America.')
-parser.add_argument('year', help='Year of modis to process', type=str)
-parser.add_argument('--log_name', help='Name of Log file', type=str, default='modis_cgf_clip.log')
-parser.add_argument('--cores', help='Number of cores to use for multiprocessing', type=int, default=-1)
+# parser.add_argument('year', help='Year of modis to process', type=str)
+parser.add_argument('water_year', help='Water Year for processing', type=str)
+parser.add_argument('--log_name', help='Name of Log file', type=str, default='process_modis_cgf')
+parser.add_argument('--cores', help='Number of cores to use for multiprocessing', type=int, default=2)  # don' use -1 on DISCOVER  
 
 # parser.add_argument('--end_idx', help='PGC ID', type=int)
 # # parser.add_argument('--logname', help='Number of cores', type=str, default='20')
 args = parser.parse_args()
-year = args.year
-log_name = args.log_name
+# year = args.year
+water_year = args.water_year
 cores = args.cores
-# cores = -1  # defualt should be -1 or just not pass
-# log_name = 'modis_cgf_clip.log'
+log_name = args.log_name
+log_name = f"{log_name}{water_year}.log"
+
 
 logging.basicConfig(filename=f'out/{log_name}', level=logging.INFO, format='%(asctime)s:%(message)s')
 logging.info('  ')
 logging.info('-------------------------START LOGGING--------------------------------------')
+logging.info(f'water_year={water_year}     \ncores={cores}')
 
 # List of tiles that cover North America (our AOI)
 modis_tile_list = [
@@ -64,6 +67,7 @@ def doy_to_date(modis_date, reverse=False):
         date of year should be contexualized vis-a-vis year
         because day of year in all years will not be same (leap year for example)
         modis_date [string] : Modis native date that include year and year of day
+        NOT CURRENTLY USED  
     """
     begin_year = int(modis_date[:4])
     begin_days = int(modis_date[4:])
@@ -90,37 +94,37 @@ def main():
     base_folder = "/discover/nobackup/projects/coressd"
     modis_download_folder = f"{base_folder}/OSU/MOD10A1F.061/MODIS_Proc/download_snow"  # /2016001/001
     # Generate the date range for WY2016 and convert to DOY format of MODIS naming convention
-    start_date = datetime.datetime.strptime("2015-10-01", "%Y-%m-%d")  # 2015-10-01
-    end_date = datetime.datetime.strptime("2016-09-30", "%Y-%m-%d")  # 2016-09-30
+    start_date = datetime.datetime.strptime(f"{int(water_year) - 1}-10-01", "%Y-%m-%d")  # TODO Replace year -1 
+    end_date = datetime.datetime.strptime(f"{water_year}-09-30", "%Y-%m-%d")  # TODO Replace year
     date_generated = pd.date_range(start_date, end_date)
     # print(date_generated.strftime("%d-%m-%Y"))
-    year_doy_list = list(date_generated.strftime("%Y%j"))
+    year_doy_list = list(date_generated.strftime("%Y%j"))  # Does this match Day of year for MODIS nameing convention?  
     # year_doy_list = ["2016001", "2016002", "2016003"]
     # year_doy_list = os.listdir(modis_download_folder)
 
     # Global variablees
     # Get a template raster for reprojection match
     seup_folder = f"{base_folder}/Blender/NoahMP"
-    template_raster = xr.open_dataset(f'{seup_folder}/combined/SWE_tavg/201609.nc')
+    template_raster = xr.open_dataset(f'{seup_folder}/combined/SWE_tavg/201609.nc')  # HARDCODED  
     # Select just one day data
     # noah_ds_clip = noah_ds_clip.sel(time = noah_ds_clip2.time)
     template_raster = template_raster.isel(time=0)
-    template_raster.rio.write_crs("EPSG:4326", inplace=True)
+    template_raster.rio.write_crs("EPSG:4326", inplace=True)  # TODO : check if this should Plate Caree  projection  
     nan_mask = np.isnan(template_raster["SWE_tavg"].data)  # we'll use this nan mask to replace MODIS data so they match exactly with noahmp
     # variables = ["CGF_NDSI_Snow_Cover", "Cloud_Persistence", "Basic_QA", "Algorithm_Flags_QA", "MOD10A1_NDSI_Snow_Cover"]
     # DATAFIELD_NAME = variables[0]  # for now just check one important varialbes; may need to check all
     DATAFIELD_NAME = "CGF_NDSI_Snow_Cover"  # or just hardcode the variable of interest
     # Create clip folder to save clipped modis files. Initially clipping from global mosaic, hence, named clipped. 
     # No more strictly clipping in new workflow because I manually select subset of MODIS tiles  
-    mosaic_folder = f"{base_folder}/Blender/Modis/{DATAFIELD_NAME}/NA_mosaic"
+    mosaic_folder = f"{base_folder}/Blender/Modis/{DATAFIELD_NAME}/NA{water_year}_mosaic"
     os.makedirs(mosaic_folder, exist_ok=True)
-    clip_folder = f"{base_folder}/Blender/Modis/{DATAFIELD_NAME}/NA"
+    clip_folder = f"{base_folder}/Blender/Modis/{DATAFIELD_NAME}/NA{water_year}"
     os.makedirs(clip_folder, exist_ok=True)
     # mosaic_tif_folder = f"{base_folder}/{DATAFIELD_NAME}/mosaic_tif"
     # os.makedirs(mosaic_tif_folder, exist_ok=True)
     
     # Get Tree cover fraction data
-    daF = rioxarray.open_rasterio(f'{base_folder}/Blender/Modis/MOD44B/Percent_Tree_Cover/NA/MOD44B.A2016065.061.nc').squeeze()
+    daF = rioxarray.open_rasterio(f'{base_folder}/Blender/Modis/MOD44B/Percent_Tree_Cover/NA/MOD44B.A{water_year}065.061.nc').squeeze()
     daF.data = daF.data.astype(float)
     daF.data[daF.data == daF._FillValue] = np.nan
     # # da.data[da.data == 200] = np.nan  # water ; maybe it water implies zero forest cover?; so don't use nan here
@@ -209,6 +213,8 @@ def main():
     # for download_folder in download_folder_list:
     #     extract_modis(download_folder)  # Serial processing
     Parallel(n_jobs=cores)(delayed(extract_modis)(download_folder) for download_folder in download_folder_list)
+    # with n_jobs=-1 give out of memory error on Discover, likely because it is using all cores even though only a few
+    # requested by Slurm. Hence, write a explicit number rather than -1.  
 
 
 if __name__ == "__main__":
