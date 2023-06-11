@@ -34,20 +34,17 @@ import geopandas as gpd
 import xarray as xr
 import rioxarray
 import logging
+import argparse
 
 ss = platform.system()
 node = platform.node()
 logging.basicConfig(filename='out/merge_modis_seup.log', level=logging.INFO, format='%(asctime)s:%(message)s')
 
-# parser = argparse.ArgumentParser(description='Check corrupt MODIS CGF corrupt files.')
-# parser.add_argument('year', help='Year of modis to process', type=str)
-# parser.add_argument('--log_name', help='Name of Log file', type=str, default='modis_cgf_clip.log')
-# parser.add_argument('--cores', help='Number of cores to use for multiprocessing', type=int, default=-1)
-# args = parser.parse_args()
-# year = args.year
-# log_name = args.log_name
-# cores = args.cores
-# cores = -1  # defualt should be -1 or just not pass
+parser = argparse.ArgumentParser(description='Merge SEUP and MODIS data.')
+parser.add_argument('water_year', help='Water Year for processing', type=str)
+args = parser.parse_args()
+water_year = args.water_year
+
 
 if 'L-JY0R5X3' in node and "Windows" in ss:
     coressd_folder = "D:/coressd"
@@ -68,7 +65,7 @@ logging.info(f"base_folder: {base_folder}")
 # Part I: Read daily MODIS-CGF North America mosiaics and create WaterYear data [ie, concatenate by time]
 # ========================================================================================================
 # modis_folder = f"{base_folder}/MOD10A1F.061_clip/WY16"  # C:/Github/Blender/MOD10A1F/WY16"  # ones processed by sarith copied here for prototyping convenience
-modis_folder = f"{base_folder}/Modis/CGF_NDSI_Snow_Cover/NA"  # Read daily North America mosaicked ModisCGF.   
+modis_folder = f"{base_folder}/Modis/CGF_NDSI_Snow_Cover/NA{water_year}"  # Read daily North America mosaicked ModisCGF.   
 # hdf_files = [f for f in os.listdir(modis_folder) if f.endswith(".nc4") and f.startswith("MOD10A1F")]  # sarith has nc4 extension
 hdf_files = [f for f in os.listdir(modis_folder) if f.endswith(".nc") and f.startswith("MOD10A1F")]  # I have nc extension
 # Sort in ascending order of data
@@ -102,8 +99,8 @@ logging.info(da.shape)
 da = da.drop_duplicates(dim="time")  # required for Sarith script; may not be required for mine as there should be no duplicate dates 
 # Nov 19, 2022: Saved concatenated (WY) data with origianl flags for QA/QC in future; but not really necessary for this or other workflow
 ds = xr.Dataset({"MODSCAG":da})  # so we can save to netcdf or append to SEUP dataset
-ds.to_netcdf(f"{base_folder}/Modis/CGF_NDSI_Snow_Cover/modis_cgf_NA_original.nc")
-logging.info(f"Saved NA WaterYear MODIS_CGF with original flags: {base_folder}/Modis/CGF_NDSI_Snow_Cover/modis_cgf_NA_original.nc")
+ds.to_netcdf(f"{base_folder}/Modis/CGF_NDSI_Snow_Cover/modis_cgf_NA{water_year}_original.nc")
+logging.info(f"Saved NA WaterYear MODIS_CGF with original flags: {base_folder}/Modis/CGF_NDSI_Snow_Cover/modis_cgf_NA{water_year}_original.nc")
 del ds  # clear from memory
 # # Fill in All_Nan days: due to all nans, this creates problem in Blender, so fill them with previous day of data
 # da.sel(time="2015-10-24").data[:] = da.sel(time="2015-10-23").data
@@ -132,15 +129,15 @@ da = da.ffill(dim="time", limit=1)
 da = da.bfill(dim="time", limit=1)  # required if first day empty. If two consecutive days empty, the second empty will be filled
 logging.info(f"CRS for concatenated da: {da.rio.crs}")
 # Nov 19, 2022: Save this one round before chaning pixel values; this may directly be used in final run after updating no-data pixel values
-ds = xr.Dataset({"MODSCAG":da})  # so we can save to netcdf or append to SEUP dataset
-ds.to_netcdf(f"{base_folder}/Modis/CGF_NDSI_Snow_Cover/modis_scf.nc")
-logging.info(f"Saved NA WaterYear MODIS_CGF with original flags: {base_folder}/Modis/CGF_NDSI_Snow_Cover/modis_scf.nc")
+ds = xr.Dataset({"MODSCAG": da})  # so we can save to netcdf or append to SEUP dataset
+ds.to_netcdf(f"{base_folder}/Modis/CGF_NDSI_Snow_Cover/modis_scf{water_year}.nc")
+logging.info(f"Saved NA WaterYear MODIS_CGF with original flags: {base_folder}/Modis/CGF_NDSI_Snow_Cover/modis_scf{water_year}.nc")
 ds = ds.reset_coords(drop=True)  # required for combining with SEUP
 
 # Part II: Read SEUP Data and combine MODIS-CGF WY to create 1-WY-ARD for Blender Run
 # Aside: Reproj match with SEUP was already performed in "process_modis_cgf.py" script  
 # ========================================================================================================
-seup_ds = xr.open_dataset(f"{base_folder}/NoahMP/WY_merged/2016_seup.nc", decode_coords="all")  # updated from [2016.nc ==> 2016_seup.nc]
+seup_ds = xr.open_dataset(f"{base_folder}/NoahMP/WY_merged/{water_year}_seup.nc", decode_coords="all")  # updated from [2016.nc ==> 2016_seup.nc]
 # Merge Seup and Modis Data
 seup_ds = seup_ds.sel(time=ds.time)  # if same, this should also organize data in some order
 # MODSCAG_clipped = MODSCAG_clipped.drop_duplicates(dim="time")  # we have one duplicate time value; remove else error in next step
@@ -151,7 +148,7 @@ seup_ds["MODSCAG"] = ds["MODSCAG"]  # ValueError: cannot reindex or align along 
 # seup_ds_clipped = seup_ds_clipped.sel(time=slice("2015-10-01", "2016-09-29"))  # KeyError: "cannot represent labeled-based slice indexer for coordinate 'time' with a slice over integer positions; the index is unsorted or non-unique"
 # seup_ds = seup_ds.isel(time=slice(None, -2))  # perhaps only for Sarith's
 # seup_ds.to_netcdf(f"{base_folder}/NoahMP/WY_merged/2016_noahmp_cgf.nc")  # use this for Blender run for NoahMP
-seup_ds.to_netcdf(f"{base_folder}/NoahMP/WY_merged/2016_seup_modis.nc")  # use this for Blender run for NoahMP
+seup_ds.to_netcdf(f"{base_folder}/NoahMP/WY_merged/{water_year}_seup_modis.nc")  # use this for Blender run for NoahMP
 logging.info("Fished preparing ARD for Blender")
 del ds  # clear from memory
 # UPTO THIS PART FOR CONCATENATING MODIS CGF FOR NORTH AMERICA
