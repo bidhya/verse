@@ -54,7 +54,7 @@ def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00',
         if hpc == "discover":
             fh.writelines("#SBATCH --account=s2701\n")  # for DISCOVER
             fh.writelines('#SBATCH --constraint="[cas|sky]"\n')
-            # fh.writelines("#SBATCH --qos=long\n")  # for jobs 12-24 hours.
+            fh.writelines("#SBATCH --qos=long\n")  # for jobs 12-24 hours.
         elif hpc == "osc":
             fh.writelines("#SBATCH --account=PAS1785\n")
         else:
@@ -140,9 +140,9 @@ def main():
         end_idx = i + step
         print(start_idx, end_idx)
         jobname = f"{start_idx}_{end_idx}"
-        create_job(hpc=hpc_name, jobname=jobname, out_subfolder="WY2016", start_idx=start_idx, end_idx=end_idx, cores=46, memory='48gb', runtime='12:00:00')
+        create_job(hpc=hpc_name, jobname=jobname, out_subfolder="WY2013", start_idx=start_idx, end_idx=end_idx, cores=46, memory='48gb', runtime='24:00:00')
         # for Discover, usable node: Haswell=28; Skylake=36; Cascade=46
-        logging.info(f"jobname={jobname}, start_idx={start_idx}, end_idx={end_idx}, cores=36, memory=144gb, runtime=12:00:00 ")
+        # logging.info(f"jobname={jobname}, start_idx={start_idx}, end_idx={end_idx}, cores=36, memory=144gb, runtime=12:00:00 ")
         time.sleep(2)
     # # Final Sanity Check to see if all pixels are processed. Also for creating nc files in new version using thread, thus use more memory here
     # create_job(hpc=hpc_name, jobname="final_check", out_subfolder="WY2016", start_idx=1, end_idx=1011329, cores=46, memory='120gb', runtime='12:00:00')
