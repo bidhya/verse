@@ -74,6 +74,7 @@ arg_len = length(ARGS)
 #     out_subfolder = ARGS[1]
 # end
 out_subfolder = ARGS[1]  # output subfolder relative to input files; temp text and nc_outputs saved here
+water_year = out_subfolder[3:end]
 start_idx = ARGS[2]
 end_idx = ARGS[3]
 println(typeof(start_idx))
@@ -197,11 +198,13 @@ nc_outDir = "$out_folder/outputs_parallel"         # To convert text outputs to 
 if occursin("L-JY0R5X3", host_machine)  # STAFF-BY-M
     A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")  #2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 elseif occursin("borg", host_machine)  # TODO: discover
-    A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")  # 2016_noahmp_cgf 2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
+    # A = RasterStack("$DataDir/WY_merged/2013_seup_modis.nc")  # 2016_noahmp_cgf 2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
+    A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
 elseif occursin(".osc.edu", host_machine)
     A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
 else
-    A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")
+    # A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")
+    A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
     # A = RasterStack("$DataDir/WY_merged/2016_noahmp_cgf.nc")
     # A = RasterStack("$DataDir/WY_merged/ak_polar_fix.nc")
     # A = RasterStack("$DataDir/WY_merged/ak_polar_fix_no.nc")
