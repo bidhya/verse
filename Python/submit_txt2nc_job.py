@@ -4,7 +4,7 @@
     - Only for HPC.
     - Manually update this script everytime and make sure to change/udpate everything in this script here
 
-    Usage: python ~/Github/verse/submit_txt2nc_job.py
+    Usage: python ~/Github/verse/submit_txt2nc_job.py 2016
     Best usage: Run this python from command line; this script will thus submit the slurm jobs
 
     Approach
@@ -16,6 +16,12 @@ import os
 import logging
 import time
 import platform
+import argparse
+
+parser = argparse.ArgumentParser(description='Create and Submit Blender jobs for Water Year.')
+parser.add_argument('water_year', help='Water Year for processing', type=str)
+args = parser.parse_args()
+water_year = args.water_year
 
 
 def mkdir_p(folder):
@@ -119,7 +125,7 @@ def main():
     logging.basicConfig(filename='txt2nc.log', level=logging.INFO, format='%(asctime)s:%(levelname)s:%(message)s')
     logging.info('\n')
     logging.info('--------------------------------------Job Creation/Submission info----------------------------------------------')   
-    out_subfolder = "WY2016"  # "NA_2016" 
+    out_subfolder = f"WY{water_year}"  # "NA_2016" 
     create_job(hpc=hpc_name, jobname="txt2nc1", var_name="SWE", var_idx=1, out_subfolder=out_subfolder, cores=1, memory='16gb', runtime='07:30:00')
     create_job(hpc=hpc_name, jobname="txt2nc2", var_name="Gmelt", var_idx=2, out_subfolder=out_subfolder, cores=1, memory='16gb', runtime='07:30:00')
     create_job(hpc=hpc_name, jobname="txt2nc3", var_name="G", var_idx=3, out_subfolder="WY2016", cores=1, memory='16gb', runtime='07:30:00')

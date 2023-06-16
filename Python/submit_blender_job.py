@@ -5,7 +5,7 @@
     - Only for HPC.
     - Manually update this script everytime and make sure to change/udpate everything in this script here
 
-    Usage: python ~/coressd/Github/verse/Python/submit_blender_job.py
+    Usage: python ~/coressd/Github/verse/Python/submit_blender_job.py 2016  
 
     Approach
     ======== 
@@ -19,6 +19,12 @@ import os
 import logging
 import time
 import platform
+import argparse
+
+parser = argparse.ArgumentParser(description='Create and Submit Blender jobs for Water Year.')
+parser.add_argument('water_year', help='Water Year for processing', type=str)
+args = parser.parse_args()
+water_year = args.water_year
 
 
 def mkdir_p(folder):
@@ -140,7 +146,7 @@ def main():
         end_idx = i + step
         print(start_idx, end_idx)
         jobname = f"{start_idx}_{end_idx}"
-        create_job(hpc=hpc_name, jobname=jobname, out_subfolder="WY2013", start_idx=start_idx, end_idx=end_idx, cores=46, memory='48gb', runtime='24:00:00')
+        create_job(hpc=hpc_name, jobname=jobname, out_subfolder=f"WY{water_year}", start_idx=start_idx, end_idx=end_idx, cores=46, memory='48gb', runtime='24:00:00')
         # for Discover, usable node: Haswell=28; Skylake=36; Cascade=46
         # logging.info(f"jobname={jobname}, start_idx={start_idx}, end_idx={end_idx}, cores=36, memory=144gb, runtime=12:00:00 ")
         time.sleep(2)
