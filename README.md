@@ -5,16 +5,21 @@ Order of Script Execution for coressd project
 1. paper_seup.py : Process SEUP data using papermill/jupyter notebook combination
     Use multiple cores
     Outputs:
-        combined/  
-        WY/  
-        WY_merged/  
+        combined/../..  
+        WY/[varname]/2016.nc etc  
+        WY_merged/2016.seup.nc  
 
 2. process_modis_cgf.py  
     Extract NA (North America) scale daily Modis_CGF matching the SEUP rasters
+    Outputs: /coressd/Blender/Modis/CGF_NDSI_Snow_Cover/
+        - NA2016_mosaic/ [temp]
+        - NA2016/
+
 
 3. merge_modis_seup.py [old name: clip_by_watershed.py]  
     Part I: Concatenate MODIS along time dim then append to SEUP varaibles, making it ARD for Blender run
-        and save nc file: ../NoahMP/WY_merged/2016_seup_modis.nc  #2016_clip_noahmp_cgf.nc
+        Outputs: 
+            ../NoahMP/WY_merged/2016_seup_modis.nc  #2016_clip_noahmp_cgf.nc
     Part II: [Optional] Clip by watershed  
 
 ## II: To Run
