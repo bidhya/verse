@@ -35,8 +35,8 @@ def mkdir_p(folder):
 
 # Create (hidden) folder to save slurm outputs and julia logs
 """ Will be created relative where this script is submitted from"""
-mkdir_p('slurm_jobs/.out')
-os.chdir("slurm_jobs")
+mkdir_p(f"slurm_jobs/{water_year}/.out")
+os.chdir(f"slurm_jobs/{water_year}")
 
 
 def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00', out_subfolder="NoahMP_CGF", region=None, start_idx=1, end_idx=100):
@@ -88,7 +88,7 @@ def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00',
 
         # Julia script specific inputs and parameters
         fh.writelines(f"echo Blender run for {out_subfolder} start_idx = {start_idx} end_idx = {end_idx}\n\n")
-        # fh.writelines("export JULIA_NUM_THREADS=10\n")  # uncomment if using threads in final run for creating final nc files from txt files 
+        fh.writelines("export JULIA_NUM_THREADS=10\n")  # uncomment if using threads in final run for creating final nc files from txt files 
         fh.writelines("sleep 30\n")  # for slurm error when scheduling on multi nodes
         # fh.writelines(f"cores={cores} #we can only run 30 jobs concurrently on Unity\n")
         # fh.writelines(f"log_name=.out/{jobname}.log\n")
