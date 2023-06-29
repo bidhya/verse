@@ -14,7 +14,6 @@
 """
 import os
 import logging
-import time
 import platform
 import argparse
 
@@ -30,9 +29,11 @@ def mkdir_p(folder):
         os.makedirs(folder, exist_ok=True)
 
 
-# Create (hidden) folder to save slurm outputs and julia logs
-mkdir_p('slurm_jobs/.out')
-os.chdir("slurm_jobs")
+# # Create (hidden) folder to save slurm outputs and julia logs
+# mkdir_p('slurm_jobs/.out')
+# os.chdir("slurm_jobs")
+mkdir_p(f"slurm_jobs/{water_year}/.out")
+os.chdir(f"slurm_jobs/{water_year}")
 
 
 def create_job(hpc, jobname='txt2nc', cores=1, memory='16gb', runtime='07:00:00', out_subfolder="WY2016", var_name=None, var_idx=None):

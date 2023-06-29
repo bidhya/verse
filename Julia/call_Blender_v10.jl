@@ -186,7 +186,7 @@ out_folder = "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder
 println("Output_folder : $out_folder")
 
 tmp_txtDir = "$out_folder/outputs_txt"    # To save text outputs for each pixel
-nc_outDir = "$out_folder/outputs_parallel"         # To convert text outputs to netcdf file
+nc_outDir = "$out_folder/outputs"         # To convert text outputs to netcdf file
 # OutDir = "$DataDir/$out_subfolder/outputs_txt"  # To save text outputs for each pixel
 # nc_exp_dir = "$DataDir/$out_subfolder/outputs_nc"  # To convert text outputs to netcdf file
 

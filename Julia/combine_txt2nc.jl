@@ -122,7 +122,7 @@ elseif occursin("borg", host_machine)  # TODO: discover
 elseif occursin(".osc.edu", host_machine)
     A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
 else
-    A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")
+    # A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")
     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
     # A = RasterStack("$DataDir/WY_merged/2016_noahmp_cgf.nc")
     # A = RasterStack("$DataDir/WY_merged/ak_polar_fix.nc")
@@ -197,7 +197,6 @@ if length(pixels) == valid_pix_count  # length(valid_pix_ind)
     # text2nc("Upv", 8)
     # text2nc("SWEpv", 9);
     text2nc(var_name, var_idx);
-
 else
     # @info("OUTPUT NETCDF file not create because all the pixels not yet processed")
     @info("Creating NETCDF with incomplete run")
