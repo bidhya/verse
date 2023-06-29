@@ -8,6 +8,7 @@
     Nov 08, 2022: Updating for North America MODIS CGF that I newly generated using rioxarray array_merge
     Nov 19, 2022: Updating to generate Blender ready data for whole North America; ie, NoahMP + MODIS_CGF in on nc file
     Feb 25, 2023: Last successful run incorporating Polar Nights Fix
+    Jun 29, 2023: using xarray to open and concatenate MODIS files instead of Rioxarray due to stripping on outputs  
 
     1. Concatenate NA-MODIS files along time dimension
     2. Back and Forward fill missing data
@@ -15,11 +16,17 @@
     4. [optional] Clip with watershed is currently not active
     5. Runtime: 15 mins with 30 GB and 1 core on Discover
 
+    Inputs
+    =======
+    Daily MODIS mosaics over NA processed by "process_modis_cgf.py" script 
+    1. modis_folder = f"{base_folder}/Modis/CGF_NDSI_Snow_Cover/NA{water_year}"   
+
+
     Outputs
     =======
-    1. Blender/CGF_NDSI_Snow_Cover/modis_cgf_original.nc    # intermediate/temporary
-    2. Blender/CGF_NDSI_Snow_Cover/modis_scf.nc             # intermediate
-    3. Blender/NoahMP/WY_merged/2016_seup_modis.nc          # Use for Blender run. Final
+    1. ../Blender/Modis/CGF_NDSI_Snow_Cover/modis_scf2016_original.nc   # intermediate/temporary
+    2. ../Blender/CGF_NDSI_Snow_Cover/modis_scf2016.nc                  # intermediate
+    3. ../Blender/NoahMP/WY_merged/2016_seup_modis.nc                   # Final. Use for Blender run.  
 
 
 """
@@ -29,10 +36,10 @@ import sys
 import datetime
 import numpy as np
 
-from shapely.geometry import mapping 
-import geopandas as gpd
+# from shapely.geometry import mapping 
+# import geopandas as gpd
+# import rioxarray
 import xarray as xr
-import rioxarray
 import logging
 import argparse
 
@@ -86,21 +93,24 @@ for hdf_file in hdf_files:
     begin_ymd = datetime.datetime(begin_year, 1, 1) + datetime.timedelta(begin_days - 1)
     # dt_list.append(begin_ymd)
     if count == 0:
-        da = rioxarray.open_rasterio(f"{modis_folder}/{hdf_file}").squeeze()
+        # da = rioxarray.open_rasterio(f"{modis_folder}/{hdf_file}").squeeze()
+        da = xr.open_dataset(f"{modis_folder}/{hdf_file}", decode_coords="all")["CGF_NDSI_Snow_Cover"].squeeze()
         # da = da["CGF_NDSI_Snow_Cover"].squeeze()
         da["time"] = begin_ymd
     else:
-        da_temp = rioxarray.open_rasterio(f"{modis_folder}/{hdf_file}").squeeze()
+        # da_temp = rioxarray.open_rasterio(f"{modis_folder}/{hdf_file}").squeeze()
+        da_temp = xr.open_dataset(f"{modis_folder}/{hdf_file}", decode_coords="all")["CGF_NDSI_Snow_Cover"].squeeze()
         # da_temp = ds["CGF_NDSI_Snow_Cover"].squeeze()
         da_temp["time"] = begin_ymd
         da = xr.concat([da, da_temp], dim='time')  # , dim='time'
     count += 1
 logging.info(da.shape)
+da = da.drop(["band", "spatial_ref"])  # after shifting to xarray, these coords were introduced; so remove before combining with seup
 da = da.drop_duplicates(dim="time")  # required for Sarith script; may not be required for mine as there should be no duplicate dates 
 # Nov 19, 2022: Saved concatenated (WY) data with origianl flags for QA/QC in future; but not really necessary for this or other workflow
 ds = xr.Dataset({"MODSCAG":da})  # so we can save to netcdf or append to SEUP dataset
-ds.to_netcdf(f"{base_folder}/Modis/CGF_NDSI_Snow_Cover/modis_cgf_NA{water_year}_original.nc")
-logging.info(f"Saved NA WaterYear MODIS_CGF with original flags: {base_folder}/Modis/CGF_NDSI_Snow_Cover/modis_cgf_NA{water_year}_original.nc")
+ds.to_netcdf(f"{base_folder}/Modis/CGF_NDSI_Snow_Cover/modis_scf{water_year}_original.nc")
+logging.info(f"Saved NA WaterYear MODIS_CGF with original flags: {base_folder}/Modis/CGF_NDSI_Snow_Cover/modis_scf{water_year}_original.nc")
 del ds  # clear from memory
 # # Fill in All_Nan days: due to all nans, this creates problem in Blender, so fill them with previous day of data
 # da.sel(time="2015-10-24").data[:] = da.sel(time="2015-10-23").data
