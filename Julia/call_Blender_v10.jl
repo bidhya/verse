@@ -289,6 +289,8 @@ end_time = time_ns()
 running_time = (end_time - start_time)/1e9/60
 println("Running Time (minutes) = $running_time")
 
+exit(0)  # exit here because the text2nc part is not working properly
+
 #=
 # Get index to iterate over
 # Seems here x is rows and y are columns
