@@ -45,7 +45,7 @@ var_name = ARGS[2]              # name of the output variable (SWE for example)
 var_idx = parse(Int8, ARGS[3])  # index of variable [1, 2, ..., 9]. Follow strictly as the file was created during Blender run
 
 using DelimitedFiles
-using Rasters
+using Rasters, NCDatasets
 
 log_filename = string("txt2nc_", out_subfolder, "_", var_name, "_", var_idx, ".log")  #construct a log filename
 # Updated logger for finer control; still not working with distributed
@@ -116,11 +116,11 @@ nc_outDir = "$out_folder/outputs"      # Fullpath to save output NETCDF files
 # Following check are for prototyping only when running code locally, because I do not yet have NorthAmerica netcdf file
 if occursin("L-JY0R5X3", host_machine)  # STAFF-BY-M
     A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")  #2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
-elseif occursin("borg", host_machine)  # TODO: discover
-    # A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")  # 2016_noahmp_cgf 2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
-    A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
-elseif occursin(".osc.edu", host_machine)
-    A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
+# elseif occursin("borg", host_machine)  # TODO: discover
+#     # A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")  # 2016_noahmp_cgf 2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
+#     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
+# elseif occursin(".osc.edu", host_machine)
+#     A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
 else
     # A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")
     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
