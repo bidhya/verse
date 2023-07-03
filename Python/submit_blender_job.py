@@ -123,10 +123,13 @@ def main():
     if "discover" in node:
         # on login node node name is discover, not borg
         hpc_name = "discover"
+        cores = "46"
     elif "asc.ohio-state.edu" in node:
         hpc_name = "unity"
+        cores = "40"
     elif ".osc.edu" in node:
         hpc_name = "osc"
+        cores = "40"
     else:
         print("Unknow computer system. coressd folder NOT set")
         assert(False)
@@ -146,7 +149,7 @@ def main():
         end_idx = i + step
         print(start_idx, end_idx)
         jobname = f"{start_idx}_{end_idx}"
-        create_job(hpc=hpc_name, jobname=jobname, out_subfolder=f"WY{water_year}", start_idx=start_idx, end_idx=end_idx, cores=46, memory='48gb', runtime='24:00:00')
+        create_job(hpc=hpc_name, jobname=jobname, out_subfolder=f"WY{water_year}", start_idx=start_idx, end_idx=end_idx, cores=cores, memory='48gb', runtime='24:00:00')
         # for Discover, usable node: Haswell=28; Skylake=36; Cascade=46
         # logging.info(f"jobname={jobname}, start_idx={start_idx}, end_idx={end_idx}, cores=36, memory=144gb, runtime=12:00:00 ")
         time.sleep(2)
