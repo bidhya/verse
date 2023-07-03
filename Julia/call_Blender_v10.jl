@@ -173,7 +173,7 @@ end
 println("Number of processes: ", nprocs())
 println("Number of workers: ", nworkers())
 # Everywhere should come after cores are already added
-@everywhere using Rasters
+@everywhere using Rasters, NCDatasets
 @everywhere include("Estimate_v55.jl")  #https://docs.julialang.org/en/v1/manual/code-loading/; evaluated in global scope
 
 
@@ -197,11 +197,12 @@ nc_outDir = "$out_folder/outputs"         # To convert text outputs to netcdf fi
 # Following check are for prototyping only when running code locally, because I do not yet have NorthAmerica netcdf file
 if occursin("L-JY0R5X3", host_machine)  # STAFF-BY-M
     A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")  #2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
-elseif occursin("borg", host_machine)  # TODO: discover
-    # A = RasterStack("$DataDir/WY_merged/2013_seup_modis.nc")  # 2016_noahmp_cgf 2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
-    A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
-elseif occursin(".osc.edu", host_machine)
-    A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
+# elseif occursin("borg", host_machine)  # TODO: discover
+#     # A = RasterStack("$DataDir/WY_merged/2013_seup_modis.nc")  # 2016_noahmp_cgf 2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
+#     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
+# elseif occursin(".osc.edu", host_machine)
+#     # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
+#     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
 else
     # A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")
     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
@@ -288,8 +289,7 @@ end
 end_time = time_ns()
 running_time = (end_time - start_time)/1e9/60
 println("Running Time (minutes) = $running_time")
-
-exit(0)  # exit here because the text2nc part is not working properly
+# exit(0)  # exit here because the text2nc part is not working properly
 
 #=
 # Get index to iterate over
@@ -344,8 +344,6 @@ start_time = time_ns()
 end
 end_time = time_ns()
 =#
-pixels = readdir(tmp_txtDir)  # Danger: Error if we have outputs from prior runs that do not match current A dimensions
-pixels = [pix for pix in pixels if startswith(pix, "Pix")];
 
 # Step 4. PostProcessing: Combine text files into a grid and save as netcdf
 function text2nc(var, idx, outRaster)
@@ -378,8 +376,16 @@ end
 # without sync above one of the processor to the next step (combining text files to netcdf) which will cause error
 
 # Count if all pixels are processed before calling the following section for converting text files to netcdf file
-sleep(30)
-if length(pixels) == valid_pix_count  # length(valid_pix_ind)
+sleep(10)
+pixels = readdir(tmp_txtDir)  # Danger: Error if we have outputs from prior runs that do not match current A dimensions
+pixels = [pix for pix in pixels if startswith(pix, "Pix")];
+if length(pixels) == valid_pix_count && system_machine == "Slurm"
+    run(`python $root_dir/Github/verse/Python/submit_txt2nc_job.py $water_year`)
+    println("Submitted python script for converting text to nc file")
+end
+
+if length(pixels) == valid_pix_count && system_machine == "Windows"
+    # TODO: This part did not work with Slurm last time  
     @info("Creating OUTPUT NETCDF FILES")
     outRaster = copy(A[:SWE_tavg])
     var_idx_tuple = (("SWE", 1), ("Gmelt", 2), ("G", 3), ("Precip", 4), ("Us", 5), ("Gpv", 6), ("Gmeltpv", 7), ("Upv", 8), ("SWEpv", 9))
