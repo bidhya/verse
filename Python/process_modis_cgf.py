@@ -94,8 +94,8 @@ def main():
     base_folder = "/discover/nobackup/projects/coressd"
     modis_download_folder = f"{base_folder}/OSU/MOD10A1F.061/MODIS_Proc/download_snow"  # /2016001/001
     # Generate the date range for WY2016 and convert to DOY format of MODIS naming convention
-    start_date = datetime.datetime.strptime(f"{int(water_year) - 1}-10-01", "%Y-%m-%d")  # TODO Replace year -1 
-    end_date = datetime.datetime.strptime(f"{water_year}-09-30", "%Y-%m-%d")  # TODO Replace year
+    start_date = datetime.datetime.strptime(f"{int(water_year) - 1}-10-01", "%Y-%m-%d")  # 
+    end_date = datetime.datetime.strptime(f"{water_year}-09-30", "%Y-%m-%d")  # 
     date_generated = pd.date_range(start_date, end_date)
     # print(date_generated.strftime("%d-%m-%Y"))
     year_doy_list = list(date_generated.strftime("%Y%j"))  # Does this match Day of year for MODIS nameing convention?  
@@ -187,7 +187,7 @@ def main():
 
             # da.data = da.data/100  # mabye do at the end
             # Clip on original globa data was >2 minutes
-            da_clipped = da.rio.reproject_match(template_raster)  # seems similar to ds 
+            da_clipped = da.rio.reproject_match(template_raster)  # seems similar to ds ; error in rasterio 1.3.8 so keep 1.3.7; was just memory error    
             da_clipped.data[da_clipped.data == da_clipped._FillValue] = np.nan  # because reproj match introduced fill value of 255
             # b) Correct for Forest Tree Cover Fraction
             da_clipped.data = da_clipped.data/(1-daF)  # ValueError: operands could not be broadcast together with shapes (14401,24000) (14401,24001)

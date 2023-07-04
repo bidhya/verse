@@ -18,6 +18,7 @@ water_year = args.water_year
 # Generate full path to destination notebook
 # destination = source.replace('giuh', 'giuh/paper_outputs')
 destination = source.replace('verse/Python', '03_Blender/paper_outputs')
+destination = destination.replace('.ipynb', f'{water_year}.ipynb')  # save notebooks outputs by water year
 
 print(source)
 print(destination)

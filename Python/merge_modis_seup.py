@@ -147,7 +147,7 @@ ds = ds.reset_coords(drop=True)  # required for combining with SEUP
 # Part II: Read SEUP Data and combine MODIS-CGF WY to create 1-WY-ARD for Blender Run
 # Aside: Reproj match with SEUP was already performed in "process_modis_cgf.py" script  
 # ========================================================================================================
-seup_ds = xr.open_dataset(f"{base_folder}/NoahMP/WY_merged/{water_year}_seup.nc", decode_coords="all")  # updated from [2016.nc ==> 2016_seup.nc]
+seup_ds = xr.open_dataset(f"{base_folder}/NoahMP/WY/{water_year}_seup.nc", decode_coords="all")  # updated from [2016.nc ==> 2016_seup.nc]
 # Merge Seup and Modis Data
 seup_ds = seup_ds.sel(time=ds.time)  # if same, this should also organize data in some order
 # MODSCAG_clipped = MODSCAG_clipped.drop_duplicates(dim="time")  # we have one duplicate time value; remove else error in next step
@@ -157,6 +157,7 @@ seup_ds["MODSCAG"] = ds["MODSCAG"]  # ValueError: cannot reindex or align along 
 # seup_ds_clipped = seup_ds_clipped.sel(time=noah_ds_clip2.time)  # TODO: or select time explicitly here
 # seup_ds_clipped = seup_ds_clipped.sel(time=slice("2015-10-01", "2016-09-29"))  # KeyError: "cannot represent labeled-based slice indexer for coordinate 'time' with a slice over integer positions; the index is unsorted or non-unique"
 # seup_ds = seup_ds.isel(time=slice(None, -2))  # perhaps only for Sarith's
+os.makedirs(f"{base_folder}/NoahMP/WY_merged", exist_ok=True)  # NEW July 3, 2023. this folder no more created in Extract_Seup notebook
 # seup_ds.to_netcdf(f"{base_folder}/NoahMP/WY_merged/2016_noahmp_cgf.nc")  # use this for Blender run for NoahMP
 seup_ds.to_netcdf(f"{base_folder}/NoahMP/WY_merged/{water_year}_seup_modis.nc")  # use this for Blender run for NoahMP
 logging.info("Fished preparing ARD for Blender")

@@ -142,8 +142,8 @@ def main():
     # start at 0 in the beginning. Later can be be changed to whatever value depending on 
     # avilability of cores, runtime limitation etc.
     start = 0  # 625000  # 375000  # 250000  # 0
-    step = 100000  # 100000 (4 nodes); 20000 number of pixels to process
-    end = start + 11 * step  # 11  1011329 + 1
+    step = 70000  # 100000 (4 nodes); 20000 number of pixels to process
+    end = start + 15 * step  # 11  1011329 + 1
     for i in np.arange(start, end, step):
         start_idx = i + 1
         end_idx = i + step
