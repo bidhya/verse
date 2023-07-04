@@ -7,7 +7,7 @@ Order of Script Execution for coressd project
     Outputs:
         combined/../..  
         WY/[varname]/2016.nc etc  
-        WY_merged/2016.seup.nc  
+        WY/2016_seup.nc  OLD: WY_merged/2016_seup.nc  
 
 2. process_modis_cgf.py  
     Extract NA (North America) scale daily Modis_CGF matching the SEUP rasters
@@ -46,6 +46,18 @@ TODO: Generate Analysis ready data for North America by merging SEUP and MODIS_C
     This is manageable beacuse each monthly NA file is ~300 MB, so a total of 300 * 5 variables = 1.5 GB per month
     or ~17 GB per year
     but we will be reading one nc files for each variable separately
+
+    Rename Folders:
+        NoahMP --> seup  
+        WY_merged --> Inputs; even move outside the NoahMP folder
+
+### June 16, 2023
+Call txt2nc python script for submitting slurm jobs from withing call_blender.jl file
+Filxed Stripping issue when combining SEUP with MODIS data
+    was caused by using mixing Rioxarray and Xarray in "merge_modis_seup.py" script  
+    now using only Xarray  
+Adapted for OSC  
+Using same input file for all Slurm Systems  
     
 ### June 16, 2023
 Pass water_year directly from slurm job for SEUP processing  
