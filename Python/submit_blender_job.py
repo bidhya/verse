@@ -117,6 +117,7 @@ def main():
 
     """
     # 1. MAIN BLENDER RUN JOB
+    import math
     import numpy as np
     node = platform.node()
     print(f"Node Name: {node}")
@@ -143,13 +144,14 @@ def main():
     # avilability of cores, runtime limitation etc.
     start = 0  # 625000  # 375000  # 250000  # 0
     step = 70000  # 100000 (4 nodes); 20000 number of pixels to process
-    end = start + 15 * step  # 11  1011329 + 1
+    job_count = math.ceil((1011329 + 1) / 70000)  # number of slurm jobs to process all this pixels 
+    end = start + job_count * step  # 15 11  1011329 + 1
     for i in np.arange(start, end, step):
         start_idx = i + 1
         end_idx = i + step
         print(start_idx, end_idx)
         jobname = f"{start_idx}_{end_idx}"
-        create_job(hpc=hpc_name, jobname=jobname, out_subfolder=f"WY{water_year}", start_idx=start_idx, end_idx=end_idx, cores=cores, memory='48gb', runtime='24:00:00')
+        create_job(hpc=hpc_name, jobname=jobname, out_subfolder=f"WY{water_year}", start_idx=start_idx, end_idx=end_idx, cores=cores, memory='64gb', runtime='24:00:00')  # 48gb
         # for Discover, usable node: Haswell=28; Skylake=36; Cascade=46
         # logging.info(f"jobname={jobname}, start_idx={start_idx}, end_idx={end_idx}, cores=36, memory=144gb, runtime=12:00:00 ")
         time.sleep(2)

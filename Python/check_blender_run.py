@@ -5,6 +5,12 @@ import os
 # from joblib import Parallel, delayed
 import logging
 # import shutil
+import argparse
+
+parser = argparse.ArgumentParser(description='Count Blender created text files for Water Year.')
+parser.add_argument('water_year', help='Water Year for processing', type=str)
+args = parser.parse_args()
+water_year = args.water_year
 
 # ##############################################################################
 log_name = 'file_check.log'
@@ -13,7 +19,7 @@ logging.info('  ')
 logging.info('-------------------------START LOGGING--------------------------------------')
 
 base_folder = "/discover/nobackup/projects/coressd"
-tmp_txtDir = f"{base_folder}/Blender/Runs/WY2016/outputs_txt"    # Outputs are saved here
+tmp_txtDir = f"{base_folder}/Blender/Runs/WY{water_year}/outputs_txt"    # Outputs are saved here
 pixels = os.listdir(tmp_txtDir)
 pixels = [pix for pix in pixels if pix.startswith("Pix")]
 print(len(pixels))
