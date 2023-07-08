@@ -102,11 +102,17 @@ println("base_folder : $base_folder")
 # DataDir= "$base_folder/nc_files"
 DataDir = "$base_folder/NoahMP"  # must exist
 # Folder for saving outputs of run. out_subfolder can be passed as ARGS. Folder/subfolders will be created if non-existent
-out_folder = "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
+if occursin(".osc.edu", host_machine)
+    # out_folder = "/fs/ess/PAS1785/coressd/Blender/Runs/$out_subfolder" #  "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
+    out_folder = "/fs/scratch/PAS1785/coressd/Blender/Runs/$out_subfolder" #  "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
+
+else
+    out_folder = "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
+end
 println("Output_folder : $out_folder")
 
-tmp_txtDir = "$out_folder/outputs_txt" # Fullpath to processed text files
-nc_outDir = "$out_folder/outputs"      # Fullpath to save output NETCDF files
+tmp_txtDir = "$out_folder/outputs_txt"    # To save text outputs for each pixel
+nc_outDir = "$out_folder/outputs"         # To convert text outputs to netcdf file
 
 # 2. Read the original Input netCDF file
 # # 2. Read the Input netCDF file
