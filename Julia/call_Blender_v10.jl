@@ -48,6 +48,7 @@ Nov 22, 2022 : Updating text2nc function to create nc file from the combined tex
 Nov 27, 2022 : Checking the output file before loading Rasters array; should save (signficantly) time for pixels already processed
 Dec 03, 2022 : Trying multinodes with ClusterManagers.jl
 May 02, 2023 : ../WY_merged/2016_seup_modis.nc is the new input files with NDSI converted to SCF   
+Jul 11, 2023 : running at OSC from /fs/scratch folder and copying input file to tempdir  
 
 #datadir is a moving directory containing an argument given in the job file
 # in the shell script the arg is increased by a step counter
@@ -124,10 +125,9 @@ elseif occursin("borg", host_machine)  # TODO: discover
     base_folder = "$root_dir/Blender"
     system_machine = "Slurm"
 elseif occursin(".osc.edu", host_machine)
-    root_dir = "/fs/ess/PAS1785/coressd" #homedir()  # OSC
+    root_dir = "/fs/scratch/PAS1785/coressd"  # "/fs/ess/PAS1785/coressd"
     base_folder = "$root_dir/Blender"
     system_machine = "Slurm"
-
 elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
     root_dir = "/fs/project/howat.4/yadav.111/coressd"  # homedir()  #  Unity
     # base_folder = "/home/yadav.111/Github/Blender"  # old
@@ -200,6 +200,7 @@ nc_outDir = "$out_folder/outputs"         # To convert text outputs to netcdf fi
 # For NoahMP
 # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_modscag.nc")  #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 # Following check are for prototyping only when running code locally, because I do not yet have NorthAmerica netcdf file
+tmpdir = tempdir()  # use only for HPC to copy input file here (hopefully for faster i/o operation)
 if occursin("L-JY0R5X3", host_machine)  # STAFF-BY-M
     A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")  #2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 # elseif occursin("borg", host_machine)  # TODO: discover
@@ -210,7 +211,9 @@ if occursin("L-JY0R5X3", host_machine)  # STAFF-BY-M
 #     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
 else
     # A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")
-    A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
+    # A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
+    cp("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", "$tmpdir/$water_year" * "_seup_modis.nc")  # copy to local machine
+    A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc")
     # A = RasterStack("$DataDir/WY_merged/2016_noahmp_cgf.nc")
     # A = RasterStack("$DataDir/WY_merged/ak_polar_fix.nc")
     # A = RasterStack("$DataDir/WY_merged/ak_polar_fix_no.nc")
