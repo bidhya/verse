@@ -51,6 +51,11 @@ TODO: Generate Analysis ready data for North America by merging SEUP and MODIS_C
         NoahMP --> seup  
         WY_merged --> Inputs; even move outside the NoahMP folder
 
+### July 15, 2023
+Merged all branches and deleted old branches  
+Create call_blender_v11.jl for new runs
+
+
 ### June 16, 2023
 Call txt2nc python script for submitting slurm jobs from withing call_blender.jl file
 Filxed Stripping issue when combining SEUP with MODIS data
