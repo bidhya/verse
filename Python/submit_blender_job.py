@@ -23,8 +23,11 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Create and Submit Blender jobs for Water Year.')
 parser.add_argument('water_year', help='Water Year for processing', type=str)
+parser.add_argument('step', help='Number of pixels to process in in job', type=int)
+
 args = parser.parse_args()
 water_year = args.water_year
+step = args.step
 
 
 def mkdir_p(folder):
@@ -121,16 +124,19 @@ def main():
     import numpy as np
     node = platform.node()
     print(f"Node Name: {node}")
+    runtime='24:00:00'  # default (max for Discover)
     if "discover" in node:
         # on login node node name is discover, not borg
         hpc_name = "discover"
         cores = "46"
     elif "asc.ohio-state.edu" in node:
         hpc_name = "unity"
-        cores = "40"
+        cores = "24"
+        runtime='00:00:00'
     elif ".osc.edu" in node:
         hpc_name = "osc"
         cores = "40"
+        runtime='36:00:00'
     else:
         print("Unknow computer system. coressd folder NOT set")
         assert(False)
@@ -143,18 +149,19 @@ def main():
     # start at 0 in the beginning. Later can be be changed to whatever value depending on 
     # avilability of cores, runtime limitation etc.
     start = 0  # 625000  # 375000  # 250000  # 0
-    step = 70000  # 100000 (4 nodes); 20000 number of pixels to process
-    job_count = math.ceil((1011329 + 1) / 70000)  # number of slurm jobs to process all this pixels 
+    # step = 85000  # number of pixels to process; for DISCOVER: 46 cores X 12 job = 552 (<=560 allowed for long qos)
+    job_count = math.ceil((1011329 + 1) / step)  # number of slurm jobs to process all this pixels 
     end = start + job_count * step  # 15 11  1011329 + 1
+    logging.info(f'step = {step}. job_count = {job_count}. end = {end}')
     for i in np.arange(start, end, step):
         start_idx = i + 1
         end_idx = i + step
         print(start_idx, end_idx)
         jobname = f"{start_idx}_{end_idx}"
-        create_job(hpc=hpc_name, jobname=jobname, out_subfolder=f"WY{water_year}", start_idx=start_idx, end_idx=end_idx, cores=cores, memory='64gb', runtime='24:00:00')  # 48gb
+        create_job(hpc=hpc_name, jobname=jobname, out_subfolder=f"WY{water_year}", start_idx=start_idx, end_idx=end_idx, cores=cores, memory='96gb', runtime=runtime)  # 64 48gb
         # for Discover, usable node: Haswell=28; Skylake=36; Cascade=46
         # logging.info(f"jobname={jobname}, start_idx={start_idx}, end_idx={end_idx}, cores=36, memory=144gb, runtime=12:00:00 ")
-        time.sleep(2)
+        time.sleep(1)
     # # Final Sanity Check to see if all pixels are processed. Also for creating nc files in new version using thread, thus use more memory here
     # create_job(hpc=hpc_name, jobname="final_check", out_subfolder="WY2016", start_idx=1, end_idx=1011329, cores=46, memory='120gb', runtime='12:00:00')
     logging.info("Job submission complete\n")

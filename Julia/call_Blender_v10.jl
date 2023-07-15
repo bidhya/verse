@@ -153,16 +153,16 @@ elseif system_machine == "Slurm" #Sys.islinux()
 #   println("No of cores = $num_cores")
   using SlurmClusterManager  # to pick all nodes and cores allocated in slurm job
   # With slurmcluster manager, hopefully next few lines of selecting cores is not necessary  
-  ntasks = parse(Int, ENV["SLURM_NTASKS"])  # gave 1, when cpus-per-task was passed by slurm
+#   ntasks = parse(Int, ENV["SLURM_NTASKS"])  # gave 1, when cpus-per-task was passed by slurm; not defined when just nodes=1 given.  
   # cores = parse(Int, ENV["SLURM_JOB_CPUS_PER_NODE"])  # if one node provided; else we have parse as follows
   subs = Dict("x"=>"*", "(" => "", ")" => "");
   cores = sum(eval(Meta.parse(replace(ENV["SLURM_JOB_CPUS_PER_NODE"], r"x|\(|\)" => s -> subs[s]))))
-  println("SLURM_NTASKS: $ntasks")
+#   println("SLURM_NTASKS: $ntasks")
 #   println("SLURM_JOB_CPUS_PER_NODE: $ntasks")
   println("SLURM Cores: $cores")
 #   addprocs()  # Not working. using all cores even though not allocated for use
 #   addprocs(cores)  # ; exeflags="--project"subtract one becuase master already has one; but seems to work with higher number as well
-  sleep(60+cores)  # 60+cores To prevent scheduling job on more than 1 node on Discover Slurm cluster  
+  sleep(10+cores)  # 60+cores To prevent scheduling job on more than 1 node on Discover Slurm cluster  
   addprocs(SlurmManager())  # to use all available nodes and cores automatically. comment this line and uncomment one above this to match _v8.jl
 
 else
@@ -180,11 +180,14 @@ println("Number of workers: ", nworkers())
 # base_folder = "$root_dir/Github/Blender"
 # DataDir= "$base_folder/nc_files"
 DataDir = "$base_folder/NoahMP"  # must exist
+tmpdir = tempdir()  # use only for HPC to copy input file here (hopefully for faster i/o operation)
 
 # Folder for saving outputs of run. out_subfolder can be passed as ARGS. Folder/subfolders will be created if non-existent
 if occursin(".osc.edu", host_machine)
     # out_folder = "/fs/ess/PAS1785/coressd/Blender/Runs/$out_subfolder" #  "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
     out_folder = "/fs/scratch/PAS1785/coressd/Blender/Runs/$out_subfolder" #  "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
+# elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
+#     out_folder = "$tmpdir/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
 else
     out_folder = "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
 end
@@ -200,7 +203,6 @@ nc_outDir = "$out_folder/outputs"         # To convert text outputs to netcdf fi
 # For NoahMP
 # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_modscag.nc")  #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 # Following check are for prototyping only when running code locally, because I do not yet have NorthAmerica netcdf file
-tmpdir = tempdir()  # use only for HPC to copy input file here (hopefully for faster i/o operation)
 if occursin("L-JY0R5X3", host_machine)  # STAFF-BY-M
     A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")  #2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 # elseif occursin("borg", host_machine)  # TODO: discover

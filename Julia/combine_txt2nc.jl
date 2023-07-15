@@ -83,7 +83,7 @@ elseif occursin("borg", host_machine)  # TODO: discover
     base_folder = "$root_dir/Blender"
     system_machine = "Slurm"
 elseif occursin(".osc.edu", host_machine)
-    root_dir = "/fs/ess/PAS1785/coressd" #homedir()  # OSC
+    root_dir = "/fs/scratch/PAS1785/coressd"  # "/fs/ess/PAS1785/coressd"
     base_folder = "$root_dir/Blender"
     system_machine = "Slurm"
 
@@ -101,11 +101,11 @@ println("base_folder : $base_folder")
 # base_folder = "$root_dir/Github/Blender"
 # DataDir= "$base_folder/nc_files"
 DataDir = "$base_folder/NoahMP"  # must exist
+
 # Folder for saving outputs of run. out_subfolder can be passed as ARGS. Folder/subfolders will be created if non-existent
 if occursin(".osc.edu", host_machine)
     # out_folder = "/fs/ess/PAS1785/coressd/Blender/Runs/$out_subfolder" #  "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
     out_folder = "/fs/scratch/PAS1785/coressd/Blender/Runs/$out_subfolder" #  "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
-
 else
     out_folder = "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
 end
@@ -120,16 +120,20 @@ nc_outDir = "$out_folder/outputs"         # To convert text outputs to netcdf fi
 # For NoahMP
 # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_modscag.nc")  #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 # Following check are for prototyping only when running code locally, because I do not yet have NorthAmerica netcdf file
+tmpdir = tempdir()  # use only for HPC to copy input file here (hopefully for faster i/o operation)
 if occursin("L-JY0R5X3", host_machine)  # STAFF-BY-M
     A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")  #2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 # elseif occursin("borg", host_machine)  # TODO: discover
-#     # A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")  # 2016_noahmp_cgf 2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
+#     # A = RasterStack("$DataDir/WY_merged/2013_seup_modis.nc")  # 2016_noahmp_cgf 2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 #     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
 # elseif occursin(".osc.edu", host_machine)
-#     A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
+#     # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
+#     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
 else
     # A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")
-    A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
+    # A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
+    cp("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", "$tmpdir/$water_year" * "_seup_modis.nc")  # copy to local machine
+    A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc")
     # A = RasterStack("$DataDir/WY_merged/2016_noahmp_cgf.nc")
     # A = RasterStack("$DataDir/WY_merged/ak_polar_fix.nc")
     # A = RasterStack("$DataDir/WY_merged/ak_polar_fix_no.nc")
