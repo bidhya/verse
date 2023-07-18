@@ -162,13 +162,14 @@ elseif system_machine == "Slurm" #Sys.islinux()
   println("SLURM Cores: $cores")
 #   addprocs()  # Not working. using all cores even though not allocated for use
 #   addprocs(cores)  # ; exeflags="--project"subtract one becuase master already has one; but seems to work with higher number as well
-  sleep(10+cores)  # 60+cores To prevent scheduling job on more than 1 node on Discover Slurm cluster  
+  sleep(10)  # 60+cores To prevent scheduling job on more than 1 node on Discover Slurm cluster  
   addprocs(SlurmManager())  # to use all available nodes and cores automatically. comment this line and uncomment one above this to match _v8.jl
-
 else
     println("Must be windows or linux system, aborting")
     exit() # <- you can provide exit code if you want
 end
+# addprocs()
+
 # println("Number of procs: $(nprocs())")  
 println("Number of processes: ", nprocs())
 println("Number of workers: ", nworkers())
@@ -186,14 +187,18 @@ tmpdir = tempdir()  # use only for HPC to copy input file here (hopefully for fa
 if occursin(".osc.edu", host_machine)
     # out_folder = "/fs/ess/PAS1785/coressd/Blender/Runs/$out_subfolder" #  "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
     out_folder = "/fs/scratch/PAS1785/coressd/Blender/Runs/$out_subfolder" #  "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
-# elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
-#     out_folder = "$tmpdir/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
+elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
+    out_folder = "$tmpdir/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
 else
     out_folder = "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
 end
 println("Output_folder : $out_folder")
 
+# Make a folder insise HPC node because we want to copy existing files there
 tmp_txtDir = "$out_folder/outputs_txt"    # To save text outputs for each pixel
+mkpath(tmp_txtDir)
+cp("$base_folder/Runs/$out_subfolder/outputs_txt", "$tmp_txtDir/$water_year")  # copy to local machine; error if running the first time as this dir would not exist
+
 nc_outDir = "$out_folder/outputs"         # To convert text outputs to netcdf file
 # OutDir = "$DataDir/$out_subfolder/outputs_txt"  # To save text outputs for each pixel
 # nc_exp_dir = "$DataDir/$out_subfolder/outputs_nc"  # To convert text outputs to netcdf file
@@ -271,6 +276,7 @@ Non-missing pixel count = 1011329
 # ie, without @sync, the on of the processors may move to next while loop is still running, creating error and crash whole script prematurely 
 # Threads.@threads for pix in pixels
 # @distributed for ij in ind
+# global count = 1
 @sync @distributed for ij in ind
 # for ij in ind
     i = ij[1]
@@ -292,6 +298,9 @@ Non-missing pixel count = 1011329
         # Call blender for the pixel. This is the only required line
         # rest of the codes are for houskeeking, preprocssing, post-processing
         blender(exp_dir, WRFSWE, WRFP, WRFG, MSCF, AirT)
+        # cp(exp_dir, "$base_folder/Runs/$out_subfolder/outputs_txt", force=True)
+        # cp(exp_dir, "$base_folder/Runs/$out_subfolder/outputs_txt", force=True)
+        # count +=1
         # println("After calling BLENDER function")
         # here exp_dir = export directory for holding outputs text and log files (same as older version of code)
     end
