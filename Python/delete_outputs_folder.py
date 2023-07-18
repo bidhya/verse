@@ -61,4 +61,7 @@ Parallel(n_jobs=-1)(delayed(delete_folder)(pix) for pix in pixels)
 
 print("After Deleting Files")
 pixels = os.listdir(outputs_txt_folder)
+if len(pixels) == 0:
+    print(f"Removing Empty directory: {outputs_txt_folder}")
+    os.rmdir(outputs_txt_folder)
 print(len(pixels))

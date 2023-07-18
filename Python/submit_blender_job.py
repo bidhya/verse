@@ -63,7 +63,7 @@ def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00',
         if hpc == "discover":
             fh.writelines("#SBATCH --account=s2701\n")  # for DISCOVER
             fh.writelines('#SBATCH --constraint="[cas|sky]"\n')
-            fh.writelines("#SBATCH --qos=long\n")  # for jobs 12-24 hours.
+            # fh.writelines("#SBATCH --qos=long\n")  # for jobs 12-24 hours.
         elif hpc == "osc":
             fh.writelines("#SBATCH --account=PAS1785\n")
         else:
@@ -75,7 +75,8 @@ def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00',
         # fh.writelines(f"#SBATCH --error=.out/{jobname}.err\n")
         fh.writelines(f"#SBATCH --time={runtime}\n")        
         # fh.writelines(f"#SBATCH --cpus-per-task={cores}\n")
-        fh.writelines(f"#SBATCH --nodes=1 --ntasks-per-node={cores}\n")
+        # fh.writelines(f"#SBATCH --nodes=1 --ntasks-per-node={cores}\n")
+        fh.writelines(f"#SBATCH --nodes=1 --ntasks={cores}\n")
         fh.writelines(f"#SBATCH --mem={memory}\n")
         # fh.writelines("#SBATCH --qos=normal\n")
         fh.writelines("#SBATCH --mail-type=ALL\n")
@@ -124,19 +125,19 @@ def main():
     import numpy as np
     node = platform.node()
     print(f"Node Name: {node}")
-    runtime='24:00:00'  # default (max for Discover)
+    runtime = "12:00:00"  #"24:00:00"  # default (max for Discover)
     if "discover" in node:
         # on login node node name is discover, not borg
         hpc_name = "discover"
-        cores = "46"
+        cores = "45"  # so one core can be used to monitor run using srun/htop.
     elif "asc.ohio-state.edu" in node:
         hpc_name = "unity"
         cores = "24"
-        runtime='00:00:00'
+        runtime = '00:30:00'
     elif ".osc.edu" in node:
         hpc_name = "osc"
         cores = "40"
-        runtime='36:00:00'
+        runtime = '36:00:00'
     else:
         print("Unknow computer system. coressd folder NOT set")
         assert(False)

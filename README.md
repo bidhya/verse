@@ -53,7 +53,7 @@ TODO: Generate Analysis ready data for North America by merging SEUP and MODIS_C
 
 ### July 15, 2023
 Merged all branches and deleted old branches  
-Create call_blender_v11.jl for new runs
+Create call_blender_v11.jl for new prototyping. But still using v10 for all runs.  
 
 
 ### June 16, 2023
