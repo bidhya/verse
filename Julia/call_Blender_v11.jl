@@ -187,8 +187,8 @@ tmpdir = tempdir()  # use only for HPC to copy input file here (hopefully for fa
 if occursin(".osc.edu", host_machine)
     # out_folder = "/fs/ess/PAS1785/coressd/Blender/Runs/$out_subfolder" #  "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
     out_folder = "/fs/scratch/PAS1785/coressd/Blender/Runs/$out_subfolder" #  "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
-elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
-    out_folder = "$tmpdir/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
+# elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
+#     out_folder = "$tmpdir/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
 else
     out_folder = "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
 end
@@ -196,8 +196,8 @@ println("Output_folder : $out_folder")
 
 # Make a folder insise HPC node because we want to copy existing files there
 tmp_txtDir = "$out_folder/outputs_txt"    # To save text outputs for each pixel
-mkpath(tmp_txtDir)
-cp("$base_folder/Runs/$out_subfolder/outputs_txt", "$tmp_txtDir/$water_year")  # copy to local machine; error if running the first time as this dir would not exist
+# mkpath(tmp_txtDir)
+# cp("$base_folder/Runs/$out_subfolder/outputs_txt", "$tmp_txtDir/$water_year")  # copy to local machine; error if running the first time as this dir would not exist
 
 nc_outDir = "$out_folder/outputs"         # To convert text outputs to netcdf file
 # OutDir = "$DataDir/$out_subfolder/outputs_txt"  # To save text outputs for each pixel
