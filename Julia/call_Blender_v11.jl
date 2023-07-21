@@ -125,7 +125,7 @@ elseif occursin("borg", host_machine)  # TODO: discover
     base_folder = "$root_dir/Blender"
     system_machine = "Slurm"
 elseif occursin(".osc.edu", host_machine)
-    root_dir = "/fs/scratch/PAS1785/coressd"  # "/fs/ess/PAS1785/coressd"
+    root_dir = "/fs/ess/PAS1785/coressd"  # "/fs/scratch/PAS1785/coressd"
     base_folder = "$root_dir/Blender"
     system_machine = "Slurm"
 elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
