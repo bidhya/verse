@@ -86,7 +86,10 @@ def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00',
 
         # first thing we do when the job starts is to "change directory to the place where the job was submitted from".
         # fh.writelines("cd $SLURM_SUBMIT_DIR\n")
-        fh.writelines("cd $TMPDIR\n")
+        if hpc == "discover":
+            fh.writelines("cd $LOCAL_TMPDIR\n")
+        else:
+            fh.writelines("cd $TMPDIR\n")
         fh.writelines("date; hostname; pwd\n")         # Add host, time, and directory name for later troubleshooting
         fh.writelines("echo ========================================================\n")
         # upto this point, it can be common to other jobs as well
@@ -100,15 +103,14 @@ def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00',
         fh.writelines("\n")
         # Call the main julia script to run by this slurm script
         if hpc == "discover":
-            fh.writelines("cp -r /discover/nobackup/projects/coressd/Github/verse/Julia .\n")
-            # fh.writelines("#SBATCH --account=s2701\n")  # for DISCOVER
+            fh.writelines("cp -r /discover/nobackup/projects/coressd/Github/verse .\n")
+            fh.writelines(f"julia verse/Julia/call_Blender_v11.jl {out_subfolder} {start_idx} {end_idx}\n\n")
             # fh.writelines(f"julia /discover/nobackup/byadav/Github/giuh/scripts/verse/Julia/call_Blender_v8.jl NA_temp {start_idx} {end_idx}\n\n")
             # fh.writelines(f"julia /discover/nobackup/projects/coressd/Github/verse/Julia/call_Blender_v10.jl {out_subfolder} {start_idx} {end_idx}\n\n")
-            fh.writelines(f"julia Julia/call_Blender_v10.jl {out_subfolder} {start_idx} {end_idx}\n\n")
         else:
-            fh.writelines("cp -r ~/Github/verse/Julia .\n")
+            fh.writelines("cp -r ~/Github/verse .\n")
+            fh.writelines(f"julia verse/Julia/call_Blender_v11.jl {out_subfolder} {start_idx} {end_idx}\n\n")
             # fh.writelines(f"julia ~/Github/verse/Julia/call_Blender_v10.jl {out_subfolder} {start_idx} {end_idx}\n\n")
-            fh.writelines(f"julia Julia/call_Blender_v11.jl {out_subfolder} {start_idx} {end_idx}\n\n")
         fh.writelines("echo Finished Slurm job \n")
     # submit the job
     os.system(f"sbatch {job_file}")

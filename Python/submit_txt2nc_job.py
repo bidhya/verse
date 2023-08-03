@@ -78,7 +78,11 @@ def create_job(hpc, jobname='txt2nc', cores=1, memory='16gb', runtime='07:00:00'
         fh.writelines("\n")
 
         # first thing we do when the job starts is to "change directory to the place where the job was submitted from".
-        fh.writelines("cd $SLURM_SUBMIT_DIR\n")
+        # fh.writelines("cd $SLURM_SUBMIT_DIR\n")
+        if hpc == "discover":
+            fh.writelines("cd $LOCAL_TMPDIR\n")
+        else:
+            fh.writelines("cd $TMPDIR\n")
         fh.writelines("date; hostname; pwd\n")         # Add host, time, and directory name for later troubleshooting
         fh.writelines("echo ========================================================\n")
         # upto this point, it can be common to other jobs as well
@@ -91,9 +95,13 @@ def create_job(hpc, jobname='txt2nc', cores=1, memory='16gb', runtime='07:00:00'
         fh.writelines("\n")
         # Call the main julia script to run by this slurm script
         if hpc == "discover":
-            fh.writelines(f"julia /discover/nobackup/projects/coressd/Github/verse/Julia/combine_txt2nc.jl {out_subfolder} {var_name} {var_idx}\n\n")
+            fh.writelines("cp -r /discover/nobackup/projects/coressd/Github/verse .\n")
+            fh.writelines(f"julia verse/Julia/combine_txt2nc.jl {out_subfolder} {var_name} {var_idx}\n\n")
+            # fh.writelines(f"julia /discover/nobackup/projects/coressd/Github/verse/Julia/combine_txt2nc.jl {out_subfolder} {var_name} {var_idx}\n\n")
         else:
-            fh.writelines(f"julia ~/Github/verse/Julia/combine_txt2nc.jl {out_subfolder} {var_name} {var_idx}\n\n")     
+            fh.writelines("cp -r ~/Github/verse .\n")            
+            fh.writelines(f"julia verse/Julia/combine_txt2nc.jl {out_subfolder} {var_name} {var_idx}\n\n")     
+            # fh.writelines(f"julia ~/Github/verse/Julia/combine_txt2nc.jl {out_subfolder} {var_name} {var_idx}\n\n")     
         fh.writelines("echo Finished Slurm job \n")
     # submit the job
     os.system(f"sbatch {job_file}")

@@ -81,16 +81,19 @@ if occursin("L-JY0R5X3", host_machine)
 elseif occursin("borg", host_machine)  # TODO: discover
     root_dir = "/discover/nobackup/projects/coressd"
     base_folder = "$root_dir/Blender"
+    tmpdir =  ENV["LOCAL_TMPDIR"]  #tempdir()
     system_machine = "Slurm"
 elseif occursin(".osc.edu", host_machine)
-    root_dir = "/fs/scratch/PAS1785/coressd"  # "/fs/ess/PAS1785/coressd"
+    root_dir = "/fs/ess/PAS1785/coressd"  #"/fs/scratch/PAS1785/coressd"  # 
     base_folder = "$root_dir/Blender"
+    tmpdir =  ENV["TMPDIR"]  #tempdir()
     system_machine = "Slurm"
 
 elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
     root_dir = "/fs/project/howat.4/yadav.111/coressd"  # homedir()  #  Unity
     # base_folder = "/home/yadav.111/Github/Blender"  # old
     base_folder = "$root_dir/Blender"  # "$root_dir/Github/coressd/Blender"
+    tmpdir =  ENV["TMPDIR"]  #tempdir()
     system_machine = "Slurm"
 else
     println("Unknown computer, manually add root directory before proceeding. Exiting code")
@@ -120,7 +123,8 @@ nc_outDir = "$out_folder/outputs"         # To convert text outputs to netcdf fi
 # For NoahMP
 # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_modscag.nc")  #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 # Following check are for prototyping only when running code locally, because I do not yet have NorthAmerica netcdf file
-tmpdir = tempdir()  # use only for HPC to copy input file here (hopefully for faster i/o operation)
+# tmpdir = tempdir()  # use only for HPC to copy input file here (hopefully for faster i/o operation)
+
 if occursin("L-JY0R5X3", host_machine)  # STAFF-BY-M
     A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")  #2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 # elseif occursin("borg", host_machine)  # TODO: discover

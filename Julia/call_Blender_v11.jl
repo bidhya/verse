@@ -123,15 +123,18 @@ if occursin("L-JY0R5X3", host_machine)
 elseif occursin("borg", host_machine)  # TODO: discover
     root_dir = "/discover/nobackup/projects/coressd"
     base_folder = "$root_dir/Blender"
+    tmpdir =  ENV["LOCAL_TMPDIR"]  #tempdir()
     system_machine = "Slurm"
 elseif occursin(".osc.edu", host_machine)
     root_dir = "/fs/ess/PAS1785/coressd"  # "/fs/scratch/PAS1785/coressd"
     base_folder = "$root_dir/Blender"
+    tmpdir =  ENV["TMPDIR"]  #tempdir()
     system_machine = "Slurm"
 elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
     root_dir = "/fs/project/howat.4/yadav.111/coressd"  # homedir()  #  Unity
     # base_folder = "/home/yadav.111/Github/Blender"  # old
     base_folder = "$root_dir/Blender"  # "$root_dir/Github/coressd/Blender"
+    tmpdir =  ENV["TMPDIR"]  #tempdir()
     system_machine = "Slurm"
 else
     println("Unknown computer, manually add root directory before proceeding. Exiting code")
@@ -181,7 +184,12 @@ println("Number of workers: ", nworkers())
 # base_folder = "$root_dir/Github/Blender"
 # DataDir= "$base_folder/nc_files"
 DataDir = "$base_folder/NoahMP"  # must exist
-tmpdir = tempdir()  # use only for HPC to copy input file here (hopefully for faster i/o operation)
+# # use only for HPC to copy input file here (hopefully for faster i/o operation)
+# if occursin("borg", host_machine)
+#     tmpdir =  ENV["LOCAL_TMPDIR"]  #tempdir()  
+# else
+#     # TODO: on discover if node does not start with "borg" the code can still jump here!
+#     tmpdir =  ENV["TMPDIR"]  #tempdir()
 
 # Folder for saving outputs of run. out_subfolder can be passed as ARGS. Folder/subfolders will be created if non-existent
 if occursin(".osc.edu", host_machine)
@@ -400,6 +408,7 @@ pixels = readdir(tmp_txtDir)  # Danger: Error if we have outputs from prior runs
 pixels = [pix for pix in pixels if startswith(pix, "Pix")];
 if length(pixels) == valid_pix_count && system_machine == "Slurm"
     run(`python $root_dir/Github/verse/Python/submit_txt2nc_job.py $water_year`)
+    # run(`python $tmpdir/verse/Python/submit_txt2nc_job.py $water_year`)
     println("Submitted python script for converting text to nc file")
 end
 

@@ -51,6 +51,16 @@ TODO: Generate Analysis ready data for North America by merging SEUP and MODIS_C
         NoahMP --> seup  
         WY_merged --> Inputs; even move outside the NoahMP folder
 
+### Aug 03, 2023
+synchronizec _v10 and _v11. So run _v11 everywhere including discover  
+moved old _v11 to archive  
+
+### Aug 02, 2023
+change TMPDIR to LOCAL_TMPDIR for Discover  
+log file no more working: try copy it at end of script from LOCAL_TMPDIR to ../.out/  
+running _v10 on Discover (WY2010 to 2016) and _v11 for OSC  
+
+
 ### July 15, 2023
 Merged all branches and deleted old branches  
 Create call_blender_v11.jl for new prototyping. But still using v10 for all runs.  
