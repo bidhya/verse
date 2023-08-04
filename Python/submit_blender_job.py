@@ -86,6 +86,7 @@ def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00',
 
         # first thing we do when the job starts is to "change directory to the place where the job was submitted from".
         # fh.writelines("cd $SLURM_SUBMIT_DIR\n")
+        fh.writelines("echo $SLURM_SUBMIT_DIR\n")
         if hpc == "discover":
             fh.writelines("cd $LOCAL_TMPDIR\n")
         else:
@@ -96,7 +97,8 @@ def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00',
 
         # Julia script specific inputs and parameters
         fh.writelines(f"echo Blender run for {out_subfolder} start_idx = {start_idx} end_idx = {end_idx}\n\n")
-        # fh.writelines("export JULIA_NUM_THREADS=10\n")  # uncomment if using threads in final run for creating final nc files from txt files 
+        # uncomment next line on thread if using threads in final run for creating final nc files from txt files 
+        fh.writelines(f"export JULIA_NUM_THREADS={cores}\n")  # 10
         fh.writelines("sleep 10\n")  # for slurm error when scheduling on multi nodes
         # fh.writelines(f"cores={cores} #we can only run 30 jobs concurrently on Unity\n")
         # fh.writelines(f"log_name=.out/{jobname}.log\n")
@@ -111,6 +113,10 @@ def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00',
             fh.writelines("cp -r ~/Github/verse .\n")
             fh.writelines(f"julia verse/Julia/call_Blender_v11.jl {out_subfolder} {start_idx} {end_idx}\n\n")
             # fh.writelines(f"julia ~/Github/verse/Julia/call_Blender_v10.jl {out_subfolder} {start_idx} {end_idx}\n\n")
+        fh.writelines("cp *.log $SLURM_SUBMIT_DIR \n")
+        fh.writelines("squeue --job $SLURM_JOBID \n")
+        fh.writelines("echo List of files on TMPDIR\n")
+        fh.writelines("ls -ltrh\n")
         fh.writelines("echo Finished Slurm job \n")
     # submit the job
     os.system(f"sbatch {job_file}")
@@ -144,7 +150,7 @@ def main():
     elif ".osc.edu" in node:
         hpc_name = "osc"
         cores = "40"
-        runtime = '23:00:00'
+        runtime = "02:00:00"  # "23:00:00"
     else:
         print("Unknow computer system. coressd folder NOT set")
         assert(False)
