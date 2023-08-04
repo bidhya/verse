@@ -147,10 +147,8 @@ println("base_folder : $base_folder")
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if system_machine == "Windows" # addproc function works for both windows and WSL linux. Hence, this code is more for local vs remote machine
-#   root_dir = "C:"
   addprocs()  ## works on laptop, but on cluster shows all cores for node; not only the number of cpus requested
 elseif system_machine == "Slurm" #Sys.islinux()  
-#   For HPC
 #   root_dir = homedir()
 #   num_cores = parse(Int, ENV["SLURM_CPUS_PER_TASK"])  # ERROR: LoadError: KeyError: key "SLURM_CPUS_PER_TASK" not found [from Princenton website]
 #   println("No of cores = $num_cores")
@@ -253,6 +251,7 @@ start_time = time_ns()
 # Extract cartesian index for non-missing data using one-day of data 
 valid_pix_ind = findall(!ismissing, A["SWE_tavg"][Ti=1])
 valid_pix_count = length(valid_pix_ind)
+println("Total valid pixel count = ", valid_pix_count)
 if start_idx > valid_pix_count
     # return nothing
     exit(0)
@@ -314,8 +313,8 @@ Non-missing pixel count = 1011329
     end
 end
 end_time = time_ns()
-running_time = (end_time - start_time)/1e9/60
-println("Running Time (minutes) = $running_time")
+running_time = (end_time - start_time)/1e9/3600
+println("Blender Running Time (hours) = $running_time")
 # exit(0)  # exit here because the text2nc part is not working properly
 
 #=
@@ -387,12 +386,13 @@ function text2nc(var, idx, outRaster)
     # update the name of variable
     outRaster = rebuild(outRaster; name=var)  #:SWEhat
     # @sync @distributed for pix in pixels  # worked
-    # Threads.@threads for pix in pixels  # thread also worked fine 
-    for pix in pixels
+    Threads.@threads for pix in pixels  # using this nested thread too seems to help processing faster   
+    # for pix in pixels  # this worked
         pix_xy = split(pix, "_")
         x = parse(Int16, pix_xy[2])
         y = parse(Int16, pix_xy[3])
         out_vars = readdlm("$tmp_txtDir/$pix/out_vars.txt")  # read whole combined file for that pixel
+        # out_vars = readdlm("$tmpdir/outputs_txt/$pix/out_vars.txt")  # read whole combined file for that pixel
         # outRaster[X=x, Y=y] = readdlm("$tmp_txtDir/$pix/$var.txt");  # Older workflow
         outRaster[X=x, Y=y] = out_vars[:,idx]
     end
@@ -403,17 +403,18 @@ end
 # without sync above one of the processor to the next step (combining text files to netcdf) which will cause error
 
 # Count if all pixels are processed before calling the following section for converting text files to netcdf file
-sleep(10)
+sleep(5)
+# cp(tmp_txtDir, "$tmpdir/outputs_txt")  # copy text files to node
+# tmp_txtDir = "$tmpdir/outputs_txt"
 pixels = readdir(tmp_txtDir)  # Danger: Error if we have outputs from prior runs that do not match current A dimensions
 pixels = [pix for pix in pixels if startswith(pix, "Pix")];
-if length(pixels) == valid_pix_count && system_machine == "Slurm"
-    run(`python $root_dir/Github/verse/Python/submit_txt2nc_job.py $water_year`)
-    # run(`python $tmpdir/verse/Python/submit_txt2nc_job.py $water_year`)
-    println("Submitted python script for converting text to nc file")
-end
+# if length(pixels) == valid_pix_count && system_machine == "Slurm"
+#     run(`python $root_dir/Github/verse/Python/submit_txt2nc_job.py $water_year`)
+#     # run(`python $tmpdir/verse/Python/submit_txt2nc_job.py $water_year`)
+#     println("Submitted python script for converting text to nc file")
+# end
 
-if length(pixels) == valid_pix_count && system_machine == "Windows"
-    # TODO: This part did not work with Slurm last time  
+if length(pixels) == valid_pix_count #&& system_machine == "Windows"
     @info("Creating OUTPUT NETCDF FILES")
     outRaster = copy(A[:SWE_tavg])
     var_idx_tuple = (("SWE", 1), ("Gmelt", 2), ("G", 3), ("Precip", 4), ("Us", 5), ("Gpv", 6), ("Gmeltpv", 7), ("Upv", 8), ("SWEpv", 9))
@@ -437,5 +438,6 @@ if length(pixels) == valid_pix_count && system_machine == "Windows"
 else
     @info("All pixels not yet processed, so OUTPUT NETCDF FILES not yet created")
 end
-running_time = (end_time - start_time)/1e9/60
-println("Total Running Time (minutes) = $running_time")
+end_time = time_ns()
+running_time = (end_time - start_time)/1e9/3600
+println("Total Running Time (text2nc) (hours) = $running_time")
