@@ -116,6 +116,7 @@ def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00',
         fh.writelines("cp *.log $SLURM_SUBMIT_DIR \n")
         fh.writelines("squeue --job $SLURM_JOBID \n")
         fh.writelines("echo List of files on TMPDIR\n")
+        fh.writelines("echo ========================================================\n")
         fh.writelines("ls -ltrh\n")
         fh.writelines("echo Finished Slurm job \n")
     # submit the job
@@ -139,10 +140,12 @@ def main():
     node = platform.node()
     print(f"Node Name: {node}")
     runtime = "12:00:00"  # "24:00:00"  # default (max for Discover)
+    memory = "90gb"
     if "discover" in node:
         # on login node node name is discover, not borg
         hpc_name = "discover"
         cores = "45"  # so one core can be used to monitor run using srun/htop.
+        memory = "180gb"
     elif "asc.ohio-state.edu" in node:
         hpc_name = "unity"
         cores = "24"
@@ -150,7 +153,8 @@ def main():
     elif ".osc.edu" in node:
         hpc_name = "osc"
         cores = "40"
-        runtime = "02:00:00"  # "23:00:00"
+        memory = "120gb"
+        runtime = "23:00:00"  # "23:00:00"
     else:
         print("Unknow computer system. coressd folder NOT set")
         assert(False)
@@ -172,7 +176,7 @@ def main():
         end_idx = i + step
         print(start_idx, end_idx)
         jobname = f"{start_idx}_{end_idx}"
-        create_job(hpc=hpc_name, jobname=jobname, out_subfolder=f"WY{water_year}", start_idx=start_idx, end_idx=end_idx, cores=cores, memory='120gb', runtime=runtime)  # 96 64 48gb
+        create_job(hpc=hpc_name, jobname=jobname, out_subfolder=f"WY{water_year}", start_idx=start_idx, end_idx=end_idx, cores=cores, memory=memory, runtime=runtime)  # 120gb  96 64 48gb
         # for Discover, usable node: Haswell=28; Skylake=36; Cascade=46
         # logging.info(f"jobname={jobname}, start_idx={start_idx}, end_idx={end_idx}, cores=36, memory=144gb, runtime=12:00:00 ")
         time.sleep(1)

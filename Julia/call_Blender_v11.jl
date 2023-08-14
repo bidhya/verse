@@ -74,8 +74,8 @@ arg_len = length(ARGS)
 # else
 #     out_subfolder = ARGS[1]
 # end
-out_subfolder = ARGS[1]  # output subfolder relative to input files; temp text and nc_outputs saved here
-water_year = out_subfolder[3:end]
+out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_text and nc_outputs saved here
+water_year = out_subfolder[end-3:end] #last 4 chars are assumed year, else error. out_subfolder[3:end]
 start_idx = ARGS[2]
 end_idx = ARGS[3]
 println(typeof(start_idx))
@@ -215,23 +215,21 @@ nc_outDir = "$out_folder/outputs"         # To convert text outputs to netcdf fi
 # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_modscag.nc")  #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 # Following check are for prototyping only when running code locally, because I do not yet have NorthAmerica netcdf file
 if occursin("L-JY0R5X3", host_machine)  # STAFF-BY-M
-    A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")  #2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
+    A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc", lazy=true)  # 2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 # elseif occursin("borg", host_machine)  # TODO: discover
 #     # A = RasterStack("$DataDir/WY_merged/2013_seup_modis.nc")  # 2016_noahmp_cgf 2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 #     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
 # elseif occursin(".osc.edu", host_machine)
 #     # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
 #     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
+# elseif occursin("asc.ohio-state.edu", host_machine)
+#     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
 else
     # A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")
     # A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
     cp("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", "$tmpdir/$water_year" * "_seup_modis.nc")  # copy to local machine
-    A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc")
-    # A = RasterStack("$DataDir/WY_merged/2016_noahmp_cgf.nc")
-    # A = RasterStack("$DataDir/WY_merged/ak_polar_fix.nc")
-    # A = RasterStack("$DataDir/WY_merged/ak_polar_fix_no.nc")
-    # println("Exiting code. Manually set A (rasterstack) around line 188")
-    # exit(1)
+    A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc", lazy=true)  ## https://github.com/rafaqz/Rasters.jl/issues/449
+    # exit(1)  # println("Exiting code. Manually set A (rasterstack) around line 188")
 end
 
 
@@ -248,7 +246,7 @@ A = A[(:Snowf_tavg, :SWE_tavg, :Tair_f_tavg, :Qg_tavg, :MODSCAG)];  # to remove 
 # Now using cartesian index for iteration
 
 start_time = time_ns()
-# Extract cartesian index for non-missing data using one-day of data 
+# Extract cartesian index for non-missing (ie, all) data using one-day of data 
 valid_pix_ind = findall(!ismissing, A["SWE_tavg"][Ti=1])
 valid_pix_count = length(valid_pix_ind)
 println("Total valid pixel count = ", valid_pix_count)
@@ -269,8 +267,6 @@ end
 ind = valid_pix_ind[start_idx:end_idx]
 # TODO (May 26, 2026): check the files that are already processed, so processing of those can be skipped
 
-
-println("Non-missing pixel count = ", length(valid_pix_ind))
 @info("Starting with loop: \n")
 println("Processing ", length(ind), " out of ", length(valid_pix_ind))
 # @info("Processing ", length(ind), " out of ", length(valid_pix_ind))
@@ -312,10 +308,11 @@ Non-missing pixel count = 1011329
         # here exp_dir = export directory for holding outputs text and log files (same as older version of code)
     end
 end
+# without sync above one of the processor to the next step (combining text files to netcdf) which will cause error
 end_time = time_ns()
 running_time = (end_time - start_time)/1e9/3600
 println("Blender Running Time (hours) = $running_time")
-# exit(0)  # exit here because the text2nc part is not working properly
+# exit(0)  # exit here to avoid running 2nd part (text2nc)
 
 #=
 # Get index to iterate over
@@ -398,14 +395,12 @@ function text2nc(var, idx, outRaster)
     end
     # Save to nc file; 
     mkpath(nc_outDir)
-    write("$nc_outDir/$var.nc", outRaster)
+    write("$nc_outDir/$var.nc", outRaster)  # Aug 08, 2023: Error perhaps due to updates to raster/ncdataset/etc. (error tested on windows and wsl2)
 end
-# without sync above one of the processor to the next step (combining text files to netcdf) which will cause error
 
 # Count if all pixels are processed before calling the following section for converting text files to netcdf file
 sleep(5)
-# cp(tmp_txtDir, "$tmpdir/outputs_txt")  # copy text files to node
-# tmp_txtDir = "$tmpdir/outputs_txt"
+
 pixels = readdir(tmp_txtDir)  # Danger: Error if we have outputs from prior runs that do not match current A dimensions
 pixels = [pix for pix in pixels if startswith(pix, "Pix")];
 # if length(pixels) == valid_pix_count && system_machine == "Slurm"
@@ -415,10 +410,19 @@ pixels = [pix for pix in pixels if startswith(pix, "Pix")];
 # end
 
 if length(pixels) == valid_pix_count #&& system_machine == "Windows"
+    if system_machine == "Slurm"
+        # copy text files to node; but this seems to increase runtime on OSC; so comment next two lines to leave txt_files on original location  
+        t1 = time_ns()
+        cp(tmp_txtDir, "$tmpdir/outputs_txt")  
+        tmp_txtDir = "$tmpdir/outputs_txt"
+        t2 = time_ns()
+        running_time = (t2 - t1)/1e9/3600
+        println("Total to copy text time files to tmpdir (hours) = $running_time")
+    end
     @info("Creating OUTPUT NETCDF FILES")
     outRaster = copy(A[:SWE_tavg])
     var_idx_tuple = (("SWE", 1), ("Gmelt", 2), ("G", 3), ("Precip", 4), ("Us", 5), ("Gpv", 6), ("Gmeltpv", 7), ("Upv", 8), ("SWEpv", 9))
-    Threads.@threads for var_idx in var_idx_tuple
+    for var_idx in var_idx_tuple  # Threads.@threads 
         var_name = var_idx[1]
         var_idx = var_idx[2]
         text2nc(var_name, var_idx, outRaster);
