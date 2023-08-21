@@ -215,7 +215,12 @@ nc_outDir = "$out_folder/outputs"         # To convert text outputs to netcdf fi
 # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_modscag.nc")  #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 # Following check are for prototyping only when running code locally, because I do not yet have NorthAmerica netcdf file
 if occursin("L-JY0R5X3", host_machine)  # STAFF-BY-M
-    A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc", lazy=true)  # 2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
+    # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc", lazy=true)  # Error now (Aug 15, 2023). maybe it is old file/format
+    A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true)
+    subset = A[X(Between(-120.5, -120)), Y(Between(60, 60.5))]  # use small chip for prototyping
+    subset_fname = "$(DataDir)/WY_merged/subset_$(water_year)_seup_modis.nc"
+    isfile(subset_fname) || write(subset_fname, subset)  # save. we need for post-processing analysis of results
+    A = RasterStack(subset_fname, lazy=true)  # read again (why). for consistency
 # elseif occursin("borg", host_machine)  # TODO: discover
 #     # A = RasterStack("$DataDir/WY_merged/2013_seup_modis.nc")  # 2016_noahmp_cgf 2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 #     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
@@ -301,6 +306,7 @@ Non-missing pixel count = 1011329
         # Call blender for the pixel. This is the only required line
         # rest of the codes are for houskeeking, preprocssing, post-processing
         blender(exp_dir, WRFSWE, WRFP, WRFG, MSCF, AirT)
+        GC.gc()
         # cp(exp_dir, "$base_folder/Runs/$out_subfolder/outputs_txt", force=True)
         # cp(exp_dir, "$base_folder/Runs/$out_subfolder/outputs_txt", force=True)
         # count +=1
@@ -443,5 +449,10 @@ else
     @info("All pixels not yet processed, so OUTPUT NETCDF FILES not yet created")
 end
 end_time = time_ns()
-running_time = (end_time - start_time)/1e9/3600
-println("Total Running Time (text2nc) (hours) = $running_time")
+running_time = (end_time - start_time)/1e9/60  # minutes
+if running_time < 60
+    println("Grant Total Running Time (minutes) = $(running_time)")
+else
+    running_time = running_time/60 # convert to hours
+    println("Grant Total Running Time (hours) = $(running_time)")
+end
