@@ -51,6 +51,11 @@ TODO: Generate Analysis ready data for North America by merging SEUP and MODIS_C
         NoahMP --> seup  
         WY_merged --> Inputs; even move outside the NoahMP folder
 
+## Aug 30, 2023
+Freeze v11.jl with cleanup of some comments  
+Created v12.jl to make modifications    
+
+
 ## Aug 07, 2023
 Adding lazy=true when reading rasterstack because of updates to rasters and dimensional data. example,  
     A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc", lazy=true)  ## https://github.com/rafaqz/Rasters.jl/issues/449
