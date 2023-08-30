@@ -55,25 +55,7 @@ Jul 11, 2023 : running at OSC from /fs/scratch folder and copying input file to 
 # same arg moves the pix number directory in each seq run
 
 """
-# DataDir= "/users/PAS0503/jldechow/foursix/AllTuolomne46/Pix3252"
-# DataDir = ARGS[1]
-# cores = ARGS[1]
-# cores = parse(Int8, cores)  # maximum of Int8 is 127 only
-
-# # This start, end index is no more useful because we are processing from netcdf rather than text files separately
-# start_idx = parse(Int16, ARGS[1])
-# end_idx = parse(Int16, ARGS[2])
-# Base.ARGS :: Vector{String} >>>>> An array of the command line arguments passed to Julia, as strings.
-
-# sleep(60)  # To prevent scheduling job on more than 1 node on Discover Slurm cluster  
 arg_len = length(ARGS)
-# if arg_len == 0
-#     # no argument passed from command line
-#     # set default output folder 
-#     out_subfolder = "NoahMP_CGF"
-# else
-#     out_subfolder = ARGS[1]
-# end
 out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_text and nc_outputs saved here
 water_year = out_subfolder[end-3:end] #last 4 chars are assumed year, else error. out_subfolder[3:end]
 start_idx = ARGS[2]
@@ -87,8 +69,6 @@ println(typeof(start_idx))
 println(typeof(start_idx))
 
 log_filename = string(start_idx, "_", end_idx, ".log")  #construct a log filename
-# log_filename = string("run_", out_subfolder, "_", start_idx, "_", end_idx, ".log")  #construct a log filename
-# log_filename = string(".out/log_", out_subfolder, "_", start_idx, "_", end_idx, ".txt")  #construct a log filename
 # Nov 20, 2022: Updated logger for finer control; still not working with distributed
 using Logging, LoggingExtras
 # io = open("log.txt", "a")
@@ -141,30 +121,27 @@ else
     exit(1)  # if error, comment this line, add root and base_folder below and run again
 end
 println("base_folder : $base_folder")
-# Supply custom root and base_folder for new machine
-# root_dir = ""  
-# base_folder = "$root_dir/..."
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if system_machine == "Windows" # addproc function works for both windows and WSL linux. Hence, this code is more for local vs remote machine
-  addprocs()  ## works on laptop, but on cluster shows all cores for node; not only the number of cpus requested
+    addprocs()  ## works on laptop, but on cluster shows all cores for node; not only the number of cpus requested
 elseif system_machine == "Slurm" #Sys.islinux()  
 #   root_dir = homedir()
 #   num_cores = parse(Int, ENV["SLURM_CPUS_PER_TASK"])  # ERROR: LoadError: KeyError: key "SLURM_CPUS_PER_TASK" not found [from Princenton website]
 #   println("No of cores = $num_cores")
-  using SlurmClusterManager  # to pick all nodes and cores allocated in slurm job
-  # With slurmcluster manager, hopefully next few lines of selecting cores is not necessary  
-#   ntasks = parse(Int, ENV["SLURM_NTASKS"])  # gave 1, when cpus-per-task was passed by slurm; not defined when just nodes=1 given.  
-  # cores = parse(Int, ENV["SLURM_JOB_CPUS_PER_NODE"])  # if one node provided; else we have parse as follows
-  subs = Dict("x"=>"*", "(" => "", ")" => "");
-  cores = sum(eval(Meta.parse(replace(ENV["SLURM_JOB_CPUS_PER_NODE"], r"x|\(|\)" => s -> subs[s]))))
-#   println("SLURM_NTASKS: $ntasks")
-#   println("SLURM_JOB_CPUS_PER_NODE: $ntasks")
-  println("SLURM Cores: $cores")
-#   addprocs()  # Not working. using all cores even though not allocated for use
-#   addprocs(cores)  # ; exeflags="--project"subtract one becuase master already has one; but seems to work with higher number as well
-  sleep(10)  # 60+cores To prevent scheduling job on more than 1 node on Discover Slurm cluster  
-  addprocs(SlurmManager())  # to use all available nodes and cores automatically. comment this line and uncomment one above this to match _v8.jl
+    using SlurmClusterManager  # to pick all nodes and cores allocated in slurm job
+    # With slurmcluster manager, hopefully next few lines of selecting cores is not necessary  
+    # ntasks = parse(Int, ENV["SLURM_NTASKS"])  # gave 1, when cpus-per-task was passed by slurm; not defined when just nodes=1 given.  
+    # cores = parse(Int, ENV["SLURM_JOB_CPUS_PER_NODE"])  # if one node provided; else we have parse as follows
+    subs = Dict("x"=>"*", "(" => "", ")" => "");
+    cores = sum(eval(Meta.parse(replace(ENV["SLURM_JOB_CPUS_PER_NODE"], r"x|\(|\)" => s -> subs[s]))))
+    # println("SLURM_NTASKS: $ntasks")
+    # println("SLURM_JOB_CPUS_PER_NODE: $ntasks")
+    println("SLURM Cores: $cores")
+    # addprocs()  # Not working. using all cores even though not allocated for use
+    # addprocs(cores)  # ; exeflags="--project"subtract one becuase master already has one; but seems to work with higher number as well
+    sleep(10)  # 60+cores To prevent scheduling job on more than 1 node on Discover Slurm cluster  
+    addprocs(SlurmManager())  # to use all available nodes and cores automatically. comment this line and uncomment one above this to match _v8.jl
 else
     println("Must be windows or linux system, aborting")
     exit() # <- you can provide exit code if you want
@@ -319,60 +296,6 @@ end_time = time_ns()
 running_time = (end_time - start_time)/1e9/3600
 println("Blender Running Time (hours) = $running_time")
 # exit(0)  # exit here to avoid running 2nd part (text2nc)
-
-#=
-# Get index to iterate over
-# Seems here x is rows and y are columns
-# tind, yind, xind  = size(A)  # need a better way because order can be changed sometimes!; ie, use more explicit way of extracting x and y index
-# This is more explicit
-xind  = size(A, X)
-yind  = size(A, Y)
-tind  = size(A, Ti)
-println("xind: ", xind, " , yind: ", yind, " tind:", tind)
-# TODO: Here only outer loop is parallelzed, inner loop run sequentially, then wait for another outer loop to start
-# https://github.com/JuliaLang/julia/issues/30343
-start_time = time_ns()
-# Threads.@threads for pix in pixels
-@sync @distributed for i in 1:xind
-# for i in 1:xind
-    for j in 1:yind
-        # println("i = ", i, " j = ", j)
-        val = A[X=i, Y=j][:MODSCAG]  # pick any varaible: if one is missing, all will be missing
-        # val = A[X=i, Y=j][:SWE_tavg]  # pick any varaible: if one is missing, all will be missing
-        # println("val = ", val[1])
-        if !ismissing(val[1])  # !isnan(val[1]) || 
-            # print("Inside IF")
-            # A_pt = A[X=i, Y=j]  # Get all variables for all time for one pixel
-            # extract each of the input variables separately (trying to match of processing was done in prior version with text inputs)
-            # but this approach is also useful if we decide to save each input netcdf file separately
-
-            # WRFSWE = A[X=i, Y=j]["SWE_tavg"].data  # Here "data" is an AbstractArray.
-            # WRFP = A[X=i, Y=j]["Snowf_tavg"].data
-            # WRFG = A[X=i, Y=j]["Qg_tavg"].data
-            # AirT = A[X=i, Y=j]["Tair_f_tavg"].data
-            # MSCF = A[X=i, Y=j]["MODSCAG"].data;
-
-            WRFSWE = A["SWE_tavg"][X=i, Y=j].data  # Here "data" is an AbstractArray.
-            WRFP = A["Snowf_tavg"][X=i, Y=j].data
-            WRFG = A["Qg_tavg"][X=i, Y=j].data
-            AirT = A["Tair_f_tavg"][X=i, Y=j].data
-            MSCF = A["MODSCAG"][X=i, Y=j].data;
-
-            
-            exp_dir = string("$tmp_txtDir/", "Pix_", i, "_", j)  # full path to folder for saving (temporary) text files
-            # process only if the pixel is not already processed 
-            if !isdir(exp_dir)
-                # Call blender for the pixel. This is the only required line
-                # rest of the codes are for houskeeking, preprocssing, post-processing
-                blender(exp_dir, WRFSWE, WRFP, WRFG, MSCF, AirT)
-                # println("After calling BLENDER function")
-                # here exp_dir = export directory for holding outputs text and log files (same as older version of code)
-            end
-        end
-    end
-end
-end_time = time_ns()
-=#
 
 # Step 4. PostProcessing: Combine text files into a grid and save as netcdf
 function text2nc(var, idx, outRaster)

@@ -145,7 +145,7 @@ def main():
         # on login node node name is discover, not borg
         hpc_name = "discover"
         cores = "45"  # so one core can be used to monitor run using srun/htop.
-        memory = "180gb"
+        # memory = "180gb"
     elif "asc.ohio-state.edu" in node:
         hpc_name = "unity"
         cores = "24"
