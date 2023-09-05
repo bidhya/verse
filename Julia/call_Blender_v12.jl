@@ -1,6 +1,6 @@
 """
-USAGE: Hardcoded with requirments for output_folder, start_idx, and end_idx for running on Discover
-- julia call_Blender_v9.jl test_v9 1 100
+USAGE: Hardcoded with requirments for output_folder_YEAR, start_idx, and end_idx for running on Discover
+- julia call_Blender_v12.jl test2016 1 100
 
 SWE estimation using Blender algorithm (Prof. Mike Durand).
 This is a helper script to organize inputs for calling the Blender function (Estimate_v3.jl).
@@ -14,79 +14,45 @@ The script is currently capable of running on my following platforms.
 - OSC HPC
 - Ohio-State Unity HPC 
 Julia Versions
-- 7.x (1, 2, and 3)
-- 8.x (only ran on Ubuntu-WSL)
+- 1.8.x (1, 2, and 3)
+- 1.9.3
 Minimum extra Julia Packages required
-- JuMP, Ipopt, Rasters 
+- JuMP, Ipopt, Rasters, NCDatasets 
 
 Approach
 ========
-This script will call Estimate_v5x.jl for each script at a time, and save temporary outputs to text file. Thus can readily be parallelzed.
+This script will call Estimate_v56.jl for each script at a time, and save temporary outputs to text file. Thus can readily be parallelzed.
 Threads was stright forward but did not work here due to known limitation of Ipopt and threads module.
 Working on alternative parallelization scheme using DISTRIBUTED module
 Finally, all text output files are assembled into a nc file. The script can thus run on parts of pixels at different times, and finally combined into one nc file.
-TODO: put a flag for this second part of script that combines individual text files into a nc file. Currently, this part is executed for every run.
-
 ==============================================================================================
-
-Call the blender fucntion :Estimate_v53.jl
-Here, we subset what pixels to  process
-Decide whether to process in Serial or Distributed way depending on the number of cores we have available
-
-Sep 11, 2022 (Organizing input and output folders with NoahMP run)
-Nov 11, 2022 : Last successful run for MODIS-CGF
-Nov 11, 2022 : Updating next (_v6) to incorporate cartesian index for intering with just one loop
-    helpful for parallel code
-Nov 12, 2022 : Successfully incorporated cartesian index
-Nov 19, 2022 : Starting with North America Run
-Nov 20, 2022 : checking for existence of file rather than folder before calling Blender function. 
-    Though not 100% full-proof yet, this will help process the pixel(s) at the point of failure due to early termination of runtime 
-Nov 21, 2022 : incorporate logging 
-Nov 21, 2022 : v6 is still good; but implementing logic here to process a subset of pixels due to limitation of 12 hours for Discover
-Nov 22, 2022 : v8 is using Estimate_v54 where 9 text outputs are combined into 1 text file
-Nov 22, 2022 : Updating text2nc function to create nc file from the combined text file
-Nov 27, 2022 : Checking the output file before loading Rasters array; should save (signficantly) time for pixels already processed
 Dec 03, 2022 : Trying multinodes with ClusterManagers.jl
-May 02, 2023 : ../WY_merged/2016_seup_modis.nc is the new input files with NDSI converted to SCF   
-Jul 11, 2023 : running at OSC from /fs/scratch folder and copying input file to tempdir  
-
-#datadir is a moving directory containing an argument given in the job file
-# in the shell script the arg is increased by a step counter
-# same arg moves the pix number directory in each seq run
-
+Sep 04, 2023 : text and log files saved in separate folders; created call_Blender_v12.jl uses Estimate_v56.jl
 """
 arg_len = length(ARGS)
 out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_text and nc_outputs saved here
 water_year = out_subfolder[end-3:end] #last 4 chars are assumed year, else error. out_subfolder[3:end]
-start_idx = ARGS[2]
+start_idx = ARGS[2]  # this is string
 end_idx = ARGS[3]
-println(typeof(start_idx))
-println(typeof(start_idx))
-
 start_idx = parse(Int64, start_idx)
 end_idx = parse(Int64, end_idx)
-println(typeof(start_idx))
-println(typeof(start_idx))
 
-log_filename = string(start_idx, "_", end_idx, ".log")  #construct a log filename
+log_filename = string(start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
 # Nov 20, 2022: Updated logger for finer control; still not working with distributed
 using Logging, LoggingExtras
-# io = open("log.txt", "a")
-# logger = SimpleLogger(io)  # Create a simple logger
-# logger = FileLogger("logfile.txt")
-# logger = FileLogger("log.txt"; append = false)  # true
 logger = FormatLogger(open(log_filename, "w"), 0) do io, args
     # Write the module, level and message only
     println(io, args._module, " | ", "[", args.level, "] ", args.message)
 end
-global_logger(logger)  # Set the global logger to logger; else logs doing directly to console
+info_only_logger = MinLevelLogger(logger, Logging.Info);  # Logging.Error
+global_logger(info_only_logger)  # Set the global logger to logger; else logs doing directly to console
 
 using Distributed  # otherwise everywhere macro won't work
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # 1. Setup inputs and output directories and file locations
 # select the root directory (this will be different on windows, linux or Mac) 
 host_machine = gethostname()
-println("Host computer machine: $host_machine")
+@info("Host computer machine: $host_machine")
 # if occursin("STAFF-BY-M", host_machine)
 if occursin("L-JY0R5X3", host_machine)
     if Sys.iswindows()
@@ -94,7 +60,7 @@ if occursin("L-JY0R5X3", host_machine)
     elseif Sys.islinux()
         root_dir = "/mnt/d"  #for Ubuntu (WSL2 on windows machine
     else
-        println("Unknown system on windows, manually add root directory before proceeding. Exiting code")
+        @info("Unknown system on windows, manually add root directory before proceeding. Exiting code")
         exit(1)    
     end
     base_folder = "$root_dir/coressd/Blender"
@@ -117,10 +83,10 @@ elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
     tmpdir =  ENV["TMPDIR"]  #tempdir()
     system_machine = "Slurm"
 else
-    println("Unknown computer, manually add root directory before proceeding. Exiting code")
+    @info("Unknown computer, manually add root directory before proceeding. Exiting code")
     exit(1)  # if error, comment this line, add root and base_folder below and run again
 end
-println("base_folder : $base_folder")
+@info("base_folder : $base_folder")
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if system_machine == "Windows" # addproc function works for both windows and WSL linux. Hence, this code is more for local vs remote machine
@@ -137,23 +103,23 @@ elseif system_machine == "Slurm" #Sys.islinux()
     cores = sum(eval(Meta.parse(replace(ENV["SLURM_JOB_CPUS_PER_NODE"], r"x|\(|\)" => s -> subs[s]))))
     # println("SLURM_NTASKS: $ntasks")
     # println("SLURM_JOB_CPUS_PER_NODE: $ntasks")
-    println("SLURM Cores: $cores")
+    @info("SLURM Cores: $cores")
     # addprocs()  # Not working. using all cores even though not allocated for use
     # addprocs(cores)  # ; exeflags="--project"subtract one becuase master already has one; but seems to work with higher number as well
     sleep(10)  # 60+cores To prevent scheduling job on more than 1 node on Discover Slurm cluster  
     addprocs(SlurmManager())  # to use all available nodes and cores automatically. comment this line and uncomment one above this to match _v8.jl
 else
-    println("Must be windows or linux system, aborting")
+    @info("Must be windows or linux system, aborting")
     exit() # <- you can provide exit code if you want
 end
 # addprocs()
 
 # println("Number of procs: $(nprocs())")  
-println("Number of processes: ", nprocs())
-println("Number of workers: ", nworkers())
+@info("Number of processes: $(nprocs())")
+@info("Number of workers: $(nworkers())")
 # Everywhere should come after cores are already added
 @everywhere using Rasters, NCDatasets
-@everywhere include("Estimate_v55.jl")  #https://docs.julialang.org/en/v1/manual/code-loading/; evaluated in global scope
+@everywhere include("Estimate_v56.jl")  #https://docs.julialang.org/en/v1/manual/code-loading/; evaluated in global scope
 
 
 # base_folder = "$root_dir/Github/Blender"
@@ -175,11 +141,13 @@ if occursin(".osc.edu", host_machine)
 else
     out_folder = "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
 end
-println("Output_folder : $out_folder")
+@info("Output_folder : $out_folder")
 
 # Make a folder insise HPC node because we want to copy existing files there
-tmp_txtDir = "$out_folder/outputs_txt"    # To save text outputs for each pixel
-# mkpath(tmp_txtDir)
+exp_dir = "$out_folder/outputs_txt"    # tmp_txtDir(old name) To save text outputs for each pixel
+logDir = "$out_folder/logs"    # Save logs in separate folder
+mkpath(exp_dir)  # mkdir
+mkpath(logDir)  # mkdir
 # cp("$base_folder/Runs/$out_subfolder/outputs_txt", "$tmp_txtDir/$water_year")  # copy to local machine; error if running the first time as this dir would not exist
 
 nc_outDir = "$out_folder/outputs"         # To convert text outputs to netcdf file
@@ -231,11 +199,11 @@ start_time = time_ns()
 # Extract cartesian index for non-missing (ie, all) data using one-day of data 
 valid_pix_ind = findall(!ismissing, A["SWE_tavg"][Ti=1])
 valid_pix_count = length(valid_pix_ind)
-println("Total valid pixel count = ", valid_pix_count)
+@info("Total valid pixel count = $(valid_pix_count)")
 if start_idx > valid_pix_count
     # return nothing
     exit(0)
-    println("Exiting without Run because start_idx is greater than valid_pix_idx", start_idx, valid_pix_count)
+    @info("Exiting without Run because start_idx is greater than valid_pix_idx", start_idx, valid_pix_count)
 end
 if end_idx > valid_pix_count
     # if the passed index is more than valid number of pixels
@@ -249,8 +217,9 @@ end
 ind = valid_pix_ind[start_idx:end_idx]
 # TODO (May 26, 2026): check the files that are already processed, so processing of those can be skipped
 
-@info("Starting with loop: \n")
-println("Processing ", length(ind), " out of ", length(valid_pix_ind))
+@info("Starting with loop.")
+@info("====================")
+@info("Processing $(length(ind)) of $(length(valid_pix_ind))")
 # @info("Processing ", length(ind), " out of ", length(valid_pix_ind))
 # exit(0)
 """ General info about pixel counts
@@ -266,12 +235,12 @@ Non-missing pixel count = 1011329
 # for ij in ind
     i = ij[1]
     j = ij[2]
-    # println("ij = ", ij)
-    exp_dir = string("$tmp_txtDir/", "Pix_", i, "_", j)  # full path to folder for saving (temporary) text files   
+    # @info("ij = ", ij)
+    # exp_dir = string("$tmp_txtDir/", "Pix_", i, "_", j)  # full path to folder for saving (temporary) text files   
     # if !isdir(exp_dir)  # process only if the pixel is not already processed
     # if !ispath(exp_dir * "/SWEpv.txt") # ispath is generic for both file and folder
     # if !isfile(exp_dir * "/SWEpv.txt")  # This is better check: process the pixel only if the last file exported by optimzer (SWEpv.txt) does not yet exist
-    if !isfile(exp_dir * "/out_vars.txt")  # may still be problem if scrip ended prematurely without writing the full file
+    if !isfile("$(exp_dir)/Pix_$(i)_$(j).txt")  # may still be problem if scrip ended prematurely without writing the full file
         # extract each of the input variables separately (trying to match of processing was done in prior version with text inputs)
         # but this approach is also useful if we decide to save each input netcdf file separately
         WRFSWE = A["SWE_tavg"][X=i, Y=j].data  # Here "data" is an AbstractArray.
@@ -282,19 +251,19 @@ Non-missing pixel count = 1011329
         # @info(exp_dir * "/SWEpv.txt")
         # Call blender for the pixel. This is the only required line
         # rest of the codes are for houskeeking, preprocssing, post-processing
-        blender(exp_dir, WRFSWE, WRFP, WRFG, MSCF, AirT)
+        blender(out_folder, i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)
         GC.gc()
         # cp(exp_dir, "$base_folder/Runs/$out_subfolder/outputs_txt", force=True)
         # cp(exp_dir, "$base_folder/Runs/$out_subfolder/outputs_txt", force=True)
         # count +=1
-        # println("After calling BLENDER function")
+        # @info("After calling BLENDER function")
         # here exp_dir = export directory for holding outputs text and log files (same as older version of code)
     end
 end
 # without sync above one of the processor to the next step (combining text files to netcdf) which will cause error
 end_time = time_ns()
 running_time = (end_time - start_time)/1e9/3600
-println("Blender Running Time (hours) = $running_time")
+@info("Blender Running Time = $(round(running_time, digits=3)) hours")
 # exit(0)  # exit here to avoid running 2nd part (text2nc)
 
 # Step 4. PostProcessing: Combine text files into a grid and save as netcdf
@@ -314,12 +283,14 @@ function text2nc(var, idx, outRaster)
     # @sync @distributed for pix in pixels  # worked
     Threads.@threads for pix in pixels  # using this nested thread too seems to help processing faster   
     # for pix in pixels  # this worked
-        pix_xy = split(pix, "_")
+        pix_xy = split(pix, ".txt")[1]
+        pix_xy = split(pix_xy, "_")
         x = parse(Int16, pix_xy[2])
         y = parse(Int16, pix_xy[3])
-        out_vars = readdlm("$tmp_txtDir/$pix/out_vars.txt")  # read whole combined file for that pixel
+        out_vars = readdlm("$(exp_dir)/$(pix)") # readdlm("$(exp_dir)/Pix_$(x)_$(y).txt")
+        # out_vars = readdlm("$exp_dir/$pix/out_vars.txt")  # $(exp_dir)/Pix_$(i)_$(j).txt   read whole combined file for that pixel
         # out_vars = readdlm("$tmpdir/outputs_txt/$pix/out_vars.txt")  # read whole combined file for that pixel
-        # outRaster[X=x, Y=y] = readdlm("$tmp_txtDir/$pix/$var.txt");  # Older workflow
+        # outRaster[X=x, Y=y] = readdlm("$exp_dir/$pix/$var.txt");  # Older workflow
         outRaster[X=x, Y=y] = out_vars[:,idx]
     end
     # Save to nc file; 
@@ -328,9 +299,9 @@ function text2nc(var, idx, outRaster)
 end
 
 # Count if all pixels are processed before calling the following section for converting text files to netcdf file
-sleep(5)
+sleep(1)
 
-pixels = readdir(tmp_txtDir)  # Danger: Error if we have outputs from prior runs that do not match current A dimensions
+pixels = readdir(exp_dir)  # Danger: Error if we have outputs from prior runs that do not match current A dimensions
 pixels = [pix for pix in pixels if startswith(pix, "Pix")];
 # if length(pixels) == valid_pix_count && system_machine == "Slurm"
 #     run(`python $root_dir/Github/verse/Python/submit_txt2nc_job.py $water_year`)
@@ -342,11 +313,11 @@ if length(pixels) == valid_pix_count #&& system_machine == "Windows"
     if system_machine == "Slurm"
         # copy text files to node; but this seems to increase runtime on OSC; so comment next two lines to leave txt_files on original location  
         t1 = time_ns()
-        cp(tmp_txtDir, "$tmpdir/outputs_txt")  
-        tmp_txtDir = "$tmpdir/outputs_txt"
+        cp(exp_dir, "$tmpdir/outputs_txt")  
+        exp_dir = "$tmpdir/outputs_txt"
         t2 = time_ns()
         running_time = (t2 - t1)/1e9/3600
-        println("Total to copy text time files to tmpdir (hours) = $running_time")
+        @info("Total to copy text time files to tmpdir (hours) = $running_time")
     end
     @info("Creating OUTPUT NETCDF FILES")
     outRaster = copy(A[:SWE_tavg])
@@ -374,8 +345,8 @@ end
 end_time = time_ns()
 running_time = (end_time - start_time)/1e9/60  # minutes
 if running_time < 60
-    println("Grant Total Running Time (minutes) = $(running_time)")
+    @info("Grant Total Running Time = $(round(running_time, digits=2)) minutes")
 else
     running_time = running_time/60 # convert to hours
-    println("Grant Total Running Time (hours) = $(running_time)")
+    @info("Grant Total Running Time = $(round(running_time, digits=2)) hours")
 end

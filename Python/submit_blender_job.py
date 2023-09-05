@@ -111,7 +111,7 @@ def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00',
             # fh.writelines(f"julia /discover/nobackup/projects/coressd/Github/verse/Julia/call_Blender_v10.jl {out_subfolder} {start_idx} {end_idx}\n\n")
         else:
             fh.writelines("cp -r ~/Github/verse .\n")
-            fh.writelines(f"julia verse/Julia/call_Blender_v11.jl {out_subfolder} {start_idx} {end_idx}\n\n")
+            fh.writelines(f"julia verse/Julia/call_Blender_v12.jl {out_subfolder} {start_idx} {end_idx}\n\n")
             # fh.writelines(f"julia ~/Github/verse/Julia/call_Blender_v10.jl {out_subfolder} {start_idx} {end_idx}\n\n")
         fh.writelines("cp *.log $SLURM_SUBMIT_DIR \n")
         fh.writelines("squeue --job $SLURM_JOBID \n")

@@ -51,9 +51,16 @@ TODO: Generate Analysis ready data for North America by merging SEUP and MODIS_C
         NoahMP --> seup  
         WY_merged --> Inputs; even move outside the NoahMP folder
 
+## Aug 31, 2023
+Major refactoring going-on inside v12.jl and Estimate_v56.jl  
+Separate outputs_txt and logs folders  
+Modifiy code log to save only Info and higer messages  
+
 ## Aug 30, 2023
-Freeze v11.jl with cleanup of some comments  
+Freeze v11.jl and Estimate_v55.jl with cleanup of some comments  
 Created v12.jl to make modifications    
+Create Estimate_v56.jl for v12.jl
+
 
 
 ## Aug 07, 2023
