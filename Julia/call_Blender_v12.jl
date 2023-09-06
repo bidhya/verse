@@ -36,32 +36,28 @@ start_idx = ARGS[2]  # this is string
 end_idx = ARGS[3]
 start_idx = parse(Int64, start_idx)
 end_idx = parse(Int64, end_idx)
-
-log_filename = string(start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
-# Nov 20, 2022: Updated logger for finer control; still not working with distributed
-using Logging, LoggingExtras
-logger = FormatLogger(open(log_filename, "w"), 0) do io, args
-    # Write the module, level and message only
-    println(io, args._module, " | ", "[", args.level, "] ", args.message)
+if occursin("test", out_subfolder)
+    # if test substring is part of output subfolder then do the test run on subset of pixels
+    test_run = true
+else
+    test_run = false
 end
-info_only_logger = MinLevelLogger(logger, Logging.Info);  # Logging.Error
-global_logger(info_only_logger)  # Set the global logger to logger; else logs doing directly to console
 
+using Logging, LoggingExtras
 using Distributed  # otherwise everywhere macro won't work
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # 1. Setup inputs and output directories and file locations
 # select the root directory (this will be different on windows, linux or Mac) 
 host_machine = gethostname()
-@info("Host computer machine: $host_machine")
 # if occursin("STAFF-BY-M", host_machine)
 if occursin("L-JY0R5X3", host_machine)
     if Sys.iswindows()
         root_dir = "D:"  #for windows machine
     elseif Sys.islinux()
         root_dir = "/mnt/d"  #for Ubuntu (WSL2 on windows machine
-    else
-        @info("Unknown system on windows, manually add root directory before proceeding. Exiting code")
-        exit(1)    
+    # else
+    #     @info("Unknown system on windows, manually add root directory before proceeding. Exiting code")
+    #     exit(1)    
     end
     base_folder = "$root_dir/coressd/Blender"
     # Get info on system machine. We use this info to farm number of processors. 
@@ -82,37 +78,47 @@ elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
     base_folder = "$root_dir/Blender"  # "$root_dir/Github/coressd/Blender"
     tmpdir =  ENV["TMPDIR"]  #tempdir()
     system_machine = "Slurm"
+    # @info("SLURM_SUBMIT_DIR: $(ENV["SLURM_SUBMIT_DIR"])")
 else
-    @info("Unknown computer, manually add root directory before proceeding. Exiting code")
+    @info("Unknown computer, manually add root directory before proceeding. Exiting code")  # will output directly to console, ie like print statement
     exit(1)  # if error, comment this line, add root and base_folder below and run again
 end
-@info("base_folder : $base_folder")
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+# Sep 05, 2023: Removing SlurmClusterManager prototyping 
 if system_machine == "Windows" # addproc function works for both windows and WSL linux. Hence, this code is more for local vs remote machine
+    log_filename = string(start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
     addprocs()  ## works on laptop, but on cluster shows all cores for node; not only the number of cpus requested
-elseif system_machine == "Slurm" #Sys.islinux()  
-#   root_dir = homedir()
-#   num_cores = parse(Int, ENV["SLURM_CPUS_PER_TASK"])  # ERROR: LoadError: KeyError: key "SLURM_CPUS_PER_TASK" not found [from Princenton website]
-#   println("No of cores = $num_cores")
-    using SlurmClusterManager  # to pick all nodes and cores allocated in slurm job
-    # With slurmcluster manager, hopefully next few lines of selecting cores is not necessary  
+elseif system_machine == "Slurm"
+    log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/",start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
+    # cores = parse(Int, ENV["SLURM_CPUS_PER_TASK"])  # ERROR: LoadError: KeyError: key "SLURM_CPUS_PER_TASK" not found [from Princenton website]
     # ntasks = parse(Int, ENV["SLURM_NTASKS"])  # gave 1, when cpus-per-task was passed by slurm; not defined when just nodes=1 given.  
     # cores = parse(Int, ENV["SLURM_JOB_CPUS_PER_NODE"])  # if one node provided; else we have parse as follows
     subs = Dict("x"=>"*", "(" => "", ")" => "");
-    cores = sum(eval(Meta.parse(replace(ENV["SLURM_JOB_CPUS_PER_NODE"], r"x|\(|\)" => s -> subs[s]))))
+    cores = sum(eval(Meta.parse(replace(ENV["SLURM_JOB_CPUS_PER_NODE"], r"x|\(|\)" => s -> subs[s]))))  # for 1 or more nodes (generic)
     # println("SLURM_NTASKS: $ntasks")
     # println("SLURM_JOB_CPUS_PER_NODE: $ntasks")
     @info("SLURM Cores: $cores")
     # addprocs()  # Not working. using all cores even though not allocated for use
-    # addprocs(cores)  # ; exeflags="--project"subtract one becuase master already has one; but seems to work with higher number as well
-    sleep(10)  # 60+cores To prevent scheduling job on more than 1 node on Discover Slurm cluster  
-    addprocs(SlurmManager())  # to use all available nodes and cores automatically. comment this line and uncomment one above this to match _v8.jl
+    addprocs(cores)  # ; exeflags="--project"subtract one becuase master already has one; but seems to work with higher number as well
+    # using SlurmClusterManager  # to pick all nodes and cores allocated in slurm job
+    # # With slurmcluster manager, hopefully next few lines of selecting cores is not necessary  
+    # sleep(10)  # 60+cores To prevent scheduling job on more than 1 node on Discover Slurm cluster  
+    # addprocs(SlurmManager())  # to use all available nodes and cores automatically. comment this line and uncomment one above this to match _v8.jl
 else
     @info("Must be windows or linux system, aborting")
     exit() # <- you can provide exit code if you want
 end
 # addprocs()
+logger = FormatLogger(open(log_filename, "w"), 0) do io, args
+    # Write the module, level and message only
+    println(io, args._module, " | ", "[", args.level, "] ", args.message)
+end
+info_only_logger = MinLevelLogger(logger, Logging.Info);  # Logging.Error
+global_logger(info_only_logger)  # Set the global logger to logger; else logs doing directly to console
+
+@info("base_folder : $base_folder")
+@info("Host computer machine: $host_machine")
 
 # println("Number of procs: $(nprocs())")  
 @info("Number of processes: $(nprocs())")
@@ -120,7 +126,6 @@ end
 # Everywhere should come after cores are already added
 @everywhere using Rasters, NCDatasets
 @everywhere include("Estimate_v56.jl")  #https://docs.julialang.org/en/v1/manual/code-loading/; evaluated in global scope
-
 
 # base_folder = "$root_dir/Github/Blender"
 # DataDir= "$base_folder/nc_files"
@@ -155,11 +160,10 @@ nc_outDir = "$out_folder/outputs"         # To convert text outputs to netcdf fi
 # nc_exp_dir = "$DataDir/$out_subfolder/outputs_nc"  # To convert text outputs to netcdf file
 
 # # 2. Read the Input netCDF file
-# A = RasterStack("$base_folder/nc_files/inputs/merged.nc");  #merged_proj.nc
-# For NoahMP
 # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_modscag.nc")  #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 # Following check are for prototyping only when running code locally, because I do not yet have NorthAmerica netcdf file
-if occursin("L-JY0R5X3", host_machine)  # STAFF-BY-M
+if occursin("L-JY0R5X3", host_machine) || test_run # || testing = True; use this for testing as well
+    @info("Test Run only.")
     # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc", lazy=true)  # Error now (Aug 15, 2023). maybe it is old file/format
     A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true)
     subset = A[X(Between(-120.5, -120)), Y(Between(60, 60.5))]  # use small chip for prototyping
@@ -181,6 +185,13 @@ else
     A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc", lazy=true)  ## https://github.com/rafaqz/Rasters.jl/issues/449
     # exit(1)  # println("Exiting code. Manually set A (rasterstack) around line 188")
 end
+
+# # For Testing
+# A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true)
+# subset = A[X(Between(-120.5, -120)), Y(Between(60, 60.5))]  # use small chip for prototyping
+# subset_fname = "$(DataDir)/WY_merged/subset_$(water_year)_seup_modis.nc"
+# isfile(subset_fname) || write(subset_fname, subset)  # save. we need for post-processing analysis of results
+# A = RasterStack(subset_fname, lazy=true)  # read again (why). for consistency
 
 
 # A = RasterStack("$DataDir/WY_merged/2016_clip3.nc")  # for NoahMP with CGF MODIS
@@ -218,7 +229,7 @@ ind = valid_pix_ind[start_idx:end_idx]
 # TODO (May 26, 2026): check the files that are already processed, so processing of those can be skipped
 
 @info("Starting with loop.")
-@info("====================")
+@info("==========================================================")
 @info("Processing $(length(ind)) of $(length(valid_pix_ind))")
 # @info("Processing ", length(ind), " out of ", length(valid_pix_ind))
 # exit(0)
@@ -228,9 +239,8 @@ Non-missing pixel count = 1011329
 """
 # @sync makes the code wait for all processes to finish their part of the computation before moving on from the loop
 # ie, without @sync, the on of the processors may move to next while loop is still running, creating error and crash whole script prematurely 
-# Threads.@threads for pix in pixels
+# Threads.@threads for ij in ind
 # @distributed for ij in ind
-# global count = 1
 @sync @distributed for ij in ind
 # for ij in ind
     i = ij[1]

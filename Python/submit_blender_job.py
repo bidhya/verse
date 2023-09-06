@@ -98,8 +98,10 @@ def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00',
         # Julia script specific inputs and parameters
         fh.writelines(f"echo Blender run for {out_subfolder} start_idx = {start_idx} end_idx = {end_idx}\n\n")
         # uncomment next line on thread if using threads in final run for creating final nc files from txt files 
-        fh.writelines(f"export JULIA_NUM_THREADS={cores}\n")  # 10
-        fh.writelines("sleep 10\n")  # for slurm error when scheduling on multi nodes
+        # fh.writelines("export OPENBLAS_NUM_THREADS=1\n")
+        # fh.writelines(f"export JULIA_NUM_THREADS={cores}\n")  # 10
+        fh.writelines("export JULIA_NUM_THREADS=$SLURM_NTASKS\n")  # or $SLURM_JOB_CPUS_PER_NODE
+        fh.writelines("sleep 5\n")  # for slurm error when scheduling on multi nodes
         # fh.writelines(f"cores={cores} #we can only run 30 jobs concurrently on Unity\n")
         # fh.writelines(f"log_name=.out/{jobname}.log\n")
         fh.writelines("\n")
@@ -112,8 +114,8 @@ def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00',
         else:
             fh.writelines("cp -r ~/Github/verse .\n")
             fh.writelines(f"julia verse/Julia/call_Blender_v12.jl {out_subfolder} {start_idx} {end_idx}\n\n")
-            # fh.writelines(f"julia ~/Github/verse/Julia/call_Blender_v10.jl {out_subfolder} {start_idx} {end_idx}\n\n")
-        fh.writelines("cp *.log $SLURM_SUBMIT_DIR \n")
+            # fh.writelines(f"julia --threads $SLURM_NTASKS verse/Julia/call_Blender_v12.jl {out_subfolder} {start_idx} {end_idx}\n\n")  # for threads but give error
+        # fh.writelines("cp *.log $SLURM_SUBMIT_DIR \n")  # if log files were saved on compute node
         fh.writelines("squeue --job $SLURM_JOBID \n")
         fh.writelines("echo List of files on TMPDIR\n")
         fh.writelines("echo ========================================================\n")
