@@ -51,17 +51,16 @@ TODO: Generate Analysis ready data for North America by merging SEUP and MODIS_C
         NoahMP --> seup  
         WY_merged --> Inputs; even move outside the NoahMP folder
 
-## Aug 31, 2023
+## Sep 06, 2023
 Major refactoring going-on inside v12.jl and Estimate_v56.jl  
 Separate outputs_txt and logs folders  
 Modifiy code log to save only Info and higer messages  
+Incorporate test: use "test" in substring for output folder to run test quickly  
 
 ## Aug 30, 2023
 Freeze v11.jl and Estimate_v55.jl with cleanup of some comments  
 Created v12.jl to make modifications    
 Create Estimate_v56.jl for v12.jl
-
-
 
 ## Aug 07, 2023
 Adding lazy=true when reading rasterstack because of updates to rasters and dimensional data. example,  
