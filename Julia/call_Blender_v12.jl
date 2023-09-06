@@ -186,14 +186,6 @@ else
     # exit(1)  # println("Exiting code. Manually set A (rasterstack) around line 188")
 end
 
-# # For Testing
-# A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true)
-# subset = A[X(Between(-120.5, -120)), Y(Between(60, 60.5))]  # use small chip for prototyping
-# subset_fname = "$(DataDir)/WY_merged/subset_$(water_year)_seup_modis.nc"
-# isfile(subset_fname) || write(subset_fname, subset)  # save. we need for post-processing analysis of results
-# A = RasterStack(subset_fname, lazy=true)  # read again (why). for consistency
-
-
 # A = RasterStack("$DataDir/WY_merged/2016_clip3.nc")  # for NoahMP with CGF MODIS
 # Subset only the required variables because the nc file can have extraneous vars that cause problem with julia
 A = A[(:Snowf_tavg, :SWE_tavg, :Tair_f_tavg, :Qg_tavg, :MODSCAG)];  # to remove spatial ref that cause problem during subsetting
