@@ -321,6 +321,7 @@ function text2nc(var, idx, outRaster)
         # out_vars = readdlm("$tmpdir/outputs_txt/$pix/out_vars.txt")  # read whole combined file for that pixel
         # outRaster[X=x, Y=y] = readdlm("$tmp_txtDir/$pix/$var.txt");  # Older workflow
         outRaster[X=x, Y=y] = out_vars[:,idx]
+        # here if text file is only partially processed; this kind of error:  nested task error: DimensionMismatch: tried to assign 124-element array to 1×1×366 destination
     end
     # Save to nc file; 
     mkpath(nc_outDir)
@@ -339,15 +340,15 @@ pixels = [pix for pix in pixels if startswith(pix, "Pix")];
 # end
 
 if length(pixels) == valid_pix_count #&& system_machine == "Windows"
-    if system_machine == "Slurm"
-        # copy text files to node; but this seems to increase runtime on OSC; so comment next two lines to leave txt_files on original location  
-        t1 = time_ns()
-        cp(tmp_txtDir, "$tmpdir/outputs_txt")  
-        tmp_txtDir = "$tmpdir/outputs_txt"
-        t2 = time_ns()
-        running_time = (t2 - t1)/1e9/3600
-        println("Total to copy text time files to tmpdir (hours) = $running_time")
-    end
+    # if system_machine == "Slurm"
+    #     # copy text files to node; but this seems to increase runtime on OSC; so comment next two lines to leave txt_files on original location  
+    #     t1 = time_ns()
+    #     cp(tmp_txtDir, "$tmpdir/outputs_txt")  # ERROR: LoadError: IOError: sendfile: no space left on device (ENOSPC) on Discover
+    #     tmp_txtDir = "$tmpdir/outputs_txt"
+    #     t2 = time_ns()
+    #     running_time = (t2 - t1)/1e9/3600
+    #     println("Total to copy text time files to tmpdir (hours) = $running_time")
+    # end
     @info("Creating OUTPUT NETCDF FILES")
     outRaster = copy(A[:SWE_tavg])
     var_idx_tuple = (("SWE", 1), ("Gmelt", 2), ("G", 3), ("Precip", 4), ("Us", 5), ("Gpv", 6), ("Gmeltpv", 7), ("Upv", 8), ("SWEpv", 9))

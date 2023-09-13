@@ -108,7 +108,7 @@ def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00',
         # Call the main julia script to run by this slurm script
         if hpc == "discover":
             fh.writelines("cp -r /discover/nobackup/projects/coressd/Github/verse .\n")
-            fh.writelines(f"julia verse/Julia/call_Blender_v11.jl {out_subfolder} {start_idx} {end_idx}\n\n")
+            fh.writelines(f"julia verse/Julia/call_Blender_v12.jl {out_subfolder} {start_idx} {end_idx}\n\n")
             # fh.writelines(f"julia /discover/nobackup/byadav/Github/giuh/scripts/verse/Julia/call_Blender_v8.jl NA_temp {start_idx} {end_idx}\n\n")
             # fh.writelines(f"julia /discover/nobackup/projects/coressd/Github/verse/Julia/call_Blender_v10.jl {out_subfolder} {start_idx} {end_idx}\n\n")
         else:

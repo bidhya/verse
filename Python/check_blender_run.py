@@ -38,11 +38,20 @@ missing_count = 0
 processed_count = 0
 for pix in pixels:
     # file_count = os.listdir(f"{tmp_txtDir}/{pix}")
-    if not os.path.exists(f"{tmp_txtDir}/{pix}/out_vars.txt"):
+    fname = f"{tmp_txtDir}/{pix}/out_vars.txt"
+    if not os.path.exists(fname):
         logging.info(f"Check: {tmp_txtDir}/{pix}")
         missing_count += 1
     else:
         processed_count += 1
+        # to check if some files are only partially processed (ie, runtime terminated pre-maturely)
+        # This kind of error message from Julia Blender Run:  nested task error: DimensionMismatch: tried to assign 124-element array to 1×1×366 destination
+        with open(fname) as fi:
+            # Runtime ~6 hours with this condition 
+            if len(fi.readlines()) < 364:
+                logging.info(pix)
+                # TODO: move the this pixel subfolder to temporary location for further examination
+                # will also help in Blender run because the pixel will be processed and hence the text file can be combined to nc file  
 
 logging.info(f'Processed_count = {processed_count}')
 logging.info(f'Missing_count = {missing_count}')
