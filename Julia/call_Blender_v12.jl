@@ -312,35 +312,23 @@ pixels = [pix for pix in pixels if startswith(pix, "Pix")];
 # end
 
 if length(pixels) == valid_pix_count #&& system_machine == "Windows"
-    if system_machine == "Slurm"
-        # copy text files to node; but this seems to increase runtime on OSC; so comment next two lines to leave txt_files on original location  
-        t1 = time_ns()
-        cp(exp_dir, "$tmpdir/outputs_txt")  
-        exp_dir = "$tmpdir/outputs_txt"
-        t2 = time_ns()
-        running_time = (t2 - t1)/1e9/3600
-        @info("Total to copy text time files to tmpdir (hours) = $running_time")
-    end
+    # if system_machine == "Slurm"
+    #     # copy text files to node; but this seems to increase runtime on OSC; so comment next two lines to leave txt_files on original location  
+    #     t1 = time_ns()
+    #     cp(exp_dir, "$tmpdir/outputs_txt")  
+    #     exp_dir = "$tmpdir/outputs_txt"
+    #     t2 = time_ns()
+    #     running_time = (t2 - t1)/1e9/3600  # 5 hours on Discover just to copy files. Thus, remove this copy part  
+    #     @info("Total to copy text time files to tmpdir (hours) = $(round(running_time, digits=2))")
+    # end
     @info("Creating OUTPUT NETCDF FILES")
     outRaster = copy(A[:SWE_tavg])
     var_idx_tuple = (("SWE", 1), ("Gmelt", 2), ("G", 3), ("Precip", 4), ("Us", 5), ("Gpv", 6), ("Gmeltpv", 7), ("Upv", 8), ("SWEpv", 9))
     for var_idx in var_idx_tuple  # Threads.@threads 
         var_name = var_idx[1]
         var_idx = var_idx[2]
-        text2nc(var_name, var_idx, outRaster);
+        text2nc(var_name, var_idx, outRaster);  # text2nc("SWE", 1, outRaster)
     end
-    # # Call the function for creating netcdf for each of the text output files separately
-    # # Use the name of text file that was saved; Change the filename in main script if so required
-    # # TODO Parallelize this. Convenient when using multiple nodes to solve whole year in one go. 
-    # text2nc("SWE", 1, outRaster)
-    # text2nc("Gmelt", 2, outRaster)
-    # text2nc("G", 3, outRaster)
-    # text2nc("Precip", 4, outRaster)
-    # text2nc("Us", 5, outRaster)
-    # text2nc("Gpv", 6, outRaster)
-    # text2nc("Gmeltpv", 7, outRaster)
-    # text2nc("Upv", 8, outRaster)
-    # text2nc("SWEpv", 9, outRaster);
 else
     @info("All pixels not yet processed, so OUTPUT NETCDF FILES not yet created")
 end

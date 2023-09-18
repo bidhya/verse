@@ -20,7 +20,7 @@ logging.info('-------------------------START LOGGING----------------------------
 
 base_folder = "/discover/nobackup/projects/coressd"
 tmp_txtDir = f"{base_folder}/Blender/Runs/WY{water_year}/outputs_txt"    # Outputs are saved here
-pixels = os.listdir(tmp_txtDir)
+pixels = os.listdir(tmp_txtDir)  # for v12 onwards this is actual Pix_xxx_yyy.txt file
 pixels = [pix for pix in pixels if pix.startswith("Pix")]
 print(len(pixels))
 logging.info(f"Number pixel folder: {len(pixels)}")
@@ -38,7 +38,8 @@ missing_count = 0
 processed_count = 0
 for pix in pixels:
     # file_count = os.listdir(f"{tmp_txtDir}/{pix}")
-    fname = f"{tmp_txtDir}/{pix}/out_vars.txt"
+    # fname = f"{tmp_txtDir}/{pix}/out_vars.txt"  # only for v11
+    fname = f"{tmp_txtDir}/{pix}"  #actual text file
     if not os.path.exists(fname):
         logging.info(f"Check: {tmp_txtDir}/{pix}")
         missing_count += 1
