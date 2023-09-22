@@ -55,27 +55,9 @@ Jul 11, 2023 : running at OSC from /fs/scratch folder and copying input file to 
 # same arg moves the pix number directory in each seq run
 
 """
-# DataDir= "/users/PAS0503/jldechow/foursix/AllTuolomne46/Pix3252"
-# DataDir = ARGS[1]
-# cores = ARGS[1]
-# cores = parse(Int8, cores)  # maximum of Int8 is 127 only
-
-# # This start, end index is no more useful because we are processing from netcdf rather than text files separately
-# start_idx = parse(Int16, ARGS[1])
-# end_idx = parse(Int16, ARGS[2])
-# Base.ARGS :: Vector{String} >>>>> An array of the command line arguments passed to Julia, as strings.
-
-# sleep(60)  # To prevent scheduling job on more than 1 node on Discover Slurm cluster  
 arg_len = length(ARGS)
-# if arg_len == 0
-#     # no argument passed from command line
-#     # set default output folder 
-#     out_subfolder = "NoahMP_CGF"
-# else
-#     out_subfolder = ARGS[1]
-# end
-out_subfolder = ARGS[1]  # output subfolder relative to input files; temp text and nc_outputs saved here
-water_year = out_subfolder[3:end]
+out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_text and nc_outputs saved here
+water_year = out_subfolder[end-3:end] #last 4 chars are assumed year, else error. out_subfolder[3:end]
 start_idx = ARGS[2]
 end_idx = ARGS[3]
 println(typeof(start_idx))
@@ -87,8 +69,6 @@ println(typeof(start_idx))
 println(typeof(start_idx))
 
 log_filename = string(start_idx, "_", end_idx, ".log")  #construct a log filename
-# log_filename = string("run_", out_subfolder, "_", start_idx, "_", end_idx, ".log")  #construct a log filename
-# log_filename = string(".out/log_", out_subfolder, "_", start_idx, "_", end_idx, ".txt")  #construct a log filename
 # Nov 20, 2022: Updated logger for finer control; still not working with distributed
 using Logging, LoggingExtras
 # io = open("log.txt", "a")
@@ -141,32 +121,27 @@ else
     exit(1)  # if error, comment this line, add root and base_folder below and run again
 end
 println("base_folder : $base_folder")
-# Supply custom root and base_folder for new machine
-# root_dir = ""  
-# base_folder = "$root_dir/..."
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if system_machine == "Windows" # addproc function works for both windows and WSL linux. Hence, this code is more for local vs remote machine
-#   root_dir = "C:"
-  addprocs()  ## works on laptop, but on cluster shows all cores for node; not only the number of cpus requested
+    addprocs()  ## works on laptop, but on cluster shows all cores for node; not only the number of cpus requested
 elseif system_machine == "Slurm" #Sys.islinux()  
-#   For HPC
 #   root_dir = homedir()
 #   num_cores = parse(Int, ENV["SLURM_CPUS_PER_TASK"])  # ERROR: LoadError: KeyError: key "SLURM_CPUS_PER_TASK" not found [from Princenton website]
 #   println("No of cores = $num_cores")
-  using SlurmClusterManager  # to pick all nodes and cores allocated in slurm job
-  # With slurmcluster manager, hopefully next few lines of selecting cores is not necessary  
-#   ntasks = parse(Int, ENV["SLURM_NTASKS"])  # gave 1, when cpus-per-task was passed by slurm; not defined when just nodes=1 given.  
-  # cores = parse(Int, ENV["SLURM_JOB_CPUS_PER_NODE"])  # if one node provided; else we have parse as follows
-  subs = Dict("x"=>"*", "(" => "", ")" => "");
-  cores = sum(eval(Meta.parse(replace(ENV["SLURM_JOB_CPUS_PER_NODE"], r"x|\(|\)" => s -> subs[s]))))
-#   println("SLURM_NTASKS: $ntasks")
-#   println("SLURM_JOB_CPUS_PER_NODE: $ntasks")
-  println("SLURM Cores: $cores")
-#   addprocs()  # Not working. using all cores even though not allocated for use
-#   addprocs(cores)  # ; exeflags="--project"subtract one becuase master already has one; but seems to work with higher number as well
-  sleep(10)  # 60+cores To prevent scheduling job on more than 1 node on Discover Slurm cluster  
-  addprocs(SlurmManager())  # to use all available nodes and cores automatically. comment this line and uncomment one above this to match _v8.jl
+    using SlurmClusterManager  # to pick all nodes and cores allocated in slurm job
+    # With slurmcluster manager, hopefully next few lines of selecting cores is not necessary  
+    # ntasks = parse(Int, ENV["SLURM_NTASKS"])  # gave 1, when cpus-per-task was passed by slurm; not defined when just nodes=1 given.  
+    # cores = parse(Int, ENV["SLURM_JOB_CPUS_PER_NODE"])  # if one node provided; else we have parse as follows
+    subs = Dict("x"=>"*", "(" => "", ")" => "");
+    cores = sum(eval(Meta.parse(replace(ENV["SLURM_JOB_CPUS_PER_NODE"], r"x|\(|\)" => s -> subs[s]))))
+    # println("SLURM_NTASKS: $ntasks")
+    # println("SLURM_JOB_CPUS_PER_NODE: $ntasks")
+    println("SLURM Cores: $cores")
+    # addprocs()  # Not working. using all cores even though not allocated for use
+    # addprocs(cores)  # ; exeflags="--project"subtract one becuase master already has one; but seems to work with higher number as well
+    sleep(10)  # 60+cores To prevent scheduling job on more than 1 node on Discover Slurm cluster  
+    addprocs(SlurmManager())  # to use all available nodes and cores automatically. comment this line and uncomment one above this to match _v8.jl
 else
     println("Must be windows or linux system, aborting")
     exit() # <- you can provide exit code if you want
@@ -217,23 +192,26 @@ nc_outDir = "$out_folder/outputs"         # To convert text outputs to netcdf fi
 # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_modscag.nc")  #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 # Following check are for prototyping only when running code locally, because I do not yet have NorthAmerica netcdf file
 if occursin("L-JY0R5X3", host_machine)  # STAFF-BY-M
-    A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")  #2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
+    # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc", lazy=true)  # Error now (Aug 15, 2023). maybe it is old file/format
+    A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true)
+    subset = A[X(Between(-120.5, -120)), Y(Between(60, 60.5))]  # use small chip for prototyping
+    subset_fname = "$(DataDir)/WY_merged/subset_$(water_year)_seup_modis.nc"
+    isfile(subset_fname) || write(subset_fname, subset)  # save. we need for post-processing analysis of results
+    A = RasterStack(subset_fname, lazy=true)  # read again (why). for consistency
 # elseif occursin("borg", host_machine)  # TODO: discover
 #     # A = RasterStack("$DataDir/WY_merged/2013_seup_modis.nc")  # 2016_noahmp_cgf 2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 #     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
 # elseif occursin(".osc.edu", host_machine)
 #     # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
 #     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
+# elseif occursin("asc.ohio-state.edu", host_machine)
+#     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
 else
     # A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")
     # A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
     cp("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", "$tmpdir/$water_year" * "_seup_modis.nc")  # copy to local machine
-    A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc")
-    # A = RasterStack("$DataDir/WY_merged/2016_noahmp_cgf.nc")
-    # A = RasterStack("$DataDir/WY_merged/ak_polar_fix.nc")
-    # A = RasterStack("$DataDir/WY_merged/ak_polar_fix_no.nc")
-    # println("Exiting code. Manually set A (rasterstack) around line 188")
-    # exit(1)
+    A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc", lazy=true)  ## https://github.com/rafaqz/Rasters.jl/issues/449
+    # exit(1)  # println("Exiting code. Manually set A (rasterstack) around line 188")
 end
 
 
@@ -250,9 +228,10 @@ A = A[(:Snowf_tavg, :SWE_tavg, :Tair_f_tavg, :Qg_tavg, :MODSCAG)];  # to remove 
 # Now using cartesian index for iteration
 
 start_time = time_ns()
-# Extract cartesian index for non-missing data using one-day of data 
+# Extract cartesian index for non-missing (ie, all) data using one-day of data 
 valid_pix_ind = findall(!ismissing, A["SWE_tavg"][Ti=1])
 valid_pix_count = length(valid_pix_ind)
+println("Total valid pixel count = ", valid_pix_count)
 if start_idx > valid_pix_count
     # return nothing
     exit(0)
@@ -270,8 +249,6 @@ end
 ind = valid_pix_ind[start_idx:end_idx]
 # TODO (May 26, 2026): check the files that are already processed, so processing of those can be skipped
 
-
-println("Non-missing pixel count = ", length(valid_pix_ind))
 @info("Starting with loop: \n")
 println("Processing ", length(ind), " out of ", length(valid_pix_ind))
 # @info("Processing ", length(ind), " out of ", length(valid_pix_ind))
@@ -306,6 +283,7 @@ Non-missing pixel count = 1011329
         # Call blender for the pixel. This is the only required line
         # rest of the codes are for houskeeking, preprocssing, post-processing
         blender(exp_dir, WRFSWE, WRFP, WRFG, MSCF, AirT)
+        GC.gc()
         # cp(exp_dir, "$base_folder/Runs/$out_subfolder/outputs_txt", force=True)
         # cp(exp_dir, "$base_folder/Runs/$out_subfolder/outputs_txt", force=True)
         # count +=1
@@ -313,64 +291,11 @@ Non-missing pixel count = 1011329
         # here exp_dir = export directory for holding outputs text and log files (same as older version of code)
     end
 end
+# without sync above one of the processor to the next step (combining text files to netcdf) which will cause error
 end_time = time_ns()
-running_time = (end_time - start_time)/1e9/60
-println("Running Time (minutes) = $running_time")
-# exit(0)  # exit here because the text2nc part is not working properly
-
-#=
-# Get index to iterate over
-# Seems here x is rows and y are columns
-# tind, yind, xind  = size(A)  # need a better way because order can be changed sometimes!; ie, use more explicit way of extracting x and y index
-# This is more explicit
-xind  = size(A, X)
-yind  = size(A, Y)
-tind  = size(A, Ti)
-println("xind: ", xind, " , yind: ", yind, " tind:", tind)
-# TODO: Here only outer loop is parallelzed, inner loop run sequentially, then wait for another outer loop to start
-# https://github.com/JuliaLang/julia/issues/30343
-start_time = time_ns()
-# Threads.@threads for pix in pixels
-@sync @distributed for i in 1:xind
-# for i in 1:xind
-    for j in 1:yind
-        # println("i = ", i, " j = ", j)
-        val = A[X=i, Y=j][:MODSCAG]  # pick any varaible: if one is missing, all will be missing
-        # val = A[X=i, Y=j][:SWE_tavg]  # pick any varaible: if one is missing, all will be missing
-        # println("val = ", val[1])
-        if !ismissing(val[1])  # !isnan(val[1]) || 
-            # print("Inside IF")
-            # A_pt = A[X=i, Y=j]  # Get all variables for all time for one pixel
-            # extract each of the input variables separately (trying to match of processing was done in prior version with text inputs)
-            # but this approach is also useful if we decide to save each input netcdf file separately
-
-            # WRFSWE = A[X=i, Y=j]["SWE_tavg"].data  # Here "data" is an AbstractArray.
-            # WRFP = A[X=i, Y=j]["Snowf_tavg"].data
-            # WRFG = A[X=i, Y=j]["Qg_tavg"].data
-            # AirT = A[X=i, Y=j]["Tair_f_tavg"].data
-            # MSCF = A[X=i, Y=j]["MODSCAG"].data;
-
-            WRFSWE = A["SWE_tavg"][X=i, Y=j].data  # Here "data" is an AbstractArray.
-            WRFP = A["Snowf_tavg"][X=i, Y=j].data
-            WRFG = A["Qg_tavg"][X=i, Y=j].data
-            AirT = A["Tair_f_tavg"][X=i, Y=j].data
-            MSCF = A["MODSCAG"][X=i, Y=j].data;
-
-            
-            exp_dir = string("$tmp_txtDir/", "Pix_", i, "_", j)  # full path to folder for saving (temporary) text files
-            # process only if the pixel is not already processed 
-            if !isdir(exp_dir)
-                # Call blender for the pixel. This is the only required line
-                # rest of the codes are for houskeeking, preprocssing, post-processing
-                blender(exp_dir, WRFSWE, WRFP, WRFG, MSCF, AirT)
-                # println("After calling BLENDER function")
-                # here exp_dir = export directory for holding outputs text and log files (same as older version of code)
-            end
-        end
-    end
-end
-end_time = time_ns()
-=#
+running_time = (end_time - start_time)/1e9/3600
+println("Blender Running Time (hours) = $running_time")
+# exit(0)  # exit here to avoid running 2nd part (text2nc)
 
 # Step 4. PostProcessing: Combine text files into a grid and save as netcdf
 function text2nc(var, idx, outRaster)
@@ -387,37 +312,47 @@ function text2nc(var, idx, outRaster)
     # update the name of variable
     outRaster = rebuild(outRaster; name=var)  #:SWEhat
     # @sync @distributed for pix in pixels  # worked
-    # Threads.@threads for pix in pixels  # thread also worked fine 
-    for pix in pixels
+    Threads.@threads for pix in pixels  # using this nested thread too seems to help processing faster   
+    # for pix in pixels  # this worked
         pix_xy = split(pix, "_")
         x = parse(Int16, pix_xy[2])
         y = parse(Int16, pix_xy[3])
         out_vars = readdlm("$tmp_txtDir/$pix/out_vars.txt")  # read whole combined file for that pixel
+        # out_vars = readdlm("$tmpdir/outputs_txt/$pix/out_vars.txt")  # read whole combined file for that pixel
         # outRaster[X=x, Y=y] = readdlm("$tmp_txtDir/$pix/$var.txt");  # Older workflow
         outRaster[X=x, Y=y] = out_vars[:,idx]
+        # here if text file is only partially processed; this kind of error:  nested task error: DimensionMismatch: tried to assign 124-element array to 1×1×366 destination
     end
     # Save to nc file; 
     mkpath(nc_outDir)
-    write("$nc_outDir/$var.nc", outRaster)
+    write("$nc_outDir/$var.nc", outRaster)  # Aug 08, 2023: Error perhaps due to updates to raster/ncdataset/etc. (error tested on windows and wsl2)
 end
-# without sync above one of the processor to the next step (combining text files to netcdf) which will cause error
 
 # Count if all pixels are processed before calling the following section for converting text files to netcdf file
-sleep(10)
+sleep(5)
+
 pixels = readdir(tmp_txtDir)  # Danger: Error if we have outputs from prior runs that do not match current A dimensions
 pixels = [pix for pix in pixels if startswith(pix, "Pix")];
-if length(pixels) == valid_pix_count && system_machine == "Slurm"
-    run(`python $root_dir/Github/verse/Python/submit_txt2nc_job.py $water_year`)
-    # run(`python $tmpdir/verse/Python/submit_txt2nc_job.py $water_year`)
-    println("Submitted python script for converting text to nc file")
-end
+# if length(pixels) == valid_pix_count && system_machine == "Slurm"
+#     run(`python $root_dir/Github/verse/Python/submit_txt2nc_job.py $water_year`)
+#     # run(`python $tmpdir/verse/Python/submit_txt2nc_job.py $water_year`)
+#     println("Submitted python script for converting text to nc file")
+# end
 
-if length(pixels) == valid_pix_count && system_machine == "Windows"
-    # TODO: This part did not work with Slurm last time  
+if length(pixels) == valid_pix_count #&& system_machine == "Windows"
+    # if system_machine == "Slurm"
+    #     # copy text files to node; but this seems to increase runtime on OSC; so comment next two lines to leave txt_files on original location  
+    #     t1 = time_ns()
+    #     cp(tmp_txtDir, "$tmpdir/outputs_txt")  # ERROR: LoadError: IOError: sendfile: no space left on device (ENOSPC) on Discover
+    #     tmp_txtDir = "$tmpdir/outputs_txt"
+    #     t2 = time_ns()
+    #     running_time = (t2 - t1)/1e9/3600
+    #     println("Total to copy text time files to tmpdir (hours) = $running_time")
+    # end
     @info("Creating OUTPUT NETCDF FILES")
     outRaster = copy(A[:SWE_tavg])
     var_idx_tuple = (("SWE", 1), ("Gmelt", 2), ("G", 3), ("Precip", 4), ("Us", 5), ("Gpv", 6), ("Gmeltpv", 7), ("Upv", 8), ("SWEpv", 9))
-    Threads.@threads for var_idx in var_idx_tuple
+    for var_idx in var_idx_tuple  # Threads.@threads 
         var_name = var_idx[1]
         var_idx = var_idx[2]
         text2nc(var_name, var_idx, outRaster);
@@ -437,5 +372,11 @@ if length(pixels) == valid_pix_count && system_machine == "Windows"
 else
     @info("All pixels not yet processed, so OUTPUT NETCDF FILES not yet created")
 end
-running_time = (end_time - start_time)/1e9/60
-println("Total Running Time (minutes) = $running_time")
+end_time = time_ns()
+running_time = (end_time - start_time)/1e9/60  # minutes
+if running_time < 60
+    println("Grant Total Running Time (minutes) = $(running_time)")
+else
+    running_time = running_time/60 # convert to hours
+    println("Grant Total Running Time (hours) = $(running_time)")
+end
