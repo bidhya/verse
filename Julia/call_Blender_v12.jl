@@ -312,19 +312,25 @@ pixels = [pix for pix in pixels if startswith(pix, "Pix")];
 # end
 
 if length(pixels) == valid_pix_count #&& system_machine == "Windows"
-    # if system_machine == "Slurm"
-    #     # copy text files to node; but this seems to increase runtime on OSC; so comment next two lines to leave txt_files on original location  
-    #     t1 = time_ns()
-    #     cp(exp_dir, "$tmpdir/outputs_txt")  
-    #     exp_dir = "$tmpdir/outputs_txt"
-    #     t2 = time_ns()
-    #     running_time = (t2 - t1)/1e9/3600  # 5 hours on Discover just to copy files. Thus, remove this copy part  
-    #     @info("Total to copy text time files to tmpdir (hours) = $(round(running_time, digits=2))")
-    # end
+    if system_machine == "Slurm"
+        # copy text files to node; but this seems to increase runtime on OSC; so comment next two lines to leave txt_files on original location
+        # 5 hours on Discover just to copy files. Thus, remove this copy part; But once files moved to tmpdir; creation of nc files is very fast (3 mins vs 30 mins (without copying))  
+        t1 = time_ns()
+        # cp(exp_dir, "$tmpdir/outputs_txt")   # takes long time; try parallelizing using threads  
+        mkpath("$tmpdir/outputs_txt")
+        Threads.@threads for pix in pixels  # 
+            cp("$exp_dir/$pix", "$tmpdir/outputs_txt/$(pix)", force=true)
+        end    
+        exp_dir = "$tmpdir/outputs_txt"
+        t2 = time_ns()
+        running_time = (t2 - t1)/1e9/60  #  minutes 
+        @info("Total to copy text time files to tmpdir (minutes) = $(round(running_time, digits=2))")
+    end
+    sleep(2)
     @info("Creating OUTPUT NETCDF FILES")
     outRaster = copy(A[:SWE_tavg])
     var_idx_tuple = (("SWE", 1), ("Gmelt", 2), ("G", 3), ("Precip", 4), ("Us", 5), ("Gpv", 6), ("Gmeltpv", 7), ("Upv", 8), ("SWEpv", 9))
-    for var_idx in var_idx_tuple  # Threads.@threads 
+    Threads.@threads for var_idx in var_idx_tuple  # Threads.@threads (Roughly same running for threaded and non-thread version on Discover. Likely due to I/O bottleneck)
         var_name = var_idx[1]
         var_idx = var_idx[2]
         text2nc(var_name, var_idx, outRaster);  # text2nc("SWE", 1, outRaster)
