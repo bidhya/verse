@@ -51,6 +51,13 @@ TODO: Generate Analysis ready data for North America by merging SEUP and MODIS_C
         NoahMP --> seup  
         WY_merged --> Inputs; even move outside the NoahMP folder
 
+## Oct 14, 2023
+v13.jl with SharedArray. working fine but not fully tested   
+
+## Sep 06, 2023
+v12.jl and Estimate_v56.jl frozen and merged to main. Good for runs with text files
+v13.jl to prototype saving NetCDF files directly   
+
 ## Sep 06, 2023
 Major refactoring going-on inside v12.jl and Estimate_v56.jl  
 Separate outputs_txt and logs folders  
