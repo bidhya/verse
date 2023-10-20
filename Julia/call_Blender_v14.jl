@@ -150,14 +150,15 @@ end
 @info("Output_folder : $out_folder")
 
 # Make a folder insise HPC node because we want to copy existing files there
-exp_dir = "$out_folder/outputs_txt"     # tmp_txtDir(old name) To save text outputs for each pixel
+# exp_dir = "$out_folder/outputs_txt"     # tmp_txtDir(old name) To save text outputs for each pixel
+# mkpath(exp_dir)  # mkdir
 logDir = "logs"  # "$out_folder/logs"   # Save logs in separate folder
-mkpath(exp_dir)  # mkdir
 mkpath(logDir)  # mkdir
 # cp("$base_folder/Runs/$out_subfolder/outputs_txt", "$tmp_txtDir/$water_year")  # copy to local machine; error if running the first time as this dir would not exist
 
 # nc_outDir = "$out_folder/outputs"         # To convert text outputs to netcdf file
-nc_outDir = "$base_folder/Runs/$out_subfolder/outputs"         # To convert text outputs to netcdf file
+# nc_outDir = "$base_folder/Runs/$out_subfolder/outputs"
+nc_outDir = "$base_folder/Runs/$out_subfolder/outputs_$(start_idx)_$(end_idx)"
 # OutDir = "$DataDir/$out_subfolder/outputs_txt"  # To save text outputs for each pixel
 # nc_exp_dir = "$DataDir/$out_subfolder/outputs_nc"  # To convert text outputs to netcdf file
 
@@ -168,11 +169,11 @@ if occursin("L-JY0R5X3", host_machine) #|| test_run  # use this for testing as w
     @info("Test Run only.")
     # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc", lazy=true)  # Error now (Aug 15, 2023). maybe it is old file/format
     A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true)
-    subset = A[X(Between(-120.5, -120)), Y(Between(60, 60.5))]  # 10 by 10 pixels; use small chip for prototyping
-    subset_fname = "$(DataDir)/WY_merged/subset_$(water_year)_seup_modis.nc"
-    # isfile(subset_fname) || write(subset_fname, subset)  # save. we need for post-processing analysis of results
-    write(subset_fname, subset)
-    A = RasterStack(subset_fname, lazy=true)  # read again (why). for consistency
+    # subset = A[X(Between(-120.5, -120)), Y(Between(60, 60.5))]  # 10 by 10 pixels; use small chip for prototyping
+    # subset_fname = "$(DataDir)/WY_merged/subset_$(water_year)_seup_modis.nc"
+    # # isfile(subset_fname) || write(subset_fname, subset)  # save. we need for post-processing analysis of results
+    # write(subset_fname, subset)
+    # A = RasterStack(subset_fname, lazy=true)  # read again (why). for consistency
 # elseif occursin("borg", host_machine)  # TODO: discover
 #     # A = RasterStack("$DataDir/WY_merged/2013_seup_modis.nc")  # 2016_noahmp_cgf 2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
 #     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
@@ -185,18 +186,27 @@ else
     # A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")
     # A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
     cp("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", "$tmpdir/$water_year" * "_seup_modis.nc")  # copy to local machine
-    A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc", lazy=true)  ## https://github.com/rafaqz/Rasters.jl/issues/449
-    if test_run
-        # Aside: Get test set of data
-        A = A[X(Between(-130, -120)), Y(Between(60, 65))]
-        subset_fname = "$(DataDir)/WY_merged/subset_$(water_year)_seup_modis.nc"
-        write(subset_fname, A)
-    end
+    A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc")  ## , lazy=true https://github.com/rafaqz/Rasters.jl/issues/449
+    # if test_run
+    #     # Aside: Get test set of data
+    #     A = A[X(Between(-130, -120)), Y(Between(60, 65))]
+    #     subset_fname = "$(DataDir)/WY_merged/subset_$(water_year)_seup_modis.nc"
+    #     write(subset_fname, A)
+    # end
 end
 
 # A = RasterStack("$DataDir/WY_merged/2016_clip3.nc")  # for NoahMP with CGF MODIS
 # Subset only the required variables because the nc file can have extraneous vars that cause problem with julia
 A = A[(:Snowf_tavg, :SWE_tavg, :Tair_f_tavg, :Qg_tavg, :MODSCAG)];  # to remove spatial ref that cause problem during subsetting
+# Oct 14, 2023
+szY = size(A, 2)  # get size in Y-dimension; here dim = 2
+if end_idx > szY
+    end_idx = szY
+end
+# A = A[1:end, 100:102, :]
+# A = A[100:150, start_idx:end_idx, :]  # size(A) = (2336, 941)
+A = A[1:end, start_idx:end_idx, :]  # ERROR: LoadError: NetCDF error: NetCDF: Start+count exceeds dimension bound (NetCDF error code: -57)
+
 # Oct 08, 2023
 sizeA = size(A)  # to create sharedarrays
 # SWERaster = SharedArray{Float32}(10, 10, 366)
@@ -223,21 +233,22 @@ start_time = time_ns()
 valid_pix_ind = findall(!ismissing, A["SWE_tavg"][Ti=1])
 valid_pix_count = length(valid_pix_ind)
 @info("Total valid pixel count = $(valid_pix_count)")
-if start_idx > valid_pix_count
-    # return nothing
-    exit(0)
-    @info("Exiting without Run because start_idx is greater than valid_pix_idx", start_idx, valid_pix_count)
-end
-if end_idx > valid_pix_count
-    # if the passed index is more than valid number of pixels
-    # in julia end index cannot be larger than this
-    end_idx = valid_pix_count
-end
-# TODO: Select a-priori what pixels are already processed. We want this because script take hours to check files 
-# that are already processed in the section below.
+# if start_idx > valid_pix_count
+#     # return nothing
+#     exit(0)
+#     @info("Exiting without Run because start_idx is greater than valid_pix_idx", start_idx, valid_pix_count)
+# end
+# if end_idx > valid_pix_count
+#     # if the passed index is more than valid number of pixels
+#     # in julia end index cannot be larger than this
+#     end_idx = valid_pix_count
+# end
+# # TODO: Select a-priori what pixels are already processed. We want this because script take hours to check files 
+# # that are already processed in the section below.
 
-# ind = valid_pix_ind  # to process all pixels in one go
-ind = valid_pix_ind[start_idx:end_idx]
+# # ind = valid_pix_ind  # to process all pixels in one go
+# ind = valid_pix_ind[start_idx:end_idx]
+ind = valid_pix_ind
 # TODO (May 26, 2026): check the files that are already processed, so processing of those can be skipped
 
 @info("Starting with loop.")
@@ -280,10 +291,11 @@ Non-missing pixel count = 1011329
     # cp(exp_dir, "$base_folder/Runs/$out_subfolder/outputs_txt", force=True)
 end
 # without sync above one of the processor to the next step (combining text files to netcdf) which will cause error
+sleep(6)
 
 end_time = time_ns()
-running_time = (end_time - start_time)/1e9/60  #3600
-@info("Loop Running Time = $(round(running_time, digits=3)) minutes")
+running_time = (end_time - start_time)/1e9/3600
+@info("Loop Running Time = $(round(running_time, digits=3)) hours")
 
 # Oct 08, 2023. To save output nc files. Create Raster matching the input and save to nc file 
 mkpath(nc_outDir)
@@ -306,6 +318,7 @@ outRaster = copy(A[:SWE_tavg])
 outRaster[:, :, :] = PrecipRaster
 PrecipRaster = rebuild(outRaster; name=:Precip)
 write("$nc_outDir/Precip.nc", PrecipRaster)
+GC.gc()
 
 outRaster = copy(A[:SWE_tavg])
 outRaster[:, :, :] = UsRaster
@@ -333,8 +346,8 @@ SWEpvRaster = rebuild(outRaster; name=:SWEpv)
 write("$nc_outDir/SWEpv.nc", SWEpvRaster)
 
 end_time = time_ns()
-running_time = (end_time - start_time)/1e9/60  #3600
-@info("Blender Running Time = $(round(running_time, digits=3)) minutes")
+running_time = (end_time - start_time)/1e9/3600
+@info("Blender Running Time = $(round(running_time, digits=3)) hours")
 exit(0)  # exit here to avoid running 2nd part (text2nc)
 
 # Step 4. PostProcessing: Combine text files into a grid and save as netcdf
