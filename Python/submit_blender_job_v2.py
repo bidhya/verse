@@ -148,8 +148,8 @@ def main():
     import numpy as np
     node = platform.node()
     print(f"Node Name: {node}")
-    runtime = "03:00:00"  # 12 "24:00:00"  # default (max for Discover)
-    memory = "175gb"
+    runtime = "08:00:00"  # 12 "24:00:00"  # default (max for Discover)
+    memory = "180gb"
     if "discover" in node:
         # on login node node name is discover, not borg
         hpc_name = "discover"
@@ -163,7 +163,7 @@ def main():
     elif ".osc.edu" in node:
         hpc_name = "osc"
         cores = "40"
-        # memory = "175gb"
+        memory = "175gb"
         # runtime = "11:00:00"  # "23:00:00"
     else:
         print("Unknow computer system. coressd folder NOT set")

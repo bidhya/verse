@@ -138,16 +138,17 @@ DataDir = "$base_folder/NoahMP"  # must exist
 #     # TODO: on discover if node does not start with "borg" the code can still jump here!
 #     tmpdir =  ENV["TMPDIR"]  #tempdir()
 
-# Folder for saving outputs of run. out_subfolder can be passed as ARGS. Folder/subfolders will be created if non-existent
-if occursin(".osc.edu", host_machine)
-    # out_folder = "/fs/ess/PAS1785/coressd/Blender/Runs/$out_subfolder" #  "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
-    out_folder = "/fs/scratch/PAS1785/coressd/Blender/Runs/$out_subfolder" #  "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
-elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
-    out_folder = "$tmpdir/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
-else
-    out_folder = "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
-end
-@info("Output_folder : $out_folder")
+# # Folder for saving outputs of run. out_subfolder can be passed as ARGS. Folder/subfolders will be created if non-existent
+# # Oct 20, 2023: This out_folder is no more used in V14. but verify
+# if occursin(".osc.edu", host_machine)
+#     # out_folder = "/fs/ess/PAS1785/coressd/Blender/Runs/$out_subfolder" #  "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
+#     out_folder = "/fs/scratch/PAS1785/coressd/Blender/Runs/$out_subfolder" #  "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
+# elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
+#     out_folder = "$tmpdir/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
+# else
+#     out_folder = "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
+# end
+# @info("Output_folder : $out_folder")
 
 # Make a folder insise HPC node because we want to copy existing files there
 # exp_dir = "$out_folder/outputs_txt"     # tmp_txtDir(old name) To save text outputs for each pixel
@@ -161,6 +162,13 @@ mkpath(logDir)  # mkdir
 nc_outDir = "$base_folder/Runs/$out_subfolder/outputs_$(start_idx)_$(end_idx)"
 # OutDir = "$DataDir/$out_subfolder/outputs_txt"  # To save text outputs for each pixel
 # nc_exp_dir = "$DataDir/$out_subfolder/outputs_nc"  # To convert text outputs to netcdf file
+# Oct 20, 2023: exit here if folder alreay exists
+# if !ispath(exp_dir * "/SWEpv.txt") # ispath is generic for both file and folder
+# if !isfile(exp_dir * "/SWEpv.txt")  # This is better check: process the pixel only if the last file exported by optimzer (SWEpv.txt) does not yet exist
+if isdir(nc_outDir)  # process only if the pixel is not already processed
+    @info("Exiting because following folder already processed: $nc_outDir")
+    exit(0)
+end
 
 # # 2. Read the Input netCDF file
 # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_modscag.nc")  #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
