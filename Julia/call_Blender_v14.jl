@@ -159,7 +159,7 @@ mkpath(logDir)  # mkdir
 
 # nc_outDir = "$out_folder/outputs"         # To convert text outputs to netcdf file
 # nc_outDir = "$base_folder/Runs/$out_subfolder/outputs"
-nc_outDir = "$base_folder/Runs/$out_subfolder/outputs_$(start_idx)_$(end_idx)"
+nc_outDir = "$base_folder/Runs/$out_subfolder/temp_nc/outputs_$(start_idx)_$(end_idx)"
 # OutDir = "$DataDir/$out_subfolder/outputs_txt"  # To save text outputs for each pixel
 # nc_exp_dir = "$DataDir/$out_subfolder/outputs_nc"  # To convert text outputs to netcdf file
 # Oct 20, 2023: exit here if folder alreay exists
