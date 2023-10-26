@@ -143,75 +143,114 @@ start_time = time_ns()
 A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc")
 A = A[(:Snowf_tavg, :SWE_tavg, :Tair_f_tavg, :Qg_tavg, :MODSCAG)];  # to remove spatial ref that cause problem during subsetting
 # Create output rasters based in input raster template
-SWERaster = copy(A[:SWE_tavg])
-SWERaster[:,:,:] .= missing
-GmeltRaster = deepcopy(SWERaster)  # use deepcopy; simple copy will create general array, not a sharedarray, hence, won't work in parallel  
-GRaster = deepcopy(SWERaster)
-PrecipRaster = deepcopy(SWERaster)
-UsRaster = deepcopy(SWERaster)
-GpvRaster = deepcopy(SWERaster)
-GmeltpvRaster = deepcopy(SWERaster)
-UpvRaster = deepcopy(SWERaster)
-SWEpvRaster = deepcopy(SWERaster);
+outRasterTemplate = copy(A[:SWE_tavg])
+outRasterTemplate[:,:,:] .= missing 
 
-nc_outDir = "$base_folder/Runs/$out_subfolder"  # /outputs_$(start_idx)_$(end_idx)
-folders = readdir(nc_outDir)
-# TODO Sort these files in ascending ordering starting at index 1.
+A = nothing
+GC.gc()
 
-for folder in folders
-    # println(folder)
-    @info("Processing nc_file: $folder")
+# SWERaster = copy(A[:SWE_tavg])
+# SWERaster[:,:,:] .= missing
+# GmeltRaster = deepcopy(SWERaster)  # use deepcopy; simple copy will create general array, not a sharedarray, hence, won't work in parallel  
+# GRaster = deepcopy(SWERaster)
+# PrecipRaster = deepcopy(SWERaster)
+# UsRaster = deepcopy(SWERaster)
+# GpvRaster = deepcopy(SWERaster)
+# GmeltpvRaster = deepcopy(SWERaster)
+# UpvRaster = deepcopy(SWERaster)
+# SWEpvRaster = deepcopy(SWERaster);
 
-    B = RasterStack("$(nc_outDir)/$(folder)/SWE.nc", lazy=true)
-    SWERaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[:SWE]
 
-    B = RasterStack("$(nc_outDir)/$(folder)/Gmelt.nc", lazy=true)
-    GmeltRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[:Gmelt]
+nc_outDir = "$base_folder/Runs/$out_subfolder/temp_nc"  # /outputs_$(start_idx)_$(end_idx)
 
-    B = RasterStack("$(nc_outDir)/$(folder)/G.nc", lazy=true)
-    GRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[:G]
+function combine_nc(nc_outDir, var)
+    # Combine nc files
+    outRaster = deepcopy(outRasterTemplate)
 
-    B = RasterStack("$(nc_outDir)/$(folder)/Precip.nc", lazy=true)
-    PrecipRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[:Precip]
-    
-    B = RasterStack("$(nc_outDir)/$(folder)/Us.nc", lazy=true)
-    UsRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[:Us]
-    
-    B = RasterStack("$(nc_outDir)/$(folder)/Gpv.nc", lazy=true)
-    GpvRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[:Gpv]
-    
-    B = RasterStack("$(nc_outDir)/$(folder)/Gmeltpv.nc", lazy=true)
-    GmeltpvRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[:Gmeltpv]
-    
-    B = RasterStack("$(nc_outDir)/$(folder)/Upv.nc", lazy=true)
-    UpvRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[:Upv]
-    
-    B = RasterStack("$(nc_outDir)/$(folder)/SWEpv.nc", lazy=true)
-    SWEpvRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[:SWEpv]    
+    folders = readdir(nc_outDir)
+    # TODO Sort these files in ascending ordering starting at index 1.
+    sym_var = Symbol(var) # uppercase(var)
+    Threads.@threads for folder in folders
+        B = RasterStack("$(nc_outDir)/$(folder)/$(var).nc", lazy=true)        
+        outRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[sym_var]  # B[:SWE]
+    end
+    return outRaster
 end
 
-nc_outDir = "$base_folder/Runs/$out_subfolder/outputs"
-mkpath(nc_outDir)
-@info("nc_outDir : $nc_outDir")
+final_nc_outDir = "$base_folder/Runs/$out_subfolder/outputs"
+mkpath(final_nc_outDir)
+out_vars = ("SWE", "Gmelt", "G", "Precip", "Us", "Gpv", "Gmeltpv", "Upv", "SWEpv")
+for var in out_vars
+    # var = "SWE"
+    if !isfile("$(final_nc_outDir)/$(var).nc")
+        @info("Processing nc_file: $var")
+        outRaster = combine_nc(nc_outDir, var)
+        sym_var = Symbol(var)
+        outRaster = rebuild(outRaster; name=sym_var)
+        write("$(final_nc_outDir)/$(var).nc", outRaster, force=true)
+        # outRaster = Nothing
+        # GC.gc()
+    else
+        @info("$var  NC file alreay processed before, skipping")
+    end
+end
+# exit(0)
 
-SWERaster = rebuild(SWERaster; name=:SWE)
-write("$nc_outDir/SWE.nc", SWERaster)
-GmeltRaster = rebuild(GmeltRaster; name=:Gmelt)
-write("$nc_outDir/Gmelt.nc", GmeltRaster)
-GRaster = rebuild(GRaster; name=:G)
-write("$nc_outDir/G.nc", GRaster)
-PrecipRaster = rebuild(PrecipRaster; name=:Precip)
-write("$nc_outDir/Precip.nc", PrecipRaster)
-UsRaster = rebuild(UsRaster; name=:Us)
-write("$nc_outDir/Us.nc", UsRaster)
-GpvRaster = rebuild(GpvRaster; name=:Gpv)
-write("$nc_outDir/Gpv.nc", GpvRaster)
-GmeltpvRaster = rebuild(GmeltpvRaster; name=:Gmeltpv)
-write("$nc_outDir/Gmeltpv.nc", GmeltpvRaster)
-UpvRaster = rebuild(UpvRaster; name=:Upv)
-write("$nc_outDir/Upv.nc", UpvRaster)
-SWEpvRaster = rebuild(SWEpvRaster; name=:SWEpv)
-write("$nc_outDir/SWEpv.nc", SWEpvRaster)
+
+# folders = readdir(nc_outDir)
+# Threads.@threads for folder in folders
+#     @info("Processing nc_file: $folder")
+
+#     B = RasterStack("$(nc_outDir)/$(folder)/SWE.nc", lazy=true)
+#     SWERaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[:SWE]
+
+#     B = RasterStack("$(nc_outDir)/$(folder)/Gmelt.nc", lazy=true)
+#     GmeltRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[:Gmelt]
+
+#     B = RasterStack("$(nc_outDir)/$(folder)/G.nc", lazy=true)
+#     GRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[:G]
+
+#     B = RasterStack("$(nc_outDir)/$(folder)/Precip.nc", lazy=true)
+#     PrecipRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[:Precip]
+    
+#     B = RasterStack("$(nc_outDir)/$(folder)/Us.nc", lazy=true)
+#     UsRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[:Us]
+    
+#     B = RasterStack("$(nc_outDir)/$(folder)/Gpv.nc", lazy=true)
+#     GpvRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[:Gpv]
+    
+#     B = RasterStack("$(nc_outDir)/$(folder)/Gmeltpv.nc", lazy=true)
+#     GmeltpvRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[:Gmeltpv]
+    
+#     B = RasterStack("$(nc_outDir)/$(folder)/Upv.nc", lazy=true)
+#     UpvRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[:Upv]
+    
+#     B = RasterStack("$(nc_outDir)/$(folder)/SWEpv.nc", lazy=true)
+#     SWEpvRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[:SWEpv]    
+# end
+
+# nc_outDir = "$base_folder/Runs/$out_subfolder/outputs"
+# mkpath(nc_outDir)
+# @info("nc_outDir : $nc_outDir")
+
+# SWERaster = rebuild(SWERaster; name=:SWE)
+# write("$nc_outDir/SWE.nc", SWERaster)
+# GmeltRaster = rebuild(GmeltRaster; name=:Gmelt)
+# write("$nc_outDir/Gmelt.nc", GmeltRaster)
+# GRaster = rebuild(GRaster; name=:G)
+# write("$nc_outDir/G.nc", GRaster)
+# PrecipRaster = rebuild(PrecipRaster; name=:Precip)
+# write("$nc_outDir/Precip.nc", PrecipRaster)
+# UsRaster = rebuild(UsRaster; name=:Us)
+# write("$nc_outDir/Us.nc", UsRaster)
+# GpvRaster = rebuild(GpvRaster; name=:Gpv)
+# write("$nc_outDir/Gpv.nc", GpvRaster)
+# GmeltpvRaster = rebuild(GmeltpvRaster; name=:Gmeltpv)
+# write("$nc_outDir/Gmeltpv.nc", GmeltpvRaster)
+# UpvRaster = rebuild(UpvRaster; name=:Upv)
+# write("$nc_outDir/Upv.nc", UpvRaster)
+# SWEpvRaster = rebuild(SWEpvRaster; name=:SWEpv)
+# write("$nc_outDir/SWEpv.nc", SWEpvRaster)
 
 end_time = time_ns()
 # running_time = (end_time - start_time)/1e9/3600
