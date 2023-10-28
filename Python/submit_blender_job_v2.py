@@ -46,7 +46,8 @@ mkdir_p(f"slurm_jobs/{water_year}/.out")
 os.chdir(f"slurm_jobs/{water_year}")
 
 
-def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00', out_subfolder="NoahMP_CGF", region=None, start_idx=1, end_idx=100):
+# def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00', out_subfolder="NoahMP_CGF", region=None, start_idx=1, end_idx=100):
+def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00', out_subfolder="NoahMP_CGF", start_idx=1, end_idx=100):
     """ Generate and submit slurm job"""
     logging.info(f'jobname = {jobname}    out_subfolder = {out_subfolder}  start_idx = {start_idx} end_idx = {end_idx}')
 
@@ -84,7 +85,6 @@ def create_job(hpc, jobname='test', cores=15, memory='50gb', runtime='12:00:00',
         fh.writelines(f"#SBATCH --mem={memory}\n")
         # fh.writelines("#SBATCH --qos=normal\n")
         fh.writelines("#SBATCH --mail-type=ALL\n")
-        # fh.writelines("#SBATCH --mail-user=$USER@stanford.edu\n")
         fh.writelines("#SBATCH --mail-user=yadav.111@osu.edu\n")
         fh.writelines("\n")
 
