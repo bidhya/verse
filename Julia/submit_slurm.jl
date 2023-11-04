@@ -11,7 +11,7 @@ water_year = out_subfolder[end-3:end] #last 4 chars are assumed year, else error
 step = ARGS[2] #|| 99
 # step = 99
 step = parse(Int32, step)
-memory = "180gb"
+memory = "184gb"
 
 # mkpath(logDir)
 mkpath("slurm_jobs/$(water_year)/.out")
@@ -24,7 +24,8 @@ if occursin("discover", host_machine) #|| occursin("borg", host_machine)
     root_dir = "/discover/nobackup/projects/coressd"
     base_folder = "$root_dir/Blender"
     hpc_name = "discover"
-    cores = 45  # so one core can be used to monitor run using srun/htop.
+    cores = 46  # use 45 so one core can be used to monitor run using srun/htop.
+    memory = "184gb"
 elseif occursin(".osc.edu", host_machine)
     root_dir = "/fs/ess/PAS1785/coressd"  # "/fs/scratch/PAS1785/coressd"
     base_folder = "$root_dir/Blender"
@@ -36,17 +37,16 @@ elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
     # base_folder = "/home/yadav.111/Github/Blender"  # old
     base_folder = "$root_dir/Blender"  # "$root_dir/Github/coressd/Blender"
     hpc_name = "unity"
-    cores = 10  # 39 24 cores with 96GB memory for old node
-    memory = "90gb"
+    cores = 40  # 39 24 cores with 96GB memory for old node
+    memory = "180gb"
 else
     @info("Unknown computer, manually add root directory before proceeding. Exiting code")  # will output directly to console, ie like print statement
     exit(1)  # if error, comment this line, add root and base_folder below and run again
 end
 
 function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_idx, end_idx, valid_pix_count)
-    # job_file = os.path.join(os.getcwd(), f"{jobname}.job")
-    job_file = "$(pwd())/$(jobname).job"
-    # job_file = "$(jobname).job"  # this looks much cleaner because files will created relative to where the script is called from.
+    # job_file = "$(pwd())/$(jobname).job"  # this also works same
+    job_file = "$(jobname).job"  # this looks much cleaner because files will created relative to where the script is called from.
     open(job_file, "w") do f
         # write(f, "A, B, C, D\n")
         write(f, "#!/usr/bin/env bash\n\n")
@@ -116,13 +116,21 @@ for i in StepRange(1, step, szY)
     end
     jobname = "$(start_idx)_$(end_idx)"
     B = A[1:end, start_idx:end_idx]  # ERROR: LoadError: NetCDF error: NetCDF: Start+count exceeds dimension bound (NetCDF error code: -57)
+    """
+    # TODO Save of copy of sub-array A to hard-drive somewhere. This will by copied by call_blender_v14 script. To prevent slurm jobs failing on Unity.
+    # likely due to multiple jobs copying the same file to nodes 
+    A = A[1:end, start_idx:end_idx, :]
+    
+    """
+
     valid_pix_ind = findall(!ismissing, B)
     valid_pix_count = length(valid_pix_ind)
-    runtime = Int(round(valid_pix_count/(cores*120)))
+    runtime = Int(round(valid_pix_count/(cores*150)))
     # runtime = "08:00:00"  # 12 "24:00:00"  # default (max for Discover)
     # runtime = "$(approx_time):00:00"
     println(start_idx, " ", end_idx, " ", valid_pix_count, " hours ", runtime)
     create_job(hpc_name, jobname, cores, memory, runtime, "V14x_WY$(water_year)", start_idx, end_idx, valid_pix_count)
+    sleep(5)
 end
 # =============================================================================================================================
 # =============================================================================================================================

@@ -1,9 +1,10 @@
 """
 USAGE: Hardcoded with requirments for output_folder_YEAR, start_idx, and end_idx for running on Discover
-- julia call_Blender_v12.jl test2016 1 100
+- start and end indices are for y-axis only. All x's selected by default  
+- julia call_Blender_v14.jl test2016 1 10  
 
 SWE estimation using Blender algorithm (Prof. Mike Durand).
-This is a helper script to organize inputs for calling the Blender function (Estimate_v3.jl).
+This is a helper script to organize inputs for calling the Blender function (Estimate_v57.jl).
 Therefore, manually update input/output directories here for seperate runs (say NoahMP vs WRF etc)
 Currently, only output_subfolder can optionally be passed as an argument.
 Input/Output are currently saved in same main folder, but can easily be saved at separate locations [dig down below].
@@ -14,7 +15,6 @@ The script is currently capable of running on my following platforms.
 - OSC HPC
 - Ohio-State Unity HPC 
 Julia Versions
-- 1.8.x (1, 2, and 3)
 - 1.9.3
 Minimum extra Julia Packages required
 - JuMP, Ipopt, Rasters, NCDatasets 
@@ -28,6 +28,8 @@ Finally, all text output files are assembled into a nc file. The script can thus
 ==============================================================================================
 Dec 03, 2022 : Trying multinodes with ClusterManagers.jl
 Sep 04, 2023 : text and log files saved in separate folders; created call_Blender_v12.jl uses Estimate_v56.jl
+Oct 29, 2023 : Save nc files to temp_nc folder using call_Blender_v14.jl uses Estimate_v57.jl
+
 """
 arg_len = length(ARGS)
 out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_text and nc_outputs saved here
@@ -188,12 +190,13 @@ if occursin("L-JY0R5X3", host_machine) #|| test_run  # use this for testing as w
 # elseif occursin(".osc.edu", host_machine)
 #     # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
 #     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
-# elseif occursin("asc.ohio-state.edu", host_machine)
-#     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
+elseif occursin("asc.ohio-state.edu", host_machine)
+    A = RasterStack("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", lazy=true)
 else
     # A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")
     # A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
-    cp("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", "$tmpdir/$water_year" * "_seup_modis.nc")  # copy to local machine
+    # copy to local Node (machine) on slurm
+    cp("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", "$tmpdir/$water_year" * "_seup_modis.nc", force=true)  # true required for discover when running on same node again after node_failure.
     A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc")  ## , lazy=true https://github.com/rafaqz/Rasters.jl/issues/449
     # if test_run
     #     # Aside: Get test set of data
@@ -211,11 +214,23 @@ szY = size(A, 2)  # get size in Y-dimension; here dim = 2
 if end_idx > szY
     end_idx = szY
 end
+
+""" General info about pixel counts
+    xind: 2336 , yind: 941 tind:364
+    Non-missing pixel count = 1011329
+"""
 # A = A[1:end, 100:102, :]
 # A = A[100:150, start_idx:end_idx, :]  # size(A) = (2336, 941)
 A = A[1:end, start_idx:end_idx, :]  # ERROR: LoadError: NetCDF error: NetCDF: Start+count exceeds dimension bound (NetCDF error code: -57)
+# Now using cartesian index for iteration
+start_time = time_ns()
+# Extract cartesian index for non-missing (ie, all) data using one-day of data 
+valid_pix_ind = findall(!ismissing, A["SWE_tavg"][Ti=1])
+valid_pix_count = length(valid_pix_ind)
+ind = valid_pix_ind
+@info("Total valid pixel count = $(valid_pix_count)")
 
-# Oct 08, 2023
+# Oct 29, 2023
 sizeA = size(A)  # to create sharedarrays
 # SWERaster = SharedArray{Float32}(10, 10, 366)
 SWERaster = SharedArray{Float32}(sizeA)
@@ -229,45 +244,9 @@ GmeltpvRaster = deepcopy(SWERaster)
 UpvRaster = deepcopy(SWERaster)
 SWEpvRaster = deepcopy(SWERaster);
 
-# Select a subset for prototyping
-# A[X(Between(2, 4)), Y(Between(50, 60)), Ti(5)]
-# A = A[X(4:6), Y=4:6] #, Ti(1:10)  # For prototyping only, select a smaller subset of pixels
-# A = A[X(38:40), Y=(38:40)]  # For prototyping only, select a smaller subset of pixels
-# println("A: ", A)
-
-# Now using cartesian index for iteration
-start_time = time_ns()
-# Extract cartesian index for non-missing (ie, all) data using one-day of data 
-valid_pix_ind = findall(!ismissing, A["SWE_tavg"][Ti=1])
-valid_pix_count = length(valid_pix_ind)
-@info("Total valid pixel count = $(valid_pix_count)")
-# if start_idx > valid_pix_count
-#     # return nothing
-#     exit(0)
-#     @info("Exiting without Run because start_idx is greater than valid_pix_idx", start_idx, valid_pix_count)
-# end
-# if end_idx > valid_pix_count
-#     # if the passed index is more than valid number of pixels
-#     # in julia end index cannot be larger than this
-#     end_idx = valid_pix_count
-# end
-# # TODO: Select a-priori what pixels are already processed. We want this because script take hours to check files 
-# # that are already processed in the section below.
-
-# # ind = valid_pix_ind  # to process all pixels in one go
-# ind = valid_pix_ind[start_idx:end_idx]
-ind = valid_pix_ind
-# TODO (May 26, 2026): check the files that are already processed, so processing of those can be skipped
-
 @info("Starting with loop.")
 @info("==========================================================")
 @info("Processing $(length(ind)) of $(length(valid_pix_ind))")
-# @info("Processing ", length(ind), " out of ", length(valid_pix_ind))
-# exit(0)
-""" General info about pixel counts
-xind: 2336 , yind: 941 tind:364
-Non-missing pixel count = 1011329
-"""
 # @sync makes the code wait for all processes to finish their part of the computation before moving on from the loop
 # ie, without @sync, the on of the processors may move to next while loop is still running, creating error and crash whole script prematurely 
 # Threads.@threads for ij in ind
@@ -299,11 +278,12 @@ Non-missing pixel count = 1011329
     # cp(exp_dir, "$base_folder/Runs/$out_subfolder/outputs_txt", force=True)
 end
 # without sync above one of the processor to the next step (combining text files to netcdf) which will cause error
-sleep(6)
+sleep(5)
+GC.gc()
 
 end_time = time_ns()
 running_time = (end_time - start_time)/1e9/3600
-@info("Loop Running Time = $(round(running_time, digits=3)) hours")
+@info("Loop Running Time = $(round(running_time, digits=2)) hours")
 
 # Oct 08, 2023. To save output nc files. Create Raster matching the input and save to nc file 
 mkpath(nc_outDir)
