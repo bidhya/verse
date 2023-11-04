@@ -1,51 +1,19 @@
 """
 USAGE: Hardcoded with requirments for output_folder_YEAR, start_idx, and end_idx for running on Discover
-- julia call_Blender_v12.jl test2016 1 100
+- julia combine_nc_files.jl V14_WY2015
+Oct 29, 2023
+Bidhya N Yadav
 
-SWE estimation using Blender algorithm (Prof. Mike Durand).
-This is a helper script to organize inputs for calling the Blender function (Estimate_v3.jl).
-Therefore, manually update input/output directories here for seperate runs (say NoahMP vs WRF etc)
-Currently, only output_subfolder can optionally be passed as an argument.
-Input/Output are currently saved in same main folder, but can easily be saved at separate locations [dig down below].
-
-The script is currently capable of running on my following platforms.
-- Windows machine
-- Ubuntu (WSL2-based)
-- OSC HPC
-- Ohio-State Unity HPC 
-Julia Versions
-- 1.8.x (1, 2, and 3)
-- 1.9.3
-Minimum extra Julia Packages required
-- JuMP, Ipopt, Rasters, NCDatasets 
-
-Approach
-========
-This script will call Estimate_v56.jl for each script at a time, and save temporary outputs to text file. Thus can readily be parallelzed.
-Threads was stright forward but did not work here due to known limitation of Ipopt and threads module.
-Working on alternative parallelization scheme using DISTRIBUTED module
-Finally, all text output files are assembled into a nc file. The script can thus run on parts of pixels at different times, and finally combined into one nc file.
-==============================================================================================
-Dec 03, 2022 : Trying multinodes with ClusterManagers.jl
-Sep 04, 2023 : text and log files saved in separate folders; created call_Blender_v12.jl uses Estimate_v56.jl
+To combine small parts of nc files into a PAN-america-wide nc file for all the Blender output variables
+Slurm hint: 20 tasks with ~90 GB Ram
+parallelized using threads  
 """
+
 arg_len = length(ARGS)
 out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_text and nc_outputs saved here
 water_year = out_subfolder[end-3:end] #last 4 chars are assumed year, else error. out_subfolder[3:end]
-# start_idx = ARGS[2]  # this is string
-# end_idx = ARGS[3]
-# start_idx = parse(Int64, start_idx)
-# end_idx = parse(Int64, end_idx)
-# if occursin("test", out_subfolder)
-#     # if test substring is part of output subfolder then do the test run on subset of pixels
-#     test_run = true
-# else
-#     test_run = false
-# end
 
 using Logging, LoggingExtras
-# using Distributed  # otherwise everywhere macro won't work
-# using SharedArrays
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # 1. Setup inputs and output directories and file locations
 # select the root directory (this will be different on windows, linux or Mac) 
@@ -171,8 +139,9 @@ function combine_nc(nc_outDir, var)
     # TODO Sort these files in ascending ordering starting at index 1.
     sym_var = Symbol(var) # uppercase(var)
     Threads.@threads for folder in folders
-        B = RasterStack("$(nc_outDir)/$(folder)/$(var).nc", lazy=true)        
+        B = RasterStack("$(nc_outDir)/$(folder)/$(var).nc", lazy=false)        
         outRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[sym_var]  # B[:SWE]
+        sleep(1)  # this may help with unknown random error
     end
     return outRaster
 end
