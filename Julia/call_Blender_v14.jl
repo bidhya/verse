@@ -190,14 +190,14 @@ if occursin("L-JY0R5X3", host_machine) #|| test_run  # use this for testing as w
 # elseif occursin(".osc.edu", host_machine)
 #     # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
 #     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
-elseif occursin("asc.ohio-state.edu", host_machine)
-    A = RasterStack("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", lazy=true)
+# elseif occursin("asc.ohio-state.edu", host_machine)
+#     A = RasterStack("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", lazy=true)
 else
     # A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")
     # A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
     # copy to local Node (machine) on slurm
     cp("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", "$tmpdir/$water_year" * "_seup_modis.nc", force=true)  # true required for discover when running on same node again after node_failure.
-    A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc")  ## , lazy=true https://github.com/rafaqz/Rasters.jl/issues/449
+    A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc", lazy=true)  ## , lazy=true https://github.com/rafaqz/Rasters.jl/issues/449
     # if test_run
     #     # Aside: Get test set of data
     #     A = A[X(Between(-130, -120)), Y(Between(60, 65))]

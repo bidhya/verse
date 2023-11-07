@@ -1,6 +1,6 @@
 """
 USAGE: pass Water Year and stepsize (number of rows)
-- julia ../verse/Julia/submit_slurm.jl 2016 500
+- julia ../verse/Julia/submit_slurm.jl 2016 35
 
 Create and submit Blender job using Julia
 
@@ -8,8 +8,8 @@ Create and submit Blender job using Julia
 arg_len = length(ARGS)
 out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_nc saved here
 water_year = out_subfolder[end-3:end] #last 4 chars are assumed year, else error
-step = ARGS[2] #|| 99
-# step = 99
+# step is the count of rows (y-direction) of netcdf file to process in one job/run 
+step = ARGS[2] #|| 35 on discover
 step = parse(Int32, step)
 memory = "184gb"
 
@@ -44,7 +44,7 @@ else
     exit(1)  # if error, comment this line, add root and base_folder below and run again
 end
 
-function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_idx, end_idx, valid_pix_count)
+function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_idx, end_idx, valid_pix_count, begin_delay)
     # job_file = "$(pwd())/$(jobname).job"  # this also works same
     job_file = "$(jobname).job"  # this looks much cleaner because files will created relative to where the script is called from.
     open(job_file, "w") do f
@@ -67,10 +67,13 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         write(f, "#SBATCH --job-name=$(jobname).job\n")
         write(f, "#SBATCH --output=.out/$(jobname).out\n")
         write(f, "#SBATCH --time=$(runtime):00:00\n")
-        write(f, "#SBATCH --nodes=1 --ntasks=$(cores)\n")
-        write(f, "#SBATCH --mem=$(memory)\n")
+        write(f, "#SBATCH --nodes=1\n")  #  --ntasks=$(cores)
+        write(f, "#SBATCH --exclusive\n")  #  use whole node with all cores without sharing 
+        write(f, "#SBATCH --mem=0\n")  # zero implies use all available memory, $(memory)
         write(f, "#SBATCH --mail-type=ALL\n")
         write(f, "#SBATCH --mail-user=yadav.111@osu.edu\n")
+        # Delay slurm job start by a few minutes so that the memory related problem of all nodes reading the same input nc file is resolved  
+        write(f, "#SBATCH --begin=now+$(begin_delay)minutes\n")  ## minute, hour
         write(f, "\n")
         write(f, "echo \$SLURM_SUBMIT_DIR\n")    
         if hpc == "discover"
@@ -107,30 +110,37 @@ DataDir = "$base_folder/NoahMP"  # must exist
 A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true)
 A = A[:SWE_tavg][Ti=1];
 szY = size(A, 2)  # get size in Y-dimension; here dim = 2
+job_count = 0
+delay_multiplier = 12  # delay the consecutive slurm job by ~12 minutes
 
+# for i in StepRange(501, step, 600)  # for testing
 for i in StepRange(1, step, szY)
     start_idx = i
     end_idx = start_idx + step - 1
     if end_idx > szY
         end_idx = szY
     end
+    # begin_delay = Int((job_count) * step/3)  
+    begin_delay = Int(job_count * delay_multiplier)
     jobname = "$(start_idx)_$(end_idx)"
     B = A[1:end, start_idx:end_idx]  # ERROR: LoadError: NetCDF error: NetCDF: Start+count exceeds dimension bound (NetCDF error code: -57)
     """
     # TODO Save of copy of sub-array A to hard-drive somewhere. This will by copied by call_blender_v14 script. To prevent slurm jobs failing on Unity.
     # likely due to multiple jobs copying the same file to nodes 
-    A = A[1:end, start_idx:end_idx, :]
-    
+    A = A[1:end, start_idx:end_idx, :]    
     """
-
     valid_pix_ind = findall(!ismissing, B)
     valid_pix_count = length(valid_pix_ind)
-    runtime = Int(round(valid_pix_count/(cores*150)))
+    # estimate runtime as function of the number of cores used. 150 seconds = 2.5 mins; ie 1 pixel processing time ~ 0.4 min.
+    runtime = Int(round(valid_pix_count/(cores*240)))  # 150
     # runtime = "08:00:00"  # 12 "24:00:00"  # default (max for Discover)
     # runtime = "$(approx_time):00:00"
     println(start_idx, " ", end_idx, " ", valid_pix_count, " hours ", runtime)
-    create_job(hpc_name, jobname, cores, memory, runtime, "V14x_WY$(water_year)", start_idx, end_idx, valid_pix_count)
-    sleep(5)
+    # create_job(hpc_name, jobname, cores, memory, runtime, "V14x_WY$(water_year)", start_idx, end_idx, valid_pix_count)
+    create_job(hpc_name, jobname, cores, memory, runtime, "WY$(water_year)", start_idx, end_idx, valid_pix_count, begin_delay)
+    sleep(1)
+    global job_count += 1
 end
+println("Total Slurm jobs submitted = $job_count")
 # =============================================================================================================================
 # =============================================================================================================================
