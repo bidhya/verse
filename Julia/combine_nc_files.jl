@@ -138,8 +138,9 @@ function combine_nc(nc_outDir, var)
     folders = readdir(nc_outDir)
     # TODO Sort these files in ascending ordering starting at index 1.
     sym_var = Symbol(var) # uppercase(var)
-    Threads.@threads for folder in folders
-        B = RasterStack("$(nc_outDir)/$(folder)/$(var).nc", lazy=false)        
+    # Threads.@threads for folder in folders
+    for folder in folders
+            B = RasterStack("$(nc_outDir)/$(folder)/$(var).nc", lazy=false)        
         outRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[sym_var]  # B[:SWE]
         sleep(1)  # this may help with unknown random error
     end

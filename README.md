@@ -51,10 +51,11 @@ TODO: Generate Analysis ready data for North America by merging SEUP and MODIS_C
         NoahMP --> seup  
         WY_merged --> Inputs; even move outside the NoahMP folder
 
-## Nov 04, 2023
+## Nov 07, 2023
 v14.jl : Final to save nc files without intermediate text files. log files left on node (deleted at end of job).
 submit_slurm.jl : to submit v14 using Julia and considering the number of pixels for runtime.  
 New workflow is memory intensive so use all available RAM on nodes (~180 GB)  
+Use all cores and memory in exclusive mode for slurm jobs.  
 
 ## Oct 14, 2023
 v13.jl with SharedArray. working fine but not fully tested   

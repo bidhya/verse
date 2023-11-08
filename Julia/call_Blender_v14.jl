@@ -44,6 +44,7 @@ if occursin("test", out_subfolder)
 else
     test_run = false
 end
+start_time = time_ns()
 
 using Logging, LoggingExtras
 using Distributed  # otherwise everywhere macro won't work
@@ -205,6 +206,9 @@ else
     #     write(subset_fname, A)
     # end
 end
+end_time = time_ns()
+running_time = (end_time - start_time)/1e9/60
+@info("Time until copying input netcdf to Node = $(round(running_time, digits=2)) minutes")
 
 # A = RasterStack("$DataDir/WY_merged/2016_clip3.nc")  # for NoahMP with CGF MODIS
 # Subset only the required variables because the nc file can have extraneous vars that cause problem with julia
@@ -223,7 +227,6 @@ end
 # A = A[100:150, start_idx:end_idx, :]  # size(A) = (2336, 941)
 A = A[1:end, start_idx:end_idx, :]  # ERROR: LoadError: NetCDF error: NetCDF: Start+count exceeds dimension bound (NetCDF error code: -57)
 # Now using cartesian index for iteration
-start_time = time_ns()
 # Extract cartesian index for non-missing (ie, all) data using one-day of data 
 valid_pix_ind = findall(!ismissing, A["SWE_tavg"][Ti=1])
 valid_pix_count = length(valid_pix_ind)
