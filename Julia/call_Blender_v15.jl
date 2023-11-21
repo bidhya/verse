@@ -129,7 +129,7 @@ global_logger(info_only_logger)  # Set the global logger to logger; else logs do
 @info("Number of workers: $(nworkers())")
 # Everywhere should come after cores are already added
 @everywhere using Rasters, NCDatasets
-@everywhere include("Estimate_v57.jl")  #https://docs.julialang.org/en/v1/manual/code-loading/; evaluated in global scope
+@everywhere include("Estimate_v58.jl")  #https://docs.julialang.org/en/v1/manual/code-loading/; evaluated in global scope
 
 # base_folder = "$root_dir/Github/Blender"
 # DataDir= "$base_folder/nc_files"
