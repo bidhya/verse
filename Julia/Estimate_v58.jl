@@ -72,18 +72,17 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)
 
     #currently unused until further testing
 
-    #σWRFG=zeros(nt,1)
-    #for i=1:nt
-    #  if MSCF[i]==0
-    #	if WRFSWE[i]>0
-    #	   σWRFG[i]=25;
-    #	else 
-    #	   σWRFG[i]=15;
-    #       end
-    #  else 
-    #      σWRFG[i]=15;
-    #  end
-    #end
+    σWRFG=zeros(nt,1)
+    σWRFG_rel=0.5
+    for i=1:nt
+      if MSCF[i]>0.1 && WRFSWE[i]>0.1  # if both are snow covered
+        σWRFG[i]=abs(WRFG[i])*σWRFG_rel;
+      elseif MSCF[i]<0.1 && WRFSWE[i]<0.1 # if both not snowy
+        σWRFG[i]=25;
+      else
+        σWRFG[i]=500; #if they disagree, then don’t use prior in cost function
+      end
+    end
 
     # 1.2 physical parameters
     ρw=1000 #density of water
@@ -171,16 +170,22 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)
         end
     end
 
+    for i=2:nt
+        if Gmelt_pv[i] > Gmax
+            σWRFG[i]=1.0e9
+        end
+    end
+
     # 3.2 Solve for the posterior using prior valid
-    m = Model(optimizer_with_attributes(Ipopt.Optimizer))
+    m = Model(optimizer_with_attributes(Ipopt.Optimizer, "max_iter"=>5000))
     @variable(m, SWEmin <= SWE[i=1:nt] <= SWEmax[i],start=SWEpv[i] )
     @variable(m,  Precip[i=1:nt]>=0. ,start=WRFP[i])
-    @variable(m,  G[i=1:nt]<=Gmax , start=G_pv[i])
-    @variable(m, Gmelt[i=1:nt]>=0, start=Gmelt_pv[i])
+    @variable(m,  G[i=1:nt] , start=G_pv[i])
+    @variable(m, 0 <= Gmelt[i=1:nt] <= Gmax, start=Gmelt_pv[i])
     @variable(m, Us[i=1:nt] <=0, start=U_pv[i])
     #@objective(m,Min,sum( (SWE-SWEpv).^2 ./σWSWE.^2)+sum((Precip-WRFP).^2 ./σWRFP.^2)+
     #                   sum((G-G_pv).^2 ./σWRFG.^2) )
-    @objective(m,Min,sum((Precip-WRFP).^2 ./σWRFP.^2)+ sum((G-G_pv).^2 ./σWRFG.^2) )
+    @objective(m,Min,sum((Precip-WRFP).^2 ./σWRFP.^2)+ sum((Gmelt-Gmelt_pv).^2 ./σWRFG.^2) )
     for i in 1:nt-1
         @constraint(m,SWE[i+1]==SWE[i]+Precip[i]-Gmelt[i]*Δt/Lf/ρw)
         @NLconstraint(m,Us[i+1]==Us[i]+(1-(tanh(Us[i]/10000)+1))*G[i]*MSCF[i]*Δt+
