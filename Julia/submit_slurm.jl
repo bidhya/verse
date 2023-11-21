@@ -94,7 +94,7 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         else
             write(f, "cp -r ~/Github/verse .\n")
         end
-        write(f, "julia verse/Julia/call_Blender_v14.jl $(out_subfolder) $(start_idx) $(end_idx)\n\n")
+        write(f, "julia verse/Julia/call_Blender_v15.jl $(out_subfolder) $(start_idx) $(end_idx)\n\n")
         write(f, "squeue --job \$SLURM_JOBID \n")
         write(f, "echo List of files on TMPDIR\n")
         write(f, "echo ---------------------------------------------------------------------\n")
