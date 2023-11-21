@@ -157,6 +157,7 @@ DataDir = "$base_folder/NoahMP"  # must exist
 # exp_dir = "$out_folder/outputs_txt"     # tmp_txtDir(old name) To save text outputs for each pixel
 # mkpath(exp_dir)  # mkdir
 logDir = "logs"  # "$out_folder/logs"   # Save logs in separate folder
+# Check Error on Discover (Nov 08, 2023): rm: cannot remove '/lscratch/tdirs/batch/slurm.24967584.byadav/logs': Directory not empty
 mkpath(logDir)  # mkdir
 # cp("$base_folder/Runs/$out_subfolder/outputs_txt", "$tmp_txtDir/$water_year")  # copy to local machine; error if running the first time as this dir would not exist
 
@@ -206,8 +207,8 @@ else
     #     write(subset_fname, A)
     # end
 end
-end_time = time_ns()
-running_time = (end_time - start_time)/1e9/60
+# end_time = time_ns()
+running_time = (time_ns() - start_time)/1e9/60
 @info("Time until copying input netcdf to Node = $(round(running_time, digits=2)) minutes")
 
 # A = RasterStack("$DataDir/WY_merged/2016_clip3.nc")  # for NoahMP with CGF MODIS
@@ -246,6 +247,9 @@ GpvRaster = deepcopy(SWERaster)
 GmeltpvRaster = deepcopy(SWERaster)
 UpvRaster = deepcopy(SWERaster)
 SWEpvRaster = deepcopy(SWERaster);
+
+running_time = (time_ns() - start_time)/1e9/60
+@info("Pre-generating output nc files = $(round(running_time, digits=2)) minutes")
 
 @info("Starting with loop.")
 @info("==========================================================")
