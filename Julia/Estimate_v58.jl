@@ -72,17 +72,6 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)
 
     #currently unused until further testing
 
-    σWRFG=zeros(nt,1)
-    σWRFG_rel=0.5
-    for i=1:nt
-      if MSCF[i]>0.1 && WRFSWE[i]>0.1  # if both are snow covered
-        σWRFG[i]=abs(WRFG[i])*σWRFG_rel;
-      elseif MSCF[i]<0.1 && WRFSWE[i]<0.1 # if both not snowy
-        σWRFG[i]=25;
-      else
-        σWRFG[i]=500; #if they disagree, then don’t use prior in cost function
-      end
-    end
 
     # 1.2 physical parameters
     ρw=1000 #density of water
@@ -97,6 +86,20 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)
             MSCF[i]=1
         end
     end  
+
+    σWRFG=zeros(nt,1).+15
+    σWRFG_rel=0.5
+    for i=1:nt
+      if MissingSCFData[i]==1 # missing data check
+	σWRFG[i] = 1e9
+      elseif MSCF[i]>0.1 && WRFSWE[i]>0.1  # if both are snow covered
+        σWRFG[i]=abs(WRFG[i])*σWRFG_rel;
+      elseif MSCF[i]<0.1 && WRFSWE[i]<0.1 # if both not snowy
+        σWRFG[i]=25;
+      else
+        σWRFG[i]=500; #if they disagree, then don’t use prior in cost function
+      end
+    end
 
     # 1.4 Match up SWE and MSCF
     for i=1:nt
@@ -129,19 +132,19 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)
         end
     end
     
-    # New-BNY For Arctic night [Feb 14, 2023] 
-    # Set the vector to 15 everythere unless SCF is undefined for Arctic Nights, then set to large number
-    σWRFG=zeros(nt,1) .+ 15  # default of 15 everywhere
-    for i=1:nt
-        # if MSCF[i] == 0.
-        # if ismissing(MSCF[i])
-        if MissingSCFData[i]==1
-            # TODO: Check whether these values are NaN, missing, 0 or sth else
-            σWRFG[i] = 1e9
-        # else
-        #     σWRFG[i] = 15
-        end
-    end
+    # # New-BNY For Arctic night [Feb 14, 2023] 
+    # # Set the vector to 15 everythere unless SCF is undefined for Arctic Nights, then set to large number
+    # σWRFG=zeros(nt,1) .+ 15  # default of 15 everywhere
+    # for i=1:nt
+    #     # if MSCF[i] == 0.
+    #     # if ismissing(MSCF[i])
+    #     if MissingSCFData[i]==1
+    #         # TODO: Check whether these values are NaN, missing, 0 or sth else
+    #         σWRFG[i] = 1e9
+    #     # else
+    #     #     σWRFG[i] = 15
+    #     end
+    # end
 
     
     # 3. Solve
