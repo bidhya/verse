@@ -50,6 +50,13 @@ TODO: Generate Analysis ready data for North America by merging SEUP and MODIS_C
     Rename Folders:
         NoahMP --> seup  
         WY_merged --> Inputs; even move outside the NoahMP folder
+
+## Nov 21, 2023
+Created JacksUpdateNov21 to incorporate changes from Jack.
+New Files:
+- Estimate_v58.jl     : changes from Jack
+- call_Blender_v15.jl : calls Estimate_v58.jl
+
 ## Nov 20, 2023
 Final commit to main before incorporating changes from Jack.
 Final codes
