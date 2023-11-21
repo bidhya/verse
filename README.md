@@ -50,6 +50,13 @@ TODO: Generate Analysis ready data for North America by merging SEUP and MODIS_C
     Rename Folders:
         NoahMP --> seup  
         WY_merged --> Inputs; even move outside the NoahMP folder
+## Nov 20, 2023
+Final commit to main before incorporating changes from Jack.
+Final codes
+    - submit_slurm.jl  
+    - call_Blender_v14.jl  
+    - combine_nc_files.jl  
+Successfully ran using 35 to 40 rows and all available memory (>180 GB)  
 
 ## Nov 07, 2023
 v14.jl : Final to save nc files without intermediate text files. log files left on node (deleted at end of job).
