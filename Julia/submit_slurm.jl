@@ -25,20 +25,20 @@ if occursin("discover", host_machine) #|| occursin("borg", host_machine)
     base_folder = "$root_dir/Blender"
     hpc_name = "discover"
     cores = 46  # use 45 so one core can be used to monitor run using srun/htop.
-    memory = "184gb"
+    memory = "0" #"184gb"
 elseif occursin(".osc.edu", host_machine)
     root_dir = "/fs/ess/PAS1785/coressd"  # "/fs/scratch/PAS1785/coressd"
     base_folder = "$root_dir/Blender"
     hpc_name = "osc"
     cores = 40
-    memory = "175gb"
+    memory = "0" #"175gb"
 elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
     root_dir = "/fs/project/howat.4/yadav.111/coressd"  # homedir()  #  Unity
     # base_folder = "/home/yadav.111/Github/Blender"  # old
     base_folder = "$root_dir/Blender"  # "$root_dir/Github/coressd/Blender"
     hpc_name = "unity"
     cores = 40  # 39 24 cores with 96GB memory for old node
-    memory = "180gb"
+    memory = "186gb"  # 180gb seems 186 max allowed
 else
     @info("Unknown computer, manually add root directory before proceeding. Exiting code")  # will output directly to console, ie like print statement
     exit(1)  # if error, comment this line, add root and base_folder below and run again
@@ -61,20 +61,24 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
                     runtime = 24  # this is max allowed in Discover
                 end
             end
+            write(f, "#SBATCH --no-requeue\n")
         elseif hpc == "osc"
             write(f, "#SBATCH --account=PAS1785\n")
-        end    
+        elseif hpc == "unity"
+            write(f, """#SBATCH --constraint="[cascade|skylake]"\n""")
+        end
         write(f, "#SBATCH --job-name=$(jobname).job\n")
         write(f, "#SBATCH --output=.out/$(jobname).out\n")
         write(f, "#SBATCH --time=$(runtime):00:00\n")
-        write(f, "#SBATCH --nodes=1\n")  #  --ntasks=$(cores)
+        write(f, "#SBATCH --nodes=1 --ntasks=$(cores)\n")  # 
         write(f, "#SBATCH --exclusive\n")  #  use whole node with all cores without sharing 
-        write(f, "#SBATCH --mem=0\n")  # zero implies use all available memory, $(memory)
+        write(f, "#SBATCH --mem=$(memory)\n")  # zero implies use all available memory
         write(f, "#SBATCH --mail-type=ALL\n")
         write(f, "#SBATCH --mail-user=yadav.111@osu.edu\n")
         # Delay slurm job start by a few minutes so that the memory related problem of all nodes reading the same input nc file is resolved  
         write(f, "#SBATCH --begin=now+$(begin_delay)minutes\n")  ## minute, hour
         write(f, "\n")
+        write(f, "echo ==============================================================================\n")
         write(f, "echo \$SLURM_SUBMIT_DIR\n")    
         if hpc == "discover"
             write(f, "cd \$LOCAL_TMPDIR\n")
@@ -82,23 +86,21 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
             write(f, "cd \$TMPDIR\n")
         end
         write(f, "date; hostname; pwd\n")
-        write(f, "echo ========================================================\n")
         write(f, "echo Blender run for $(out_subfolder) start_idx = $(start_idx) end_idx = $(end_idx) valid_pix_count = $(valid_pix_count). \n\n")
         # write(f, "export JULIA_NUM_THREADS=\$SLURM_NTASKS\n")
         write(f, "sleep 5\n")
-        write(f, "\n")    
         if hpc == "discover"
             write(f, "cp -r /discover/nobackup/projects/coressd/Github/verse .\n")
         else
             write(f, "cp -r ~/Github/verse .\n")
-        end    
+        end
         write(f, "julia verse/Julia/call_Blender_v14.jl $(out_subfolder) $(start_idx) $(end_idx)\n\n")
         write(f, "squeue --job \$SLURM_JOBID \n")
         write(f, "echo List of files on TMPDIR\n")
-        write(f, "echo ========================================================\n")
+        write(f, "echo ---------------------------------------------------------------------\n")
         write(f, "ls -ltrh\n")
         write(f, "ls logs|wc -l\n")
-        write(f, "echo Finished Slurm job \n")
+        write(f, "echo Finished Slurm job \n\n")
     end
     run(`sbatch $(job_file)`)  # submit the job
 end
@@ -111,7 +113,10 @@ A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true)
 A = A[:SWE_tavg][Ti=1];
 szY = size(A, 2)  # get size in Y-dimension; here dim = 2
 job_count = 0
-delay_multiplier = 5  # delay the consecutive slurm job by ~5 minutes
+delay_multiplier = 3  # delay the consecutive slurm job by ~3 minutes
+if occursin("asc.ohio-state.edu", host_machine)
+    delay_multiplier = 7  # longer delay on unity becuase of slow speeds in moving data (network related)
+end
 
 # for i in StepRange(501, step, 600)  # for testing
 for i in StepRange(1, step, szY)
@@ -131,8 +136,9 @@ for i in StepRange(1, step, szY)
     """
     valid_pix_ind = findall(!ismissing, B)
     valid_pix_count = length(valid_pix_ind)
-    # estimate runtime as function of the number of cores used. 150 seconds = 2.5 mins; ie 1 pixel processing time ~ 0.4 min.
-    runtime = Int(round(valid_pix_count/(cores*240)))  # with exclusive, how many cores we get is not certain, but just an estimate
+    # estimate runtime as function of the number of cores used. 210 seconds = 3.5 mins; ie 1 pixel processing time ~ 0.3 min.
+    runtime = Int(ceil(valid_pix_count/(cores*210)))  # with exclusive, how many cores we get is not certain, but just an estimate
+    # 240 seconds : timeout error on OSC, so redude time
     # runtime = "08:00:00"  # 12 "24:00:00"  # default (max for Discover)
     # runtime = "$(approx_time):00:00"
     println(start_idx, " ", end_idx, " ", valid_pix_count, " hours ", runtime)
