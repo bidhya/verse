@@ -137,11 +137,19 @@ for i in StepRange(1, step, szY)
     valid_pix_ind = findall(!ismissing, B)
     valid_pix_count = length(valid_pix_ind)
     # estimate runtime as function of the number of cores used. 210 seconds = 3.5 mins; ie 1 pixel processing time ~ 0.3 min.
-    runtime = Int(ceil(valid_pix_count/(cores*210)))  # with exclusive, how many cores we get is not certain, but just an estimate
+    runtime = Int(ceil(valid_pix_count/(cores*150)))  #210; with exclusive, how many cores we get is not certain, but just an estimate
     # 240 seconds : timeout error on OSC, so redude time
     # runtime = "08:00:00"  # 12 "24:00:00"  # default (max for Discover)
     # runtime = "$(approx_time):00:00"
     println(start_idx, " ", end_idx, " ", valid_pix_count, " hours ", runtime)
+
+    # # Use next 5 lines only if re-running few folders due to error/timeout. Still testing. 
+    # nc_outDir = "$base_folder/Runs/WY$(water_year)/temp_nc/outputs_$(start_idx)_$(end_idx)"
+    # if isdir(nc_outDir)  # process only if the pixel is not already processed
+    #     println("Exiting because following folder already processed: $nc_outDir")
+    #     continue
+    # end
+    
     # create_job(hpc_name, jobname, cores, memory, runtime, "V14x_WY$(water_year)", start_idx, end_idx, valid_pix_count)
     create_job(hpc_name, jobname, cores, memory, runtime, "WY$(water_year)", start_idx, end_idx, valid_pix_count, begin_delay)
     sleep(1)
