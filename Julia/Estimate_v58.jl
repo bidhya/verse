@@ -14,7 +14,7 @@
 # v53 To set tab to 4 spaces (by copying/pasting)
 # v54 combine 9 separate textfile output in one txt file (due to file count limitation on Discover)
 # v55 Fixing error due to missing days of data due to Polar nights
-
+# v58 New updates by jack (Nov 2023)
 
 using JuMP
 using Ipopt
@@ -85,20 +85,21 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)
             MissingSCFData[i]=1
             MSCF[i]=1
         end
-    end  
+    end
 
-    σWRFG=zeros(nt,1).+15
-    σWRFG_rel=0.5
+    # New Updates fro Jack (Nov, 2023)
+    σWRFG = zeros(nt,1) .+ 15
+    σWRFG_rel = 0.5
     for i=1:nt
-      if MissingSCFData[i]==1 # missing data check
-	σWRFG[i] = 1e9
-      elseif MSCF[i]>0.1 && WRFSWE[i]>0.1  # if both are snow covered
-        σWRFG[i]=abs(WRFG[i])*σWRFG_rel;
-      elseif MSCF[i]<0.1 && WRFSWE[i]<0.1 # if both not snowy
-        σWRFG[i]=25;
-      else
-        σWRFG[i]=500; #if they disagree, then don’t use prior in cost function
-      end
+        if MissingSCFData[i]==1 # missing data check
+	        σWRFG[i] = 1e9
+        elseif MSCF[i]>0.1 && WRFSWE[i]>0.1  # if both are snow covered
+            σWRFG[i] = abs(WRFG[i]) * σWRFG_rel
+        elseif MSCF[i]<0.1 && WRFSWE[i]<0.1 # if both not snowy
+            σWRFG[i] = 25
+        else
+            σWRFG[i] = 500 #if they disagree, then don’t use prior in cost function
+        end
     end
 
     # 1.4 Match up SWE and MSCF
@@ -132,7 +133,7 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)
         end
     end
     
-    # # New-BNY For Arctic night [Feb 14, 2023] 
+    # # New-BNY For Arctic night [Feb 14, 2023] <-- Superceded by updates from Jack in Nov 2023.
     # # Set the vector to 15 everythere unless SCF is undefined for Arctic Nights, then set to large number
     # σWRFG=zeros(nt,1) .+ 15  # default of 15 everywhere
     # for i=1:nt
