@@ -117,7 +117,7 @@ delay_multiplier = 3  # delay the consecutive slurm job by ~3 minutes
 if occursin("asc.ohio-state.edu", host_machine)
     delay_multiplier = 7  # longer delay on unity becuase of slow speeds in moving data (network related)
 end
-
+total_runtime = 0
 # for i in StepRange(501, step, 600)  # for testing
 for i in StepRange(1, step, szY)
     start_idx = i
@@ -138,6 +138,7 @@ for i in StepRange(1, step, szY)
     valid_pix_count = length(valid_pix_ind)
     # estimate runtime as function of the number of cores used. 210 seconds = 3.5 mins; ie 1 pixel processing time ~ 0.3 min.
     runtime = Int(ceil(valid_pix_count/(cores*120)))  #210; with exclusive, how many cores we get is not certain, but just an estimate
+    global total_runtime += runtime
     # 240 seconds : timeout error on OSC, so redude time
     # runtime = "08:00:00"  # 12 "24:00:00"  # default (max for Discover)
     # runtime = "$(approx_time):00:00"
@@ -156,5 +157,6 @@ for i in StepRange(1, step, szY)
     global job_count += 1
 end
 println("Total Slurm jobs submitted = $job_count")
+println("Total Runtime = $total_runtime")
 # =============================================================================================================================
 # =============================================================================================================================
