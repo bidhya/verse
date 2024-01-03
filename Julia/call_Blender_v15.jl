@@ -29,6 +29,7 @@ Finally, all text output files are assembled into a nc file. The script can thus
 Dec 03, 2022 : Trying multinodes with ClusterManagers.jl
 Sep 04, 2023 : text and log files saved in separate folders; created call_Blender_v12.jl uses Estimate_v56.jl
 Oct 29, 2023 : Save nc files to temp_nc folder using call_Blender_v14.jl uses Estimate_v57.jl
+Dec 03, 2023 : New call_Blender_v15.jl uses Estimate_v58.jl (modifications by Jack)
 
 """
 arg_len = length(ARGS)
@@ -48,7 +49,7 @@ start_time = time_ns()
 
 using Logging, LoggingExtras
 using Distributed  # otherwise everywhere macro won't work
-using SharedArrays
+# using SharedArrays  # move this line below addprocs(cores), else won't work in Julia 1.10.0
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # 1. Setup inputs and output directories and file locations
 # select the root directory (this will be different on windows, linux or Mac) 
@@ -236,6 +237,7 @@ ind = valid_pix_ind
 
 # Oct 29, 2023
 sizeA = size(A)  # to create sharedarrays
+using SharedArrays  # must come after addprocs(cores) else won't work for julia 1.10.0 version.  
 # SWERaster = SharedArray{Float32}(10, 10, 366)
 SWERaster = SharedArray{Float32}(sizeA)
 SWERaster[:,:,:] .= NaN
