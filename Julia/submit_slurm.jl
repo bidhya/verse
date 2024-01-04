@@ -89,6 +89,7 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         write(f, "echo Blender run for $(out_subfolder) start_idx = $(start_idx) end_idx = $(end_idx) valid_pix_count = $(valid_pix_count). \n\n")
         # write(f, "export JULIA_NUM_THREADS=\$SLURM_NTASKS\n")
         write(f, "sleep 5\n")
+        write(f, "julia --version\n")
         if hpc == "discover"
             write(f, "cp -r /discover/nobackup/projects/coressd/Github/verse .\n")
         else

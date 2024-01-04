@@ -67,7 +67,7 @@ global_logger(info_only_logger)  # Set the global logger to logger; else logs do
 @info("Host computer machine: $host_machine")
 
 # Everywhere should come after cores are already added
-using Rasters, NCDatasets, ArchGDAL
+using Rasters, NCDatasets #, ArchGDAL
 
 # base_folder = "$root_dir/Github/Blender"
 # DataDir= "$base_folder/nc_files"
