@@ -3,12 +3,12 @@
 ## Jan 11, 2024  
 - Created Jan11_2023 branch  
 - Changes to Incorporate
+    - Manually create "log" folder either on compute node or on output_folder (for debugging purpose)  
     - call_Blender_v15.jl
-        - control creation of log file from this script
-        - pass the location of this log folder from 
-    - Estimate_v58.jl
-        - receive the "log" folder as function argument
-    - Log folder can thus be created on compute node or on output_folder (for debugging purpose)  
+        - control creation of log file from this script  
+        - pass the location of this log folder from  
+    - Estimate_v58.jl  
+        - receive the "log" folder as function argument  
 
 ## Jan 10, 2024  
 - Reverted to main branch from github with dec03, 2023 updates  

@@ -22,7 +22,7 @@ using DelimitedFiles
 # using Dates, CSV, DataFrames
 # function blender(DataDir, exp_dir, WRFSWE, WRFP, WRFG, MSCF, AirT)
 # function blender(out_folder, i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)
-function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)
+function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir)
     """
     Note: keyword argument defined after positional with ; if no default value provided, it is required
     Inputs
@@ -205,7 +205,7 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)
     # BY Create output folder; no error if the folder already exist
     # exp_dir = "$out_folder/outputs_txt"    # To save text outputs for each pixel
     # exp_dir = "$(tmp_txtDir)/Pix_$(i)_$(j)"
-    logDir = "logs"  #"$out_folder/logs"    # To save text outputs for each pixel
+    # logDir = "logs"  #"$out_folder/logs"    # To save text outputs for each pixel
     log_file =  "$logDir/Pix_$(i)_$(j).txt"
     redirect_stdio(stdout=log_file, stderr=log_file) do
         optimize!(m)

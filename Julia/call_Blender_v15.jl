@@ -157,11 +157,12 @@ DataDir = "$base_folder/NoahMP"  # must exist
 # Make a folder insise HPC node because we want to copy existing files there
 # exp_dir = "$out_folder/outputs_txt"     # tmp_txtDir(old name) To save text outputs for each pixel
 # mkpath(exp_dir)  # mkdir
-logDir = "logs"  # "$out_folder/logs"   # Save logs in separate folder
-# Check Error on Discover (Nov 08, 2023): rm: cannot remove '/lscratch/tdirs/batch/slurm.24967584.byadav/logs': Directory not empty
-mkpath(logDir)  # mkdir
-# cp("$base_folder/Runs/$out_subfolder/outputs_txt", "$tmp_txtDir/$water_year")  # copy to local machine; error if running the first time as this dir would not exist
+# logDir = "logs"  # "$out_folder/logs"   # Save logs in separate folder
+logDir = "$base_folder/Runs/$out_subfolder/logs/logs_$(start_idx)_$(end_idx)"  # For Debug: save on same folder and outputs  
+mkpath(logDir)  # mkdir; must create here, else error in the current setup  
+# Error on Discover (Nov 08, 2023): rm: cannot remove '/lscratch/tdirs/batch/slurm.24967584.byadav/logs': Directory not empty; Solution: #SBATCH --no-requeue
 
+# cp("$base_folder/Runs/$out_subfolder/outputs_txt", "$tmp_txtDir/$water_year")  # copy to local machine; error if running the first time as this dir would not exist
 # nc_outDir = "$out_folder/outputs"         # To convert text outputs to netcdf file
 # nc_outDir = "$base_folder/Runs/$out_subfolder/outputs"
 nc_outDir = "$base_folder/Runs/$out_subfolder/temp_nc/outputs_$(start_idx)_$(end_idx)"
@@ -234,10 +235,14 @@ valid_pix_ind = findall(!ismissing, A["SWE_tavg"][Ti=1])
 valid_pix_count = length(valid_pix_ind)
 ind = valid_pix_ind
 @info("Total valid pixel count = $(valid_pix_count)")
+println("Total valid pixel count = $(valid_pix_count)")  # debug
 
 # Oct 29, 2023
-sizeA = size(A)  # to create sharedarrays
 using SharedArrays  # must come after addprocs(cores) else won't work for julia 1.10.0 version.  
+
+sizeA = size(A)  # to create sharedarrays
+println("sizeA = $(sizeA)") # debug
+
 # SWERaster = SharedArray{Float32}(10, 10, 366)
 SWERaster = SharedArray{Float32}(sizeA)
 SWERaster[:,:,:] .= NaN
@@ -271,7 +276,7 @@ running_time = (time_ns() - start_time)/1e9/60
     MSCF = A["MODSCAG"][X=i, Y=j].data;
     # blender(out_folder, i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)  # Call blender for the pixel. OLD.
     # SWEhat, GmeltHat, Ghat,  Phat, Ushat, G_pv, Gmelt_pv, U_pv, SWEpv = blender(out_folder, i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)
-    SWEhat, GmeltHat, Ghat,  Phat, Ushat, G_pv, Gmelt_pv, U_pv, SWEpv = blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)
+    SWEhat, GmeltHat, Ghat,  Phat, Ushat, G_pv, Gmelt_pv, U_pv, SWEpv = blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir)
     # SWERaster[X=i, Y=j] = SWEhat
     # GmeltRaster[X=i, Y=j] = GmeltHat
     SWERaster[i, j, :] = SWEhat
