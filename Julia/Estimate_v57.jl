@@ -14,7 +14,7 @@
 # v53 To set tab to 4 spaces (by copying/pasting)
 # v54 combine 9 separate textfile output in one txt file (due to file count limitation on Discover)
 # v55 Fixing error due to missing days of data due to Polar nights
-
+# v57 removing hard-code logDir and pass it as a paramter to blender function   
 
 using JuMP
 using Ipopt
@@ -22,7 +22,7 @@ using DelimitedFiles
 # using Dates, CSV, DataFrames
 # function blender(DataDir, exp_dir, WRFSWE, WRFP, WRFG, MSCF, AirT)
 # function blender(out_folder, i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)
-function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)
+function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir)
     """
     Note: keyword argument defined after positional with ; if no default value provided, it is required
     Inputs
@@ -196,7 +196,7 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)
     # BY Create output folder; no error if the folder already exist
     # exp_dir = "$out_folder/outputs_txt"    # To save text outputs for each pixel
     # exp_dir = "$(tmp_txtDir)/Pix_$(i)_$(j)"
-    logDir = "logs"  #"$out_folder/logs"    # To save text outputs for each pixel
+    # logDir = "logs"  #"$out_folder/logs"    # To save text outputs for each pixel
     log_file =  "$logDir/Pix_$(i)_$(j).txt"
     redirect_stdio(stdout=log_file, stderr=log_file) do
         optimize!(m)
