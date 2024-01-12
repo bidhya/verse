@@ -157,8 +157,8 @@ DataDir = "$base_folder/NoahMP"  # must exist
 # Make a folder insise HPC node because we want to copy existing files there
 # exp_dir = "$out_folder/outputs_txt"     # tmp_txtDir(old name) To save text outputs for each pixel
 # mkpath(exp_dir)  # mkdir
-# logDir = "logs"  # "$out_folder/logs"   # Save logs in separate folder
-logDir = "$base_folder/Runs/$out_subfolder/logs/logs_$(start_idx)_$(end_idx)"  # For Debug: save on same folder and outputs  
+logDir = "logs_$(start_idx)_$(end_idx)"  # "logs"  "$out_folder/logs"   # Save logs in separate folder
+# logDir = "$base_folder/Runs/$out_subfolder/logs/logs_$(start_idx)_$(end_idx)"  # For Debug: save on same folder and outputs  
 mkpath(logDir)  # mkdir; must create here, else error in the current setup  
 # Error on Discover (Nov 08, 2023): rm: cannot remove '/lscratch/tdirs/batch/slurm.24967584.byadav/logs': Directory not empty; Solution: #SBATCH --no-requeue
 

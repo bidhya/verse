@@ -100,7 +100,9 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         write(f, "echo List of files on TMPDIR\n")
         write(f, "echo ---------------------------------------------------------------------\n")
         write(f, "ls -ltrh\n")
-        write(f, "ls logs|wc -l\n")
+        write(f, "ls logs*|wc -l\n")  # list log files on node
+        write(f, "tar -czf logs_$(start_idx)_$(end_idx).tar.gz logs*\n")  # list log files on node
+        write(f, "cp logs_$(start_idx)_$(end_idx).tar.gz \$SLURM_SUBMIT_DIR\n")  # list log files on node
         write(f, "echo Finished Slurm job \n\n")
     end
     run(`sbatch $(job_file)`)  # submit the job
@@ -113,6 +115,7 @@ DataDir = "$base_folder/NoahMP"  # must exist
 A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true)
 A = A[:SWE_tavg][Ti=1];
 szY = size(A, 2)  # get size in Y-dimension; here dim = 2
+# szY = 10 # only for debug and testing, use smaller number
 job_count = 0
 delay_multiplier = 3  # delay the consecutive slurm job by ~3 minutes
 if occursin("asc.ohio-state.edu", host_machine)
