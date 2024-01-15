@@ -101,8 +101,8 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         write(f, "echo ---------------------------------------------------------------------\n")
         write(f, "ls -ltrh\n")
         write(f, "ls logs*|wc -l\n")  # list log files on node
-        write(f, "tar -czf logs_$(start_idx)_$(end_idx).tar.gz logs*\n")  # list log files on node
-        write(f, "cp logs_$(start_idx)_$(end_idx).tar.gz \$SLURM_SUBMIT_DIR\n")  # list log files on node
+        # write(f, "tar -czf logs_$(start_idx)_$(end_idx).tar.gz logs*\n")  # list log files on node
+        # write(f, "cp logs_$(start_idx)_$(end_idx).tar.gz \$SLURM_SUBMIT_DIR\n")  # list log files on node
         write(f, "echo Finished Slurm job \n\n")
     end
     run(`sbatch $(job_file)`)  # submit the job
@@ -141,7 +141,7 @@ for i in StepRange(1, step, szY)
     valid_pix_ind = findall(!ismissing, B)
     valid_pix_count = length(valid_pix_ind)
     # estimate runtime as function of the number of cores used. 210 seconds = 3.5 mins; ie 1 pixel processing time ~ 0.3 min.
-    runtime = Int(ceil(valid_pix_count/(cores*120)))  #210; with exclusive, how many cores we get is not certain, but just an estimate
+    runtime = Int(ceil(valid_pix_count/(cores*150)))  #120; 210; with exclusive, how many cores we get is not certain, but just an estimate
     global total_runtime += runtime
     # 240 seconds : timeout error on OSC, so redude time
     # runtime = "08:00:00"  # 12 "24:00:00"  # default (max for Discover)

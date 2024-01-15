@@ -200,7 +200,8 @@ else
     # A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")
     # A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
     # copy to local Node (machine) on slurm
-    cp("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", "$tmpdir/$water_year" * "_seup_modis.nc", force=true)  # true required for discover when running on same node again after node_failure.
+    cp("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", "$tmpdir/$water_year" * "_seup_modis.nc", force=true)  #force=true will first remove an existing dst.
+    # true required for discover when running on same node again after node_failure.
     A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc", lazy=true)  ## , lazy=true https://github.com/rafaqz/Rasters.jl/issues/449
     # if test_run
     #     # Aside: Get test set of data
@@ -298,6 +299,14 @@ GC.gc()
 end_time = time_ns()
 running_time = (end_time - start_time)/1e9/3600
 @info("Loop Running Time = $(round(running_time, digits=2)) hours")
+
+# Tar move log files from compute node to permanent location
+using Tar
+# Tar.create(logDir, "$(logDir).tar")  # no native compression for tar in julia
+Tar.create(logDir, pipeline(`gzip -9`, "$(logDir).tar.gz"))  # but will create error on windows
+mkpath("$base_folder/Runs/$out_subfolder/logs")  # also works if path already exists
+cp("$(logDir).tar.gz", "$base_folder/Runs/$out_subfolder/logs/$(logDir).tar.gz")
+@info("Moved logfile to : $base_folder/Runs/$out_subfolder/logs/$(logDir).tar.gz")
 
 # Oct 08, 2023. To save output nc files. Create Raster matching the input and save to nc file 
 mkpath(nc_outDir)

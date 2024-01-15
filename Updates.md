@@ -1,5 +1,11 @@
 # Updates to codebase in reverse chronological order
 =============================================   
+## Jan 14, 2024  
+- tar and gzip log folder on compute node  
+- move the tar.gz file to ../Runs/WY20xx/logs/  
+    - this is record of runs  
+    - archive can be kept for long-term storage  
+
 ## Jan 11, 2024  
 - Created Jan11_2023 branch  
 - Changes to Incorporate
