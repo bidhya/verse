@@ -1,10 +1,21 @@
 # Updates to codebase in reverse chronological order
 =============================================   
+## Jan 18, 2024  
+- merging Jan11_2024 branch to main  
+- increased runtime for jobs  
+- adding Milan (mil) to list of list of usable clusters on Discover    
+- Blender error for one pixel in WY2014 from new updates by Jack remain  
+
 ## Jan 14, 2024  
 - tar and gzip log folder on compute node  
 - move the tar.gz file to ../Runs/WY20xx/logs/  
     - this is record of runs  
     - archive can be kept for long-term storage  
+- tar from within julia code. But gzip will not work on windows. 
+- there is also option to tar from slurm job but this is used anymore  
+- seperate notebook (outside this verse git) to extract relevant optimization messages from tar and save to csv
+- ../03_Blender/10_Analyze_output_log_files.ipynb  
+    - run this ipynb with papermill from slurm job (../Github/Slurm_jobs/log_paper.job) passing WY as argument  
 
 ## Jan 11, 2024  
 - Created Jan11_2023 branch  
