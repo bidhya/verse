@@ -15,6 +15,7 @@
 # v54 combine 9 separate textfile output in one txt file (due to file count limitation on Discover)
 # v55 Fixing error due to missing days of data due to Polar nights
 # v58 New updates by jack (Nov 2023)
+# Jan 29, 2024: Due to error on obj function σWRFG becoming zero, fixed the minimum σWRFG to 25 
 
 using JuMP
 using Ipopt
@@ -94,7 +95,11 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir)
         if MissingSCFData[i]==1 # missing data check
 	        σWRFG[i] = 1e9
         elseif MSCF[i]>0.1 && WRFSWE[i]>0.1  # if both are snow covered
-            σWRFG[i] = abs(WRFG[i]) * σWRFG_rel
+            σWRFG[i] = abs(WRFG[i]) * σWRFG_rel  # when WRFG == zero, σWRFG also becomes zero which creates problem of objective function
+            # Jan 29, 2024 To solve this problem in obj function: Expression contains an invalid NaN constant. This could be produced by `Inf - Inf`.
+            if σWRFG[i] < 25  # or == 0 because this is what was actually causing problem.  
+                σWRFG[i] = 25  # σWRFG_rel  #abs(WRFG[i] + eps(Float32)) * σWRFG_rel
+            end
         elseif MSCF[i]<0.1 && WRFSWE[i]<0.1 # if both not snowy
             σWRFG[i] = 25
         else

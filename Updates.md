@@ -1,5 +1,11 @@
 # Updates to codebase in reverse chronological order
 =============================================   
+## Jan 29, 2024  
+- Diagnosed and fixed nan/inf error
+- seems for only one pixel for WY2014 (row 888)
+- caused by σWRFG becoming zero; which was caused by WRFG=0 (a rare but valid valid)  
+- Fix: set minimum value of σWRFG = 25  
+
 ## Jan 18, 2024  
 - merging Jan11_2024 branch to main  
 - increased runtime for jobs  
