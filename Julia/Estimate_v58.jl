@@ -137,6 +137,15 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir)
             σWRFP[i]=WRFP[i]*RelPUnc
         end
     end
+    # Jan 30, 2023: Modify σWRFP based on number snowy days  
+    nsnowday = 0  # number of snow days
+    for i=1:nt
+        if WRFP[i]>0.001 && AirT[i] < 1.5
+            # there is precipitation and temperature is likely to convert it to snow.
+            nsnowday += 1
+        end
+    end
+    σWRFP = σWRFP .* sqrt(nsnowday * 0.5);
     
     # # New-BNY For Arctic night [Feb 14, 2023] <-- Superceded by updates from Jack in Nov 2023.
     # # Set the vector to 15 everythere unless SCF is undefined for Arctic Nights, then set to large number
