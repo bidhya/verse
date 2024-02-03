@@ -54,7 +54,7 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         # fh.writelines('#SBATCH --constraint="[cas|sky]"\n')
         if hpc == "discover"
             write(f, "#SBATCH --account=s2701\n")
-            write(f, """#SBATCH --constraint="[mil|cas|sky]"\n""")
+            write(f, """#SBATCH --constraint="[mil]"\n""")  # |cas|sky
             if runtime > 12
                 write(f, "#SBATCH --qos=long\n")  # for jobs 12-24 hours.
                 if runtime > 24
@@ -117,7 +117,7 @@ A = A[:SWE_tavg][Ti=1];
 szY = size(A, 2)  # get size in Y-dimension; here dim = 2
 # szY = 10 # only for debug and testing, use smaller number
 job_count = 0
-delay_multiplier = 3  # delay the consecutive slurm job by ~3 minutes
+delay_multiplier = 2  # delay the consecutive slurm job by ~3 minutes
 if occursin("asc.ohio-state.edu", host_machine)
     delay_multiplier = 7  # longer delay on unity becuase of slow speeds in moving data (network related)
 end

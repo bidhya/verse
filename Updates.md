@@ -1,5 +1,9 @@
 # Updates to codebase in reverse chronological order
 =============================================   
+## Feb 02, 2024  
+- update σWRFP using number of snowy days  
+- move log tar can copy to end of file due to copying error, perhaps because larger file size in Milan Nodes  
+
 ## Jan 29, 2024  
 - Diagnosed and fixed nan/inf error
 - seems for only one pixel for WY2014 (row 888)
