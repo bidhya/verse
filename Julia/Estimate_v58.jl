@@ -145,7 +145,10 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir)
             nsnowday += 1
         end
     end
-    σWRFP = σWRFP .* sqrt(nsnowday * 0.5);
+    if nsnowday > 0
+        # to prevent σWRFP from becoming zero if nsnowday=0.
+        σWRFP = σWRFP .* sqrt(nsnowday * 0.5)
+    end
     
     # # New-BNY For Arctic night [Feb 14, 2023] <-- Superceded by updates from Jack in Nov 2023.
     # # Set the vector to 15 everythere unless SCF is undefined for Arctic Nights, then set to large number
