@@ -26,7 +26,7 @@
     =======
     1. ../Blender/Modis/CGF_NDSI_Snow_Cover/modis_scf2016_original.nc   # intermediate/temporary
     2. ../Blender/CGF_NDSI_Snow_Cover/modis_scf2016.nc                  # intermediate
-    3. ../Blender/NoahMP/WY_merged/2016_seup_modis.nc                   # Final. Use for Blender run.  
+    3. ../Blender/Inputs/WY_merged/2016_seup_modis.nc                   # Final. Use for Blender run.  
 
 
 """
@@ -147,7 +147,7 @@ ds = ds.reset_coords(drop=True)  # required for combining with SEUP
 # Part II: Read SEUP Data and combine MODIS-CGF WY to create 1-WY-ARD for Blender Run
 # Aside: Reproj match with SEUP was already performed in "process_modis_cgf.py" script  
 # ========================================================================================================
-seup_ds = xr.open_dataset(f"{base_folder}/NoahMP/WY/{water_year}_seup.nc", decode_coords="all")  # updated from [2016.nc ==> 2016_seup.nc]
+seup_ds = xr.open_dataset(f"{base_folder}/Inputs/WY/{water_year}_seup.nc", decode_coords="all")  # updated from [2016.nc ==> 2016_seup.nc]
 # Merge Seup and Modis Data
 seup_ds = seup_ds.sel(time=ds.time)  # if same, this should also organize data in some order
 # MODSCAG_clipped = MODSCAG_clipped.drop_duplicates(dim="time")  # we have one duplicate time value; remove else error in next step
@@ -157,9 +157,9 @@ seup_ds["MODSCAG"] = ds["MODSCAG"]  # ValueError: cannot reindex or align along 
 # seup_ds_clipped = seup_ds_clipped.sel(time=noah_ds_clip2.time)  # TODO: or select time explicitly here
 # seup_ds_clipped = seup_ds_clipped.sel(time=slice("2015-10-01", "2016-09-29"))  # KeyError: "cannot represent labeled-based slice indexer for coordinate 'time' with a slice over integer positions; the index is unsorted or non-unique"
 # seup_ds = seup_ds.isel(time=slice(None, -2))  # perhaps only for Sarith's
-os.makedirs(f"{base_folder}/NoahMP/WY_merged", exist_ok=True)  # NEW July 3, 2023. this folder no more created in Extract_Seup notebook
-# seup_ds.to_netcdf(f"{base_folder}/NoahMP/WY_merged/2016_noahmp_cgf.nc")  # use this for Blender run for NoahMP
-seup_ds.to_netcdf(f"{base_folder}/NoahMP/WY_merged/{water_year}_seup_modis.nc")  # use this for Blender run for NoahMP
+os.makedirs(f"{base_folder}/Inputs/WY_merged", exist_ok=True)  # NEW July 3, 2023. this folder no more created in Extract_Seup notebook
+# seup_ds.to_netcdf(f"{base_folder}/Inputs/WY_merged/2016_noahmp_cgf.nc")  # use this for Blender run for NoahMP
+seup_ds.to_netcdf(f"{base_folder}/Inputs/WY_merged/{water_year}_seup_modis.nc")  # use this for Blender run for NoahMP
 logging.info("Fished preparing ARD for Blender")
 del ds  # clear from memory
 # UPTO THIS PART FOR CONCATENATING MODIS CGF FOR NORTH AMERICA
@@ -178,7 +178,7 @@ sys.exit(0)
 
 # # Why this is needed here?
 # seup_ds_clipped = seup_ds.rio.clip(gdf.geometry.apply(mapping), gdf.crs)  # A list of geojson geometry dicts
-# seup_ds_clipped.to_netcdf(f'{base_folder}/NoahMP/WY_merged/2016_clip.nc')
+# seup_ds_clipped.to_netcdf(f'{base_folder}/Inputs/WY_merged/2016_clip.nc')
 
 # ================================================================================================
 # Clip MODIS CGF for watershed using reprojection match
@@ -197,12 +197,12 @@ os.makedirs(modis_ws_folder, exist_ok=True)
 # Reprojection match with SEUP Data and Clip by Tuolumne Watershed (cannot yet work with whole North America as we do not have all the tiles merged to NA
 # This should take care of size, shape, resolution, clips etc.
 # # Get Clipped NoahMP file: we will match MODIS to this data (resolution, spatial ref etc)
-# noahmp_folder = f"{base_folder}/NoahMP"
+# noahmp_folder = f"{base_folder}/Inputs"
 # # clipped = clipped.sel(time = ds.time)  # match the time period from MODSCAG data; it has one less
 # # Alternative: clipped.sel(time=slice("2015","2016-09-29"))
 # # template_raster = clipped
 # # noah_ds_clip = rioxarray.open_rasterio(f'{noahmp_folder}/WY_merged/2016_clip.nc')
-seup_ds_clipped = rioxarray.open_rasterio(f'{base_folder}/NoahMP/WY_merged/2016_clip.nc')  # open again if processed separate from NoahMP/SEUP
+seup_ds_clipped = rioxarray.open_rasterio(f'{base_folder}/Inputs/WY_merged/2016_clip.nc')  # open again if processed separate from NoahMP/SEUP
 # Select one sample variable and just one time
 template_raster = seup_ds_clipped.isel(time=0)["SWE_tavg"]
 # template_raster.data==np.nan
@@ -225,7 +225,7 @@ logging.info("4 Saved CGF_clipped")
 
 
 # Finally, append MODIS Snow cover data to NoahMP clips
-# noahmp_folder = f"{base_folder}/NoahMP"
+# noahmp_folder = f"{base_folder}/Inputs"
 # clipped = clipped.sel(time = ds.time)  # match the time period from MODSCAG data; it has one less
 # Alternative: clipped.sel(time=slice("2015","2016-09-29"))
 # template_raster = clipped
@@ -233,10 +233,10 @@ logging.info("4 Saved CGF_clipped")
 # noah_ds_clip2 = xr.open_dataset(f'{noahmp_folder}/WY_merged/2016_clip_noahmp_modscag.nc')  # to get time from here [should not be necessary in future. For now due to incomplete old record (due to leap year)]
 # noah_ds_clip =    xr.open_dataset(f'{noahmp_folder}/WY_merged/2016_clip.nc')  # temp only, to subset time
 
-# seup_ds_clipped = xr.open_dataset(f'{base_folder}/NoahMP/WY_merged/2016_clip.nc')  # open again if processed separate from NoahMP/SEUP
+# seup_ds_clipped = xr.open_dataset(f'{base_folder}/Inputs/WY_merged/2016_clip.nc')  # open again if processed separate from NoahMP/SEUP
 # MODSCAG_clipped = xr.open_dataset(f"{modis_ws_folder}/CGF_clipped.nc")  # new from my workflow
 # replaced with rioxarray open_rasterio method because of discrepancy in y-axis coords resulting in some Nans in final product
-seup_ds_clipped = rioxarray.open_rasterio(f'{base_folder}/NoahMP/WY_merged/2016_clip.nc') 
+seup_ds_clipped = rioxarray.open_rasterio(f'{base_folder}/Inputs/WY_merged/2016_clip.nc') 
 MODSCAG_clipped = rioxarray.open_rasterio(f"{modis_ws_folder}/CGF_clipped.nc")
 
 # MODSCAG_clipped = xr.open_dataset(f"{base_folder}/MOD10A1F.061_clip/CGF_clipped.nc")  # from Sarith's workflow
@@ -252,7 +252,7 @@ seup_ds_clipped["MODSCAG"] = MODSCAG_clipped["MODSCAG"]  # ValueError: cannot re
 # seup_ds_clipped = seup_ds_clipped.sel(time=noah_ds_clip2.time)  # TODO: or select time explicitly here
 # seup_ds_clipped = seup_ds_clipped.sel(time=slice("2015-10-01", "2016-09-29"))  # KeyError: "cannot represent labeled-based slice indexer for coordinate 'time' with a slice over integer positions; the index is unsorted or non-unique"
 seup_ds_clipped = seup_ds_clipped.isel(time=slice(None, -2))  # perhaps only for Sarith's
-seup_ds_clipped.to_netcdf(f"{base_folder}/NoahMP/WY_merged/2016_clip_noahmp_cgf.nc")  # use this for Blender run for NoahMP
+seup_ds_clipped.to_netcdf(f"{base_folder}/Inputs/WY_merged/2016_clip_noahmp_cgf.nc")  # use this for Blender run for NoahMP
 logging.info("6 Fished preparing ARD for Blender")
 
 

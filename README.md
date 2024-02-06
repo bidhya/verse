@@ -12,7 +12,7 @@ Order of Script Execution for coressd project
 2. process_modis_cgf.py  
     Extract NA (North America) scale daily Modis_CGF matching the SEUP rasters
     Outputs: /coressd/Blender/Modis/CGF_NDSI_Snow_Cover/
-        - NA2016_mosaic/ [temp]
+        - NA2016_mosaic/ [this is temporary file only and maybe deleted]
         - NA2016/
 
 

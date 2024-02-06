@@ -134,7 +134,7 @@ global_logger(info_only_logger)  # Set the global logger to logger; else logs do
 
 # base_folder = "$root_dir/Github/Blender"
 # DataDir= "$base_folder/nc_files"
-DataDir = "$base_folder/NoahMP"  # must exist
+DataDir = "$base_folder/Inputs"  # must exist  (Old = NoahMP)
 # # use only for HPC to copy input file here (hopefully for faster i/o operation)
 # if occursin("borg", host_machine)
 #     tmpdir =  ENV["LOCAL_TMPDIR"]  #tempdir()  
