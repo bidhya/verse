@@ -109,7 +109,7 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
 end
 
 using Rasters, NCDatasets
-DataDir = "$base_folder/NoahMP"  # must exist
+DataDir = "$base_folder/Inputs"  # must exist. Old --> NoahMP
 
 # 2. Read the Input netCDF file
 A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true)
