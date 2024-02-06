@@ -71,7 +71,7 @@ using Rasters, NCDatasets #, ArchGDAL
 
 # base_folder = "$root_dir/Github/Blender"
 # DataDir= "$base_folder/nc_files"
-DataDir = "$base_folder/NoahMP"  # must exist
+DataDir = "$base_folder/Inputs"  # must exist (Old = NoahMP)
 
 # # # 2. Read the Input netCDF file
 # # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_modscag.nc")  #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
