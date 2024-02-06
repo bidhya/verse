@@ -104,8 +104,8 @@ def main():
 
     # Global variablees
     # Get a template raster for reprojection match
-    seup_folder = f"{base_folder}/Blender/NoahMP"
-    template_raster = xr.open_dataset(f'{seup_folder}/combined/SWE_tavg/201609.nc')  # HARDCODED  
+    seup_folder = f"{base_folder}/Blender/Inputs"  # NoahMP
+    template_raster = xr.open_dataset(f'{seup_folder}/combined/SWE_tavg/201509.nc')  # HARDCODED  
     # Select just one day data
     # noah_ds_clip = noah_ds_clip.sel(time = noah_ds_clip2.time)
     template_raster = template_raster.isel(time=0)
