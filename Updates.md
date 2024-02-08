@@ -1,5 +1,11 @@
 # Updates to codebase in reverse chronological order
 =============================================   
+## Feb 07, 2024  
+- updating documentation for generating various inputs  
+- process_modis_cgf.py : moving mosaics intside temp subfolder.  
+- compressing both mosaics and final output. 10x reduction in filesize.    
+
+
 ## Feb 02, 2024  
 - update σWRFP using number of snowy days  
 - move log tar can copy to end of file due to copying error, perhaps because larger file size in Milan Nodes  
