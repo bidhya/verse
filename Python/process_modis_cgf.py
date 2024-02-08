@@ -1,11 +1,10 @@
 #!usr/bin/env python
 
-""" My custorm script to extract MODIS CGF over North America matching the SEUP Data
-    Input
-    =====
-    Raw downloaded files in original sinusoidal projection
+""" My custorm script to extract MODIS CGF over North America matching the SEUP Data 
 
-    Usage: python ../process_modis_cgf.py 2016 --cores 8
+    Usage       : python ../process_modis_cgf.py 2016 --cores 8
+    slurm_scipt : ../Github/Slurm_Blender/b_process_modis_cgf.sh [params = 2015, 22]
+
     Resources
     =========
     Need ~28 GB per core
@@ -17,6 +16,28 @@
     ie, no more reprojection match with SEUP in this script
 
     TODO: Decide on what to do with cores; pass it or hardcode to -1
+
+    Input
+    =====
+    Raw downloaded files in original sinusoidal projection
+    modis_download_folder   = /discover/nobackup/projects/coressd/OSU/MOD10A1F.061/MODIS_Proc/download_snow     # /2016001/001
+    template_raster         = /discover/nobackup/projects/coressd/Blender/Inputs/combined/SWE_tavg/201509.nc    # HARDCODED and required      
+    Tree cover fraction     = /discover/nobackup/projects/coressd/Blender/Modis/MOD44B/Percent_Tree_Cover/NA/MOD44B.A{water_year}065.061.nc
+
+    Outputs 
+    =======
+    Folder: /discover/nobackup/projects/coressd/Blender/Modis/CGF_NDSI_Snow_Cover/
+    NA2015_mosaic
+    ------------- 
+        this is temporary file only and consider deleting (or not saving)
+        each file is a daily mosaic over North America in original Sinusoidal projection
+        filename example: MOD10A1F.061_2015249.nc
+
+    NA2015
+    ------ 
+        mosaics from previous step is resampled and matched to SEUP data
+        filename example: MOD10A1F.061_2015249.nc
+
 """
 import os
 # from datetime import timedelta
@@ -116,13 +137,13 @@ def main():
     DATAFIELD_NAME = "CGF_NDSI_Snow_Cover"  # or just hardcode the variable of interest
     # Create clip folder to save clipped modis files. Initially clipping from global mosaic, hence, named clipped. 
     # No more strictly clipping in new workflow because I manually select subset of MODIS tiles  
-    mosaic_folder = f"{base_folder}/Blender/Modis/{DATAFIELD_NAME}/NA{water_year}_mosaic"
+    mosaic_folder = f"{base_folder}/Blender/Modis/{DATAFIELD_NAME}/temp/NA{water_year}_mosaic"  # Feb 07, 2024: inserted temp for mosaics  
     os.makedirs(mosaic_folder, exist_ok=True)
     clip_folder = f"{base_folder}/Blender/Modis/{DATAFIELD_NAME}/NA{water_year}"
     os.makedirs(clip_folder, exist_ok=True)
     # mosaic_tif_folder = f"{base_folder}/{DATAFIELD_NAME}/mosaic_tif"
     # os.makedirs(mosaic_tif_folder, exist_ok=True)
-    
+
     # Get Tree cover fraction data
     daF = rioxarray.open_rasterio(f'{base_folder}/Blender/Modis/MOD44B/Percent_Tree_Cover/NA/MOD44B.A{water_year}065.061.nc').squeeze()
     daF.data = daF.data.astype(float)
@@ -163,8 +184,10 @@ def main():
             da = da.squeeze()
             # New May 07, 2023: Save the original DNs. Float, convertion etc in subsequent script. This will also save space
             # Conver to Dataset, so this is proper nc file
+            # TODO Feb 07, 2024: Comment next two lines. Was saved only to inspect data. Saving mosaics seems not required.  
             ds_mosaic = xr.Dataset({DATAFIELD_NAME: da})
-            ds_mosaic.to_netcdf(f"{mosaic_folder}/{out_tif_name}.nc")
+            encoding = {DATAFIELD_NAME: {'zlib': True}}
+            ds_mosaic.to_netcdf(f"{mosaic_folder}/{out_tif_name}.nc", encoding=encoding)
 
             # da.rio.write_crs("epsg:4326", inplace=True)  # not used yet
             # mosaic_tif = f"{mosaic_tif_folder}/{out_tif_name}.tif"  # This only temporary to make sure everything checks out
@@ -199,7 +222,8 @@ def main():
             # TODO: Fix attrs, no-data etc here so that data is self-describing
             # Conver to Dataset, so this is proper nc file
             ds_clipped = xr.Dataset({DATAFIELD_NAME: da_clipped})
-            ds_clipped.to_netcdf(f"{clip_folder}/{out_tif_name}.nc")
+            encoding = {DATAFIELD_NAME: {'zlib': True}}
+            ds_clipped.to_netcdf(f"{clip_folder}/{out_tif_name}.nc", encoding=encoding)
             # noah_ds_clip[var] = da_clipped  # Append Modis data to clipped dataset
 
     # Make of List of downloaded sub-folder. To make it easy to parallelize using Joblib
