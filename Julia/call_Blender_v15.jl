@@ -238,9 +238,7 @@ ind = valid_pix_ind
 @info("Total valid pixel count = $(valid_pix_count)")
 println("Total valid pixel count = $(valid_pix_count)")  # debug
 
-# Oct 29, 2023
-using SharedArrays  # must come after addprocs(cores) else won't work for julia 1.10.0 version.  
-
+@everywhere using SharedArrays  # must come after addprocs(cores) else won't work for julia 1.10.0 version.  
 sizeA = size(A)  # to create sharedarrays
 println("sizeA = $(sizeA)") # debug
 
