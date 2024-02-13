@@ -129,7 +129,7 @@ global_logger(info_only_logger)  # Set the global logger to logger; else logs do
 @info("Number of processes: $(nprocs())")
 @info("Number of workers: $(nworkers())")
 # Everywhere should come after cores are already added
-@everywhere using Rasters, NCDatasets
+@everywhere using Rasters, NCDatasets, Distributions  # Distributions for garbage collection using uniform distribution
 @everywhere include("Estimate_v58.jl")  #https://docs.julialang.org/en/v1/manual/code-loading/; evaluated in global scope
 
 # base_folder = "$root_dir/Github/Blender"
@@ -287,7 +287,8 @@ running_time = (time_ns() - start_time)/1e9/60
     GmeltpvRaster[i, j, :] = Gmelt_pv
     UpvRaster[i, j, :] = U_pv
     SWEpvRaster[i, j, :] = SWEpv;    
-    # GC.gc()
+    # GC.gc()  # With GC, memory footprint is smaller, even though runtime was same
+    rand(Uniform(0,1)) < 0.02 && GC.gc();  # Garbage collection only 2% of time; need Distributions package
     # cp(exp_dir, "$base_folder/Runs/$out_subfolder/outputs_txt", force=True)
 end
 # without sync above one of the processor to the next step (combining text files to netcdf) which will cause error
