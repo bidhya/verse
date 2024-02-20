@@ -1,5 +1,10 @@
 # Updates to codebase in reverse chronological order
 =============================================   
+## Feb 11, 2024  
+- using garbage collection 2% for for loop  
+- this did reduce the memory footprint due to sharredarrays    
+- current scripts are: call_blender_v15.jl with Estimate_v58.jl  
+
 ## Feb 07, 2024  
 - updating documentation for generating various inputs  
 - process_modis_cgf.py : moving mosaics intside temp subfolder.  
