@@ -87,7 +87,7 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         end
         write(f, "date; hostname; pwd\n")
         write(f, "echo Blender run for $(out_subfolder) start_idx = $(start_idx) end_idx = $(end_idx) valid_pix_count = $(valid_pix_count). \n\n")
-        # write(f, "export JULIA_NUM_THREADS=\$SLURM_NTASKS\n")
+        write(f, "export JULIA_NUM_THREADS=\$SLURM_NTASKS\n")
         write(f, "sleep 5\n")
         write(f, "julia --version\n")
         if hpc == "discover"
@@ -95,7 +95,7 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         else
             write(f, "cp -r ~/Github/verse .\n")
         end
-        write(f, "julia verse/Julia/call_Blender_v15.jl $(out_subfolder) $(start_idx) $(end_idx)\n\n")
+        write(f, "julia verse/Julia/call_Blender_v16.jl $(out_subfolder) $(start_idx) $(end_idx)\n\n")
         write(f, "squeue --job \$SLURM_JOBID \n")
         write(f, "echo List of files on TMPDIR\n")
         write(f, "echo ---------------------------------------------------------------------\n")
@@ -141,7 +141,7 @@ for i in StepRange(1, step, szY)
     valid_pix_ind = findall(!ismissing, B)
     valid_pix_count = length(valid_pix_ind)
     # estimate runtime as function of the number of cores used. 210 seconds = 3.5 mins; ie 1 pixel processing time ~ 0.3 min.
-    runtime = Int(ceil(valid_pix_count/(cores*180)))  # 150 120; 210; with exclusive, how many cores we get is not certain, but just an estimate
+    runtime = Int(ceil(valid_pix_count/(cores*150)))  # for v_15=180  150 120; 210; with exclusive, how many cores we get is not certain, but just an estimate
     global total_runtime += runtime
     # 240 seconds : timeout error on OSC, so redude time
     # runtime = "08:00:00"  # 12 "24:00:00"  # default (max for Discover)

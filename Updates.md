@@ -1,5 +1,12 @@
 # Updates to codebase in reverse chronological order
 =============================================   
+## Feb 20, 2024  
+- creating call_Blender_v16.jl and Estimate_v59.jl    
+- to get over bottleneck due to sharedarrays  
+- will create text files inside compute node and convert these to NetCDF  
+- this hybrid approach incorporates v12 and v15  
+- that is, still run blender with horizontal slice and save intermediate nc files  
+
 ## Feb 11, 2024  
 - using garbage collection 2% for for loop  
 - this did reduce the memory footprint due to sharredarrays    
