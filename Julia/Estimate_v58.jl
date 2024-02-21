@@ -247,6 +247,9 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir)
     # writedlm(exp_dir * "/Gmeltpv.txt",Gmelt_pv)
     # writedlm(exp_dir * "/Upv.txt",U_pv)
     # writedlm(exp_dir * "/SWEpv.txt",SWEpv)
+    # testing if garbage collection here is better than that from the calling function.   
+    m = nothing
+    GC.gc()
     # For functions that do not need to return a value (functions used only for some side effects), 
     # the Julia convention is to return the value nothing
     # return nothing

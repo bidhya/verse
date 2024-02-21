@@ -247,6 +247,9 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
     # writedlm(exp_dir * "/Gmeltpv.txt",Gmelt_pv)
     # writedlm(exp_dir * "/Upv.txt",U_pv)
     # writedlm(exp_dir * "/SWEpv.txt",SWEpv)
+    # To address growing memory issue but also causing: signal (11.1): Segmentation fault 
+    m = nothing
+    GC.gc()
     # For functions that do not need to return a value (functions used only for some side effects), 
     # the Julia convention is to return the value nothing
     return nothing

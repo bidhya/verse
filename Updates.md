@@ -1,5 +1,10 @@
 # Updates to codebase in reverse chronological order
 =============================================   
+## Feb 21, 2024  
+- putting garbage collector inside Estimate_v59.jl, Estimate_v58.jl  
+- and removing gc from call_Blender_v16.jl, call_Blender_v15.jl      
+- to overcome many of the memory issues plaguing the run at large scale    
+
 ## Feb 20, 2024  
 - creating call_Blender_v16.jl and Estimate_v59.jl    
 - to get over bottleneck due to sharedarrays  

@@ -24,7 +24,7 @@ if occursin("discover", host_machine) #|| occursin("borg", host_machine)
     root_dir = "/discover/nobackup/projects/coressd"
     base_folder = "$root_dir/Blender"
     hpc_name = "discover"
-    cores = 46  # use 45 so one core can be used to monitor run using srun/htop.
+    cores = 125  # 46 or use 45 so one core can be used to monitor run using srun/htop.
     memory = "0" #"184gb"
 elseif occursin(".osc.edu", host_machine)
     root_dir = "/fs/ess/PAS1785/coressd"  # "/fs/scratch/PAS1785/coressd"
@@ -38,7 +38,7 @@ elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
     base_folder = "$root_dir/Blender"  # "$root_dir/Github/coressd/Blender"
     hpc_name = "unity"
     cores = 40  # 39 24 cores with 96GB memory for old node
-    memory = "186gb"  # 180gb seems 186 max allowed
+    memory = "0"  # 186gb seems max allowed
 else
     @info("Unknown computer, manually add root directory before proceeding. Exiting code")  # will output directly to console, ie like print statement
     exit(1)  # if error, comment this line, add root and base_folder below and run again
