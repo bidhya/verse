@@ -32,4 +32,4 @@ slurm_jobs/
 .ipynb_checkpoints
 
 # Julia/call_Blender_v11.jl
-Julia/test_par_copy.jl
+Julia/Estimate_vx.jl

@@ -30,7 +30,7 @@ elseif occursin(".osc.edu", host_machine)
     root_dir = "/fs/ess/PAS1785/coressd"  # "/fs/scratch/PAS1785/coressd"
     base_folder = "$root_dir/Blender"
     hpc_name = "osc"
-    cores = 40
+    cores = 48  # 40
     memory = "0" #"175gb"
 elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
     root_dir = "/fs/project/howat.4/yadav.111/coressd"  # homedir()  #  Unity
@@ -87,7 +87,7 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         end
         write(f, "date; hostname; pwd\n")
         write(f, "echo Blender run for $(out_subfolder) start_idx = $(start_idx) end_idx = $(end_idx) valid_pix_count = $(valid_pix_count). \n\n")
-        write(f, "export JULIA_NUM_THREADS=\$SLURM_NTASKS\n")
+        # write(f, "export JULIA_NUM_THREADS=\$SLURM_NTASKS\n")  # mixing thread with distributed and GC.gc might be creating Segmeentation Fault problem.  
         write(f, "sleep 5\n")
         write(f, "julia --version\n")
         if hpc == "discover"
@@ -141,7 +141,7 @@ for i in StepRange(1, step, szY)
     valid_pix_ind = findall(!ismissing, B)
     valid_pix_count = length(valid_pix_ind)
     # estimate runtime as function of the number of cores used. 210 seconds = 3.5 mins; ie 1 pixel processing time ~ 0.3 min.
-    runtime = Int(ceil(valid_pix_count/(cores*150)))  # for v_15=180  150 120; 210; with exclusive, how many cores we get is not certain, but just an estimate
+    runtime = Int(ceil(valid_pix_count/(cores*180)))  # for v_15=180  150 120; 210; with exclusive, how many cores we get is not certain, but just an estimate
     global total_runtime += runtime
     # 240 seconds : timeout error on OSC, so redude time
     # runtime = "08:00:00"  # 12 "24:00:00"  # default (max for Discover)
