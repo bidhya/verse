@@ -48,6 +48,7 @@ end
 start_time = time_ns()
 
 using Logging, LoggingExtras
+using Tar
 using Distributed  # otherwise everywhere macro won't work
 # using SharedArrays  # move this line below addprocs(cores), else won't work in Julia 1.10.0
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -228,7 +229,7 @@ end
     Non-missing pixel count = 1011329
 """
 # A = A[1:end, 100:102, :]
-# A = A[100:150, start_idx:end_idx, :]  # size(A) = (2336, 941)
+# A = A[1101:1140, start_idx:end_idx, :]  # size(A) = (2336, 941)
 A = A[1:end, start_idx:end_idx, :]  # ERROR: LoadError: NetCDF error: NetCDF: Start+count exceeds dimension bound (NetCDF error code: -57)
 # Now using cartesian index for iteration
 # Extract cartesian index for non-missing (ie, all) data using one-day of data 
@@ -346,28 +347,14 @@ running_time = (end_time - start_time)/1e9/3600
 
 end_time = time_ns()
 running_time = (end_time - start_time)/1e9/3600
-# Tar move log files from compute node to permanent location
-using Tar
-# Tar.create(logDir, "$(logDir).tar")  # no native compression for tar in julia
-Tar.create(logDir, pipeline(`gzip -9`, "$(logDir).tar.gz"))  # but will create error on windows
-mkpath("$base_folder/Runs/$out_subfolder/logs")  # also works if path already exists
-sleep(2)
-cp("$(logDir).tar.gz", "$base_folder/Runs/$out_subfolder/logs/$(logDir).tar.gz", force=true)  # Jan 31, 2024. ERROR: LoadError: IOError: sendfile: Unknown system error -175626013 (Unknown system error -175626013)
-@info("Moved logfile to : $base_folder/Runs/$out_subfolder/logs/$(logDir).tar.gz")
-
-# # Feb 20, 2024: for temporary test only to assert files are being produced. Comment/delete later.  
-# Tar.create(exp_dir, pipeline(`gzip -9`, "$(exp_dir).tar.gz"))  # but will create error on windows
-# mkpath("$base_folder/Runs/$out_subfolder/outputs_txt")
-# sleep(2)
-# cp("$(exp_dir).tar.gz", "$base_folder/Runs/$out_subfolder/outputs_txt/$(exp_dir).tar.gz", force=true)  # Jan 31, 2024. ERROR: LoadError: IOError: sendfile: Unknown system error -175626013 (Unknown system error -175626013)
-# @info("Moved outputs_txt: $base_folder/Runs/$out_subfolder/outputs_txt/$(exp_dir).tar.gz")
 
 @info("Blender Running Time = $(round(running_time, digits=3)) hours")
 # exit(0)  # exit here to avoid running 2nd part (text2nc)
 
 # Step 4. PostProcessing: Combine text files into a grid and save as netcdf
-function text2nc(var, idx, outRaster)
+@everywhere function text2nc(var, idx, outRaster, exp_dir, nc_outDir)
     """Convert a text file to netcdf
+    NB: to use with distributed, pass all vars that are used here.  
     var: the name of variable (example SWE, Gmelt, G etc.)
     idx : the index where the variable of exist in the file [1 through 9]
     TODO: move this fuction inside the Estimate_v53.jl script
@@ -379,9 +366,11 @@ function text2nc(var, idx, outRaster)
     outRaster[:,:,:] .= missing
     # update the name of variable
     outRaster = rebuild(outRaster; name=var)  #:SWEhat
-    # @sync @distributed for pix in pixels  # worked
-    Threads.@threads for pix in pixels  # using this nested thread too seems to help processing faster   
-    # for pix in pixels  # this worked
+    pixels = readdir(exp_dir)  # read text-based blender output files if not passed a function parameter.  
+    pixels = [pix for pix in pixels if startswith(pix, "Pix")];
+    # @sync @distributed for pix in pixels  # worked but seems slow, even slower than vanilla for loop
+    # Threads.@threads for pix in pixels  # can be much faster but causing memory related Segmentation Fault when combined with Distributed.    
+    for pix in pixels  # this worked
         pix_xy = split(pix, ".txt")[1]
         pix_xy = split(pix_xy, "_")
         x = parse(Int16, pix_xy[2])
@@ -393,43 +382,45 @@ function text2nc(var, idx, outRaster)
         outRaster[X=x, Y=y] = out_vars[:,idx]
     end
     # Save to nc file; 
-    mkpath(nc_outDir)
+    # mkpath(nc_outDir)  # error in distributed
     write("$nc_outDir/$var.nc", outRaster)  # Aug 08, 2023: Error perhaps due to updates to raster/ncdataset/etc. (error tested on windows and wsl2)
 end
 
-# Count if all pixels are processed before calling the following section for converting text files to netcdf file
 sleep(10)
-pixels = readdir(exp_dir)  # Danger: Error if we have outputs from prior runs that do not match current A dimensions
+@info("Creating OUTPUT NETCDF FILES")
+# Count if all pixels are processed before calling the following section for converting text files to netcdf file
+pixels = readdir(exp_dir)
 pixels = [pix for pix in pixels if startswith(pix, "Pix")];
 if length(pixels) == valid_pix_count #&& system_machine == "Windows"
-    # if system_machine == "Slurm"
-    #     # copy text files to node; but this seems to increase runtime on OSC; so comment next two lines to leave txt_files on original location
-    #     # 5 hours on Discover just to copy files. Thus, remove this copy part; But once files moved to tmpdir; creation of nc files is very fast (3 mins vs 30 mins (without copying))  
-    #     t1 = time_ns()
-    #     # cp(exp_dir, "$tmpdir/outputs_txt")   # takes long time; try parallelizing using threads  
-    #     mkpath("$tmpdir/outputs_txt")
-    #     Threads.@threads for pix in pixels  # 
-    #         cp("$exp_dir/$pix", "$tmpdir/outputs_txt/$(pix)", force=true)
-    #     end    
-    #     exp_dir = "$tmpdir/outputs_txt"
-    #     t2 = time_ns()
-    #     running_time = (t2 - t1)/1e9/60  #  minutes 
-    #     @info("Total to copy text time files to tmpdir (minutes) = $(round(running_time, digits=2))")
-    # end
-    # sleep(2)
-    @info("Creating OUTPUT NETCDF FILES")
     outRaster = copy(A[:SWE_tavg])
     var_idx_tuple = (("SWE", 1), ("Gmelt", 2), ("G", 3), ("Precip", 4), ("Us", 5), ("Gpv", 6), ("Gmeltpv", 7), ("Upv", 8), ("SWEpv", 9))
+    mkpath(nc_outDir)
     # Threads.@threads (Roughly same running for threaded and non-thread version on Discover. Likely due to I/O bottleneck)
     # Threads.@threads for var_idx in var_idx_tuple
-    for var_idx in var_idx_tuple
+    @sync @distributed for var_idx in var_idx_tuple
         var_name = var_idx[1]
         var_idx = var_idx[2]
-        text2nc(var_name, var_idx, outRaster);  # text2nc("SWE", 1, outRaster)
+        text2nc(var_name, var_idx, outRaster, exp_dir, nc_outDir);  # text2nc("SWE", 1, outRaster)
     end
 else
     @info("All pixels not yet processed, so OUTPUT NETCDF FILES not yet created")
+    Tar.create(exp_dir, pipeline(`gzip -9`, "$(exp_dir).tar.gz"))  # but will create error on windows
+    mkpath("$base_folder/Runs/$out_subfolder/outputs_txt")
+    sleep(2)
+    cp("$(exp_dir).tar.gz", "$base_folder/Runs/$out_subfolder/outputs_txt/$(exp_dir).tar.gz", force=true)  # Jan 31, 2024. ERROR: LoadError: IOError: sendfile: Unknown system error -175626013 (Unknown system error -175626013)
+    @info("Moved outputs_txt: $base_folder/Runs/$out_subfolder/outputs_txt/$(exp_dir).tar.gz")
 end
+
+# Tar move log files from compute node to permanent location
+# Tar.create(logDir, "$(logDir).tar")  # no native compression for tar in julia
+Tar.create(logDir, pipeline(`gzip -9`, "$(logDir).tar.gz"))  # but will create error on windows
+mkpath("$base_folder/Runs/$out_subfolder/logs")  # also works if path already exists
+sleep(2)
+cp("$(logDir).tar.gz", "$base_folder/Runs/$out_subfolder/logs/$(logDir).tar.gz", force=true)  # Jan 31, 2024. ERROR: LoadError: IOError: sendfile: Unknown system error -175626013 (Unknown system error -175626013)
+@info("Moved logfile to : $base_folder/Runs/$out_subfolder/logs/$(logDir).tar.gz")
+
+
+
 end_time = time_ns()
 running_time = (end_time - start_time)/1e9/60  # minutes
 if running_time < 60
