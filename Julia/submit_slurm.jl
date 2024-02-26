@@ -24,7 +24,7 @@ if occursin("discover", host_machine) #|| occursin("borg", host_machine)
     root_dir = "/discover/nobackup/projects/coressd"
     base_folder = "$root_dir/Blender"
     hpc_name = "discover"
-    cores = 125  # 46 or use 45 so one core can be used to monitor run using srun/htop.
+    cores = 90  # 125 46 or use 45 so one core can be used to monitor run using srun/htop.
     memory = "0" #"184gb"
 elseif occursin(".osc.edu", host_machine)
     root_dir = "/fs/ess/PAS1785/coressd"  # "/fs/scratch/PAS1785/coressd"

@@ -61,61 +61,44 @@ if occursin("L-JY0R5X3", host_machine)
         root_dir = "D:"  #for windows machine
     elseif Sys.islinux()
         root_dir = "/mnt/d"  #for Ubuntu (WSL2 on windows machine
-    # else
-    #     @info("Unknown system on windows, manually add root directory before proceeding. Exiting code")
-    #     exit(1)    
     end
     base_folder = "$root_dir/coressd/Blender"
-    # Get info on system machine. We use this info to farm number of processors. 
-    system_machine = "Windows"  # a bit misnomer flag because this flag also works for WLS linux. Better flag could be local vs hpc/remote execution
-elseif occursin("borg", host_machine)  # TODO: discover
-    root_dir = "/discover/nobackup/projects/coressd"
-    base_folder = "$root_dir/Blender"
-    tmpdir =  ENV["LOCAL_TMPDIR"]  #tempdir()
-    system_machine = "Slurm"
-elseif occursin(".osc.edu", host_machine)
-    root_dir = "/fs/ess/PAS1785/coressd"  # "/fs/scratch/PAS1785/coressd"
-    base_folder = "$root_dir/Blender"
-    tmpdir =  ENV["TMPDIR"]  #tempdir()
-    system_machine = "Slurm"
-elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
-    root_dir = "/fs/project/howat.4/yadav.111/coressd"  # homedir()  #  Unity
-    # base_folder = "/home/yadav.111/Github/Blender"  # old
-    base_folder = "$root_dir/Blender"  # "$root_dir/Github/coressd/Blender"
-    tmpdir =  ENV["TMPDIR"]  #tempdir()
-    system_machine = "Slurm"
-    # @info("SLURM_SUBMIT_DIR: $(ENV["SLURM_SUBMIT_DIR"])")
-else
-    @info("Unknown computer, manually add root directory before proceeding. Exiting code")  # will output directly to console, ie like print statement
-    exit(1)  # if error, comment this line, add root and base_folder below and run again
-end
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-# Sep 05, 2023: Removing SlurmClusterManager prototyping 
-if system_machine == "Windows" # addproc function works for both windows and WSL linux. Hence, this code is more for local vs remote machine
     log_filename = string(start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
-    addprocs()  ## works on laptop, but on cluster shows all cores for node; not only the number of cpus requested
-elseif system_machine == "Slurm"
+    addprocs()
+else  
+    # Prepare folder, environment and workers for parallel compute for SLURM   
     log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/",start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
-    # cores = parse(Int, ENV["SLURM_CPUS_PER_TASK"])  # ERROR: LoadError: KeyError: key "SLURM_CPUS_PER_TASK" not found [from Princenton website]
-    # ntasks = parse(Int, ENV["SLURM_NTASKS"])  # gave 1, when cpus-per-task was passed by slurm; not defined when just nodes=1 given.  
-    # cores = parse(Int, ENV["SLURM_JOB_CPUS_PER_NODE"])  # if one node provided; else we have parse as follows
-    subs = Dict("x"=>"*", "(" => "", ")" => "");
-    cores = sum(eval(Meta.parse(replace(ENV["SLURM_JOB_CPUS_PER_NODE"], r"x|\(|\)" => s -> subs[s]))))  # for 1 or more nodes (generic)
-    # println("SLURM_NTASKS: $ntasks")
-    # println("SLURM_JOB_CPUS_PER_NODE: $ntasks")
+    # cores = parse(Int, ENV["SLURM_CPUS_PER_TASK"])  # ERROR: LoadError: KeyError: key "SLURM_CPUS_PER_TASK" not found [when not supplied on slurm scipt]
+    cores = parse(Int, ENV["SLURM_NTASKS"])  # pick ntasks from slurm job script. must be provided.    
+    # # cores = parse(Int, ENV["SLURM_JOB_CPUS_PER_NODE"])  # if one node provided; else we have parse as follows
+    # subs = Dict("x"=>"*", "(" => "", ")" => "");
+    # cores = sum(eval(Meta.parse(replace(ENV["SLURM_JOB_CPUS_PER_NODE"], r"x|\(|\)" => s -> subs[s]))))  # for 1 or more nodes (generic); Int64 
     @info("SLURM Cores: $cores")
-    # addprocs()  # Not working. using all cores even though not allocated for use
+    if occursin("borg", host_machine)  # TODO: discover
+        root_dir = "/discover/nobackup/projects/coressd"
+        base_folder = "$root_dir/Blender"
+        tmpdir =  ENV["LOCAL_TMPDIR"]  #tempdir()
+    elseif occursin(".osc.edu", host_machine)
+        root_dir = "/fs/ess/PAS1785/coressd"  # "/fs/scratch/PAS1785/coressd"
+        base_folder = "$root_dir/Blender"
+        tmpdir =  ENV["TMPDIR"]  #tempdir()
+    elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
+        root_dir = "/fs/project/howat.4/yadav.111/coressd"  # homedir()  #  Unity
+        # base_folder = "/home/yadav.111/Github/Blender"  # old
+        base_folder = "$root_dir/Blender"  # "$root_dir/Github/coressd/Blender"
+        tmpdir =  ENV["TMPDIR"]  #tempdir()
+        # @info("SLURM_SUBMIT_DIR: $(ENV["SLURM_SUBMIT_DIR"])")
+    else
+        @info("Unknown computer system. Aborting ...  ")
+        exit() # <- you can provide exit code if you want
+    end
     addprocs(cores)  # ; exeflags="--project"subtract one becuase master already has one; but seems to work with higher number as well
     # using SlurmClusterManager  # to pick all nodes and cores allocated in slurm job
     # # With slurmcluster manager, hopefully next few lines of selecting cores is not necessary  
     # sleep(10)  # 60+cores To prevent scheduling job on more than 1 node on Discover Slurm cluster  
     # addprocs(SlurmManager())  # to use all available nodes and cores automatically. comment this line and uncomment one above this to match _v8.jl
-else
-    @info("Must be windows or linux system, aborting")
-    exit() # <- you can provide exit code if you want
 end
-# addprocs()
+# addprocs()  # # Works but on cluster will use all cores, even though we not asked for. also with exclusive option will use all cores which may result in memory error.  
 logger = FormatLogger(open(log_filename, "w"), 0) do io, args
     # Write the module, level and message only
     println(io, args._module, " | ", "[", args.level, "] ", args.message)
@@ -125,10 +108,9 @@ global_logger(info_only_logger)  # Set the global logger to logger; else logs do
 
 @info("base_folder : $base_folder")
 @info("Host computer machine: $host_machine")
-
-# println("Number of procs: $(nprocs())")  
-@info("Number of processes: $(nprocs())")
+@info("Number of processes (procs): $(nprocs())")
 @info("Number of workers: $(nworkers())")
+
 # Everywhere should come after cores are already added
 @everywhere using Rasters, NCDatasets, Distributions  # Distributions for garbage collection using uniform distribution
 @everywhere include("Estimate_v59.jl")  #https://docs.julialang.org/en/v1/manual/code-loading/; evaluated in global scope
@@ -290,8 +272,8 @@ running_time = (time_ns() - start_time)/1e9/60
     # cp(exp_dir, "$base_folder/Runs/$out_subfolder/outputs_txt", force=True)
 end
 # without sync above one of the processor to the next step (combining text files to netcdf) which will cause error
-sleep(5)
-GC.gc()
+sleep(10)
+@everywhere GC.gc()
 
 end_time = time_ns()
 running_time = (end_time - start_time)/1e9/3600
@@ -352,6 +334,7 @@ running_time = (end_time - start_time)/1e9/3600
 # exit(0)  # exit here to avoid running 2nd part (text2nc)
 
 # Step 4. PostProcessing: Combine text files into a grid and save as netcdf
+@info("Combining Text Ouputs to NetCDF FILES")
 @everywhere function text2nc(var, idx, outRaster, exp_dir, nc_outDir)
     """Convert a text file to netcdf
     NB: to use with distributed, pass all vars that are used here.  
@@ -387,7 +370,6 @@ running_time = (end_time - start_time)/1e9/3600
 end
 
 sleep(10)
-@info("Creating OUTPUT NETCDF FILES")
 # Count if all pixels are processed before calling the following section for converting text files to netcdf file
 pixels = readdir(exp_dir)
 pixels = [pix for pix in pixels if startswith(pix, "Pix")];
@@ -407,7 +389,7 @@ else
     Tar.create(exp_dir, pipeline(`gzip -9`, "$(exp_dir).tar.gz"))  # but will create error on windows
     mkpath("$base_folder/Runs/$out_subfolder/outputs_txt")
     sleep(2)
-    cp("$(exp_dir).tar.gz", "$base_folder/Runs/$out_subfolder/outputs_txt/$(exp_dir).tar.gz", force=true)  # Jan 31, 2024. ERROR: LoadError: IOError: sendfile: Unknown system error -175626013 (Unknown system error -175626013)
+    cp("$(exp_dir).tar.gz", "$base_folder/Runs/$out_subfolder/outputs_txt/$(exp_dir).tar.gz", force=true)
     @info("Moved outputs_txt: $base_folder/Runs/$out_subfolder/outputs_txt/$(exp_dir).tar.gz")
 end
 
@@ -416,10 +398,8 @@ end
 Tar.create(logDir, pipeline(`gzip -9`, "$(logDir).tar.gz"))  # but will create error on windows
 mkpath("$base_folder/Runs/$out_subfolder/logs")  # also works if path already exists
 sleep(2)
-cp("$(logDir).tar.gz", "$base_folder/Runs/$out_subfolder/logs/$(logDir).tar.gz", force=true)  # Jan 31, 2024. ERROR: LoadError: IOError: sendfile: Unknown system error -175626013 (Unknown system error -175626013)
+cp("$(logDir).tar.gz", "$base_folder/Runs/$out_subfolder/logs/$(logDir).tar.gz", force=true)  # ERROR: LoadError: IOError: sendfile: Unknown system error -175626013 (Unknown system error -175626013)
 @info("Moved logfile to : $base_folder/Runs/$out_subfolder/logs/$(logDir).tar.gz")
-
-
 
 end_time = time_ns()
 running_time = (end_time - start_time)/1e9/60  # minutes
