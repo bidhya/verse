@@ -57,6 +57,7 @@ using Distributed  # otherwise everywhere macro won't work
 host_machine = gethostname()
 # if occursin("STAFF-BY-M", host_machine)
 if occursin("L-JY0R5X3", host_machine)
+    system_machine = "Windows"  # a bit misnomer flag because this flag also works for WLS linux. Better flag could be local vs hpc/remote execution
     if Sys.iswindows()
         root_dir = "D:"  #for windows machine
     elseif Sys.islinux()
@@ -66,7 +67,8 @@ if occursin("L-JY0R5X3", host_machine)
     log_filename = string(start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
     addprocs()
 else  
-    # Prepare folder, environment and workers for parallel compute for SLURM   
+    # Prepare folder, environment and workers for parallel compute for SLURM
+    system_machine = "Slurm"
     log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/",start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
     # cores = parse(Int, ENV["SLURM_CPUS_PER_TASK"])  # ERROR: LoadError: KeyError: key "SLURM_CPUS_PER_TASK" not found [when not supplied on slurm scipt]
     cores = parse(Int, ENV["SLURM_NTASKS"])  # pick ntasks from slurm job script. must be provided.    
@@ -186,12 +188,6 @@ else
     cp("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", "$tmpdir/$water_year" * "_seup_modis.nc", force=true)  #force=true will first remove an existing dst.
     # true required for discover when running on same node again after node_failure.
     A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc", lazy=true)  ## , lazy=true https://github.com/rafaqz/Rasters.jl/issues/449
-    # if test_run
-    #     # Aside: Get test set of data
-    #     A = A[X(Between(-130, -120)), Y(Between(60, 65))]
-    #     subset_fname = "$(DataDir)/WY_merged/subset_$(water_year)_seup_modis.nc"
-    #     write(subset_fname, A)
-    # end
 end
 # end_time = time_ns()
 running_time = (time_ns() - start_time)/1e9/60
@@ -200,19 +196,28 @@ running_time = (time_ns() - start_time)/1e9/60
 # A = RasterStack("$DataDir/WY_merged/2016_clip3.nc")  # for NoahMP with CGF MODIS
 # Subset only the required variables because the nc file can have extraneous vars that cause problem with julia
 A = A[(:Snowf_tavg, :SWE_tavg, :Tair_f_tavg, :Qg_tavg, :MODSCAG)];  # to remove spatial ref that cause problem during subsetting
-# Oct 14, 2023
+""" General info about pixel counts
+    size(A) = (2336, 941)
+    xind: 2336 , yind: 941 tind:364
+    Non-missing pixel count = 1011329
+"""
 szY = size(A, 2)  # get size in Y-dimension; here dim = 2
 if end_idx > szY
     end_idx = szY
 end
+if test_run
+    @info("TEST RUN ONLY  ")
+    # # Aside: Get test set of data. This part needs re-writing before using for test [TODO].
+    # A = A[X(Between(-130, -120)), Y(Between(60, 65))]
+    # subset_fname = "$(DataDir)/WY_merged/subset_$(water_year)_seup_modis.nc"
+    # write(subset_fname, A)
+    # A = A[1:end, 100:102, :]
+    A = A[1101:1120, start_idx:end_idx, :]  # change this as required for selecting a particular region/watershed to test on
+else
+    @info("DEFAULT RUN  ")
+    A = A[1:end, start_idx:end_idx, :]  # use for default runs
+end
 
-""" General info about pixel counts
-    xind: 2336 , yind: 941 tind:364
-    Non-missing pixel count = 1011329
-"""
-# A = A[1:end, 100:102, :]
-# A = A[1101:1140, start_idx:end_idx, :]  # size(A) = (2336, 941)
-A = A[1:end, start_idx:end_idx, :]  # ERROR: LoadError: NetCDF error: NetCDF: Start+count exceeds dimension bound (NetCDF error code: -57)
 # Now using cartesian index for iteration
 # Extract cartesian index for non-missing (ie, all) data using one-day of data 
 valid_pix_ind = findall(!ismissing, A["SWE_tavg"][Ti=1])
@@ -277,7 +282,7 @@ sleep(10)
 
 end_time = time_ns()
 running_time = (end_time - start_time)/1e9/3600
-@info("Loop Running Time = $(round(running_time, digits=2)) hours")
+@info("Running Time (blender For Loop) = $(round(running_time, digits=2)) hours")
 
 # # Oct 08, 2023. To save output nc files. Create Raster matching the input and save to nc file 
 # mkpath(nc_outDir)
@@ -327,10 +332,6 @@ running_time = (end_time - start_time)/1e9/3600
 # SWEpvRaster = rebuild(outRaster; name=:SWEpv)
 # write("$nc_outDir/SWEpv.nc", SWEpvRaster)
 
-end_time = time_ns()
-running_time = (end_time - start_time)/1e9/3600
-
-@info("Blender Running Time = $(round(running_time, digits=3)) hours")
 # exit(0)  # exit here to avoid running 2nd part (text2nc)
 
 # Step 4. PostProcessing: Combine text files into a grid and save as netcdf
@@ -386,19 +387,33 @@ if length(pixels) == valid_pix_count #&& system_machine == "Windows"
     end
 else
     @info("All pixels not yet processed, so OUTPUT NETCDF FILES not yet created")
-    Tar.create(exp_dir, pipeline(`gzip -9`, "$(exp_dir).tar.gz"))  # but will create error on windows
+    if system_machine == "Windows"
+        Tar.create(exp_dir, "$(exp_dir).tar.gz")
+    else
+        Tar.create(exp_dir, pipeline(`gzip -9`, "$(exp_dir).tar.gz"))
+    end
     mkpath("$base_folder/Runs/$out_subfolder/outputs_txt")
     sleep(2)
     cp("$(exp_dir).tar.gz", "$base_folder/Runs/$out_subfolder/outputs_txt/$(exp_dir).tar.gz", force=true)
     @info("Moved outputs_txt: $base_folder/Runs/$out_subfolder/outputs_txt/$(exp_dir).tar.gz")
 end
+@info("Finished: Combining Text Ouputs to NetCDF FILES")
+end_time = time_ns()
+running_time = (end_time - start_time)/1e9/3600
+@info("Running Time (convert text to nc) = $(round(running_time, digits=3)) hours")
 
 # Tar move log files from compute node to permanent location
-# Tar.create(logDir, "$(logDir).tar")  # no native compression for tar in julia
-Tar.create(logDir, pipeline(`gzip -9`, "$(logDir).tar.gz"))  # but will create error on windows
+if system_machine == "Windows"
+    # TODO file not really .gz on windows but works. Might be a good idea to remore .gz suffix for windows files
+    @info("Create tar on Windows")
+    Tar.create(logDir, "$(logDir).tar.gz")  # no native compression for tar in julia and no pipeline in windows
+else
+    @info("Create tar on Slurm node")
+    Tar.create(logDir, pipeline(`gzip -9`, "$(logDir).tar.gz"))  # compress with gzip through pipeline in linux
+end
 mkpath("$base_folder/Runs/$out_subfolder/logs")  # also works if path already exists
 sleep(2)
-cp("$(logDir).tar.gz", "$base_folder/Runs/$out_subfolder/logs/$(logDir).tar.gz", force=true)  # ERROR: LoadError: IOError: sendfile: Unknown system error -175626013 (Unknown system error -175626013)
+cp("$(logDir).tar.gz", "$base_folder/Runs/$out_subfolder/logs/$(logDir).tar.gz", force=true)  #TODO: ERROR: LoadError: IOError: sendfile: Unknown system error -175626013 (Unknown system error -175626013)
 @info("Moved logfile to : $base_folder/Runs/$out_subfolder/logs/$(logDir).tar.gz")
 
 end_time = time_ns()
