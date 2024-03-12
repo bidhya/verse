@@ -12,6 +12,7 @@ Basefolder for Data: ../coressd/Blender/
         WY/2016_seup.nc  All daily seup data combined to one file    
 
 2. process_modis_cgf.py  
+    No dependency with 1.  
     Extract NA (North America) scale daily Modis_CGF matching the SEUP rasters
     Outputs: ../coressd/Blender/Modis/CGF_NDSI_Snow_Cover/
         - temp/..    # temporary mosaic of modis tiles over NA. can be safelydeleted

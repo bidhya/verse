@@ -100,7 +100,9 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         write(f, "echo List of files on TMPDIR\n")
         write(f, "echo ---------------------------------------------------------------------\n")
         write(f, "ls -ltrh\n")
-        write(f, "echo Count of log files: ; ls logs*|wc -l\n")  # list log files on node
+        write(f, "echo -n Count of outputs_txt files: ; ls outputs_txt_*|wc -l\n")  # more specific: outputs_txt_$(start_idx)_$(end_idx)
+        # write(f, "echo -n Logs: ; ls logs_$(start_idx)_$(end_idx)|wc -l\n")  # logs_* only can be a bit misleading because it will match other files with logs prefix, so be explicit.  
+
         # write(f, "tar -czf logs_$(start_idx)_$(end_idx).tar.gz logs*\n")  # list log files on node
         # write(f, "cp logs_$(start_idx)_$(end_idx).tar.gz \$SLURM_SUBMIT_DIR\n")  # list log files on node
         # TODO Write/Call a python script (or Jupyter notebook) to QA/QC the run: count, tables, figures.  
