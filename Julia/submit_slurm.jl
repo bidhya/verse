@@ -103,8 +103,9 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         write(f, "echo -n Count of outputs_txt files: ; ls outputs_txt_*|wc -l\n")  # more specific: outputs_txt_$(start_idx)_$(end_idx)
         # write(f, "echo -n Logs: ; ls logs_$(start_idx)_$(end_idx)|wc -l\n")  # logs_* only can be a bit misleading because it will match other files with logs prefix, so be explicit.  
 
-        # write(f, "tar -czf logs_$(start_idx)_$(end_idx).tar.gz logs*\n")  # list log files on node
-        # write(f, "cp logs_$(start_idx)_$(end_idx).tar.gz \$SLURM_SUBMIT_DIR\n")  # list log files on node
+        write(f, "tar -czf logs_$(start_idx)_$(end_idx).tar.gz logs*\n")  # list log files on node
+        write(f, "cp logs_$(start_idx)_$(end_idx).tar.gz $base_folder/Runs/$out_subfolder/logs\n")  # folder created at end of call_Blender script  
+        # write(f, "cp logs_$(start_idx)_$(end_idx).tar.gz \$SLURM_SUBMIT_DIR\n")
         # TODO Write/Call a python script (or Jupyter notebook) to QA/QC the run: count, tables, figures.  
         write(f, "echo Finished Slurm job \n\n")
     end
@@ -120,9 +121,9 @@ A = A[:SWE_tavg][Ti=1];
 szY = size(A, 2)  # get size in Y-dimension; here dim = 2
 # szY = 10 # only for debug and testing, use smaller number
 job_count = 0
-delay_multiplier = 2  # delay the consecutive slurm job by ~3 minutes
+delay_multiplier = 2  # delay the consecutive slurm job by ~2 minutes
 if occursin("asc.ohio-state.edu", host_machine)
-    delay_multiplier = 7  # longer delay on unity becuase of slow speeds in moving data (network related)
+    delay_multiplier = 5  # longer delay on unity becuase of slow speeds in moving data (network related)
 end
 total_runtime = 0
 # for i in StepRange(501, step, 600)  # for testing
@@ -132,6 +133,13 @@ for i in StepRange(1, step, szY)
     if end_idx > szY
         end_idx = szY
     end
+    # Use next 5 lines only if re-running few folders due to error/timeout. Still testing. 
+    nc_outDir = "$base_folder/Runs/WY$(water_year)/temp_nc/outputs_$(start_idx)_$(end_idx)"
+    if isdir(nc_outDir)  # process only if the pixel is not already processed
+        println("Job Not created because output_folder $nc_outDir already exist")
+        continue
+    end
+
     # begin_delay = Int((job_count) * step/3)  
     begin_delay = Int(job_count * delay_multiplier)
     jobname = "$(start_idx)_$(end_idx)"
@@ -143,20 +151,18 @@ for i in StepRange(1, step, szY)
     """
     valid_pix_ind = findall(!ismissing, B)
     valid_pix_count = length(valid_pix_ind)
-    # estimate runtime as function of the number of cores used. 210 seconds = 3.5 mins; ie 1 pixel processing time ~ 0.3 min.
-    runtime = Int(ceil(valid_pix_count/(cores*210)))  # for v_15=180  150 120; 210; with exclusive, how many cores we get is not certain, but just an estimate
+    # estimate runtime as function of the number of cores used. 270 seconds = 4.5 mins; ie 1 pixel processing time ~ 0.3 min.
+    runtime = Int(ceil(valid_pix_count/(cores*420)))  # 270 for v_15=180  150 120; 210; with exclusive, how many cores we get is not certain, but just an estimate
+    if runtime < 10
+        # keep getting runtime errors when less number of pixels are processed.
+        # say in less than 4 hours, likely all cores are not being utilized efficiently
+        runtime = 12
+    end
     global total_runtime += runtime
     # 240 seconds : timeout error on OSC, so redude time
     # runtime = "08:00:00"  # 12 "24:00:00"  # default (max for Discover)
     # runtime = "$(approx_time):00:00"
     println(start_idx, " ", end_idx, " ", valid_pix_count, " hours ", runtime)
-
-    # # Use next 5 lines only if re-running few folders due to error/timeout. Still testing. 
-    # nc_outDir = "$base_folder/Runs/WY$(water_year)/temp_nc/outputs_$(start_idx)_$(end_idx)"
-    # if isdir(nc_outDir)  # process only if the pixel is not already processed
-    #     println("Exiting because following folder already processed: $nc_outDir")
-    #     continue
-    # end
     
     # create_job(hpc_name, jobname, cores, memory, runtime, "V14x_WY$(water_year)", start_idx, end_idx, valid_pix_count)
     create_job(hpc_name, jobname, cores, memory, runtime, "WY$(water_year)", start_idx, end_idx, valid_pix_count, begin_delay)
