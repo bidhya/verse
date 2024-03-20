@@ -244,7 +244,7 @@ println("Total valid pixel count = $(valid_pix_count)")  # debug
 running_time = (time_ns() - start_time)/1e9/60
 @info("Pre-generating output nc files = $(round(running_time, digits=2)) minutes")
 
-@info("Starting with loop.")
+@info("Starting with blender loop.")
 @info("==========================================================")
 @info("Processing $(length(ind)) of $(length(valid_pix_ind))")
 # @sync makes the code wait for all processes to finish their part of the computation before moving on from the loop
@@ -374,7 +374,9 @@ sleep(10)
 # Count if all pixels are processed before calling the following section for converting text files to netcdf file
 pixels = readdir(exp_dir)
 pixels = [pix for pix in pixels if startswith(pix, "Pix")];
-if length(pixels) == valid_pix_count #&& system_machine == "Windows"
+processed_pix_count = length(pixels)
+@info("Pixels processsed = $processed_pix_count out of $valid_pix_count")
+if processed_pix_count == valid_pix_count #&& system_machine == "Windows"
     outRaster = copy(A[:SWE_tavg])
     var_idx_tuple = (("SWE", 1), ("Gmelt", 2), ("G", 3), ("Precip", 4), ("Us", 5), ("Gpv", 6), ("Gmeltpv", 7), ("Upv", 8), ("SWEpv", 9))
     mkpath(nc_outDir)
@@ -387,34 +389,40 @@ if length(pixels) == valid_pix_count #&& system_machine == "Windows"
     end
 else
     @info("All pixels not yet processed, so OUTPUT NETCDF FILES not yet created")
-    if system_machine == "Windows"
-        Tar.create(exp_dir, "$(exp_dir).tar.gz")
-    else
-        Tar.create(exp_dir, pipeline(`gzip -9`, "$(exp_dir).tar.gz"))
-    end
-    mkpath("$base_folder/Runs/$out_subfolder/outputs_txt")
-    sleep(2)
-    cp("$(exp_dir).tar.gz", "$base_folder/Runs/$out_subfolder/outputs_txt/$(exp_dir).tar.gz", force=true)
-    @info("Moved outputs_txt: $base_folder/Runs/$out_subfolder/outputs_txt/$(exp_dir).tar.gz")
+    # TODO list out what pixels were not processed (and why? at a later point)
+    # if system_machine == "Windows"
+    #     Tar.create(exp_dir, "$(exp_dir).tar.gz")
+    # else
+    #     Tar.create(exp_dir, pipeline(`gzip -9`, "$(exp_dir).tar.gz"))
+    # end
+    # mkpath("$base_folder/Runs/$out_subfolder/outputs_txt")
+    # sleep(2)
+    # cp("$(exp_dir).tar.gz", "$base_folder/Runs/$out_subfolder/outputs_txt/$(exp_dir).tar.gz", force=true)  #ERROR: LoadError: IOError: sendfile: Unknown system error -122 (Unknown system error -122)
+    # @info("Moved outputs_txt: $base_folder/Runs/$out_subfolder/outputs_txt/$(exp_dir).tar.gz")
 end
 @info("Finished: Combining Text Ouputs to NetCDF FILES")
 end_time = time_ns()
 running_time = (end_time - start_time)/1e9/3600
 @info("Running Time (convert text to nc) = $(round(running_time, digits=3)) hours")
 
-# Tar move log files from compute node to permanent location
-if system_machine == "Windows"
-    # TODO file not really .gz on windows but works. Might be a good idea to remore .gz suffix for windows files
-    @info("Create tar on Windows")
-    Tar.create(logDir, "$(logDir).tar.gz")  # no native compression for tar in julia and no pipeline in windows
-else
-    @info("Create tar on Slurm node")
-    Tar.create(logDir, pipeline(`gzip -9`, "$(logDir).tar.gz"))  # compress with gzip through pipeline in linux
-end
 mkpath("$base_folder/Runs/$out_subfolder/logs")  # also works if path already exists
-sleep(2)
-cp("$(logDir).tar.gz", "$base_folder/Runs/$out_subfolder/logs/$(logDir).tar.gz", force=true)  #TODO: ERROR: LoadError: IOError: sendfile: Unknown system error -175626013 (Unknown system error -175626013)
-@info("Moved logfile to : $base_folder/Runs/$out_subfolder/logs/$(logDir).tar.gz")
+
+# Altert : Creating Tar (large (>3GB)) file and/or copying them using Julia is unstable. Hence, this code is commeted out. Use bash/slurm script for this.  
+# # Tar move log files from compute node to permanent location
+# if system_machine == "Windows"
+#     # TODO file not really .gz on windows but works. Might be a good idea to remore .gz suffix for windows files
+#     @info("Create tar on Windows")
+#     Tar.create(logDir, "$(logDir).tar.gz")  # no native compression for tar in julia and no pipeline in windows
+# else
+#     @info("Create tar on Slurm node")
+#     Tar.create(logDir, pipeline(`gzip -9`, "$(logDir).tar.gz"))  # compress with gzip through pipeline in linux
+#     # TODO ERROR: LoadError: unsupported file type: "logs_1_110/Pix_1112_37.txt"
+#     # Undiagnosed error for now but keep an eye if it occurs again on Discover.  
+# end
+# sleep(2)
+# cp("$(logDir).tar.gz", "$base_folder/Runs/$out_subfolder/logs/$(logDir).tar.gz", force=true)  #TODO: ERROR: LoadError: IOError: sendfile: Unknown system error -175626013 (Unknown system error -175626013)
+# # Note: program crash at this point is OK. logDir will be copied so we don't loose anything.
+# @info("Moved logfile to : $base_folder/Runs/$out_subfolder/logs/$(logDir).tar.gz")
 
 end_time = time_ns()
 running_time = (end_time - start_time)/1e9/60  # minutes
