@@ -1,5 +1,9 @@
 # Updates to codebase in reverse chronological order
 =============================================   
+## Mar 20, 2024  
+- Remove tar/copy from julia script and move to bash. This was crashing julia for files >3GB.   
+- increase runtime in submit_slurm job    
+
 ## Feb 21, 2024  
 - putting garbage collector inside Estimate_v59.jl, Estimate_v58.jl  
 - and removing gc from call_Blender_v16.jl, call_Blender_v15.jl      
