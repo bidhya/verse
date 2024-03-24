@@ -24,7 +24,7 @@ if occursin("discover", host_machine) #|| occursin("borg", host_machine)
     root_dir = "/discover/nobackup/projects/coressd"
     base_folder = "$root_dir/Blender"
     hpc_name = "discover"
-    cores = 100  # 125 46 or use 45 so one core can be used to monitor run using srun/htop.
+    cores = 110  # 125 46 or use 45 so one core can be used to monitor run using srun/htop.
     memory = "0" #"184gb"
 elseif occursin(".osc.edu", host_machine)
     root_dir = "/fs/ess/PAS1785/coressd"  # "/fs/scratch/PAS1785/coressd"
@@ -152,12 +152,13 @@ for i in StepRange(1, step, szY)
     valid_pix_ind = findall(!ismissing, B)
     valid_pix_count = length(valid_pix_ind)
     # estimate runtime as function of the number of cores used. 270 seconds = 4.5 mins; ie 1 pixel processing time ~ 0.3 min.
-    runtime = Int(ceil(valid_pix_count/(cores*420)))  # 270 for v_15=180  150 120; 210; with exclusive, how many cores we get is not certain, but just an estimate
-    if runtime < 10
-        # keep getting runtime errors when less number of pixels are processed.
-        # say in less than 4 hours, likely all cores are not being utilized efficiently
-        runtime = 12
-    end
+    runtime = Int(ceil(valid_pix_count/(cores*420)))  # hours. 270 for v_15=180; with exclusive, how many cores we get is not certain, but just an estimate
+    runtime = max(runtime, 11)  # bump smaller runtime to 11 hours. Due to timeout errors for short runs.   
+    # if runtime < 10 && hpc_name=="discover"
+    #     # keep getting runtime errors when less number of pixels are processed.
+    #     # say in less than 4 hours, likely all cores are not being utilized efficiently
+    #     runtime = 11
+    # end
     global total_runtime += runtime
     # 240 seconds : timeout error on OSC, so redude time
     # runtime = "08:00:00"  # 12 "24:00:00"  # default (max for Discover)
