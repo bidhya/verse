@@ -39,6 +39,8 @@ start_idx = ARGS[2]  # this is string
 end_idx = ARGS[3]
 start_idx = parse(Int64, start_idx)
 end_idx = parse(Int64, end_idx)
+RES = ARGS[4] # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
+
 if occursin("test", out_subfolder)
     # if test substring is part of output subfolder then do the test run on subset of pixels
     test_run = true
@@ -64,6 +66,7 @@ if occursin("L-JY0R5X3", host_machine)
         root_dir = "/mnt/d"  #for Ubuntu (WSL2 on windows machine
     end
     base_folder = "$root_dir/coressd/Blender"
+    DataDir = "$root_dir/coressd/Blender/Inputs"  # must exist  (Old = NoahMP)
     log_filename = string(start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
     addprocs()
 else  
@@ -77,18 +80,24 @@ else
     # cores = sum(eval(Meta.parse(replace(ENV["SLURM_JOB_CPUS_PER_NODE"], r"x|\(|\)" => s -> subs[s]))))  # for 1 or more nodes (generic); Int64 
     @info("SLURM Cores: $cores")
     if occursin("borg", host_machine)  # TODO: discover
-        root_dir = "/discover/nobackup/projects/coressd"
-        base_folder = "$root_dir/Blender"
-        tmpdir =  ENV["LOCAL_TMPDIR"]  #tempdir()
+        root_dir = "/discover/nobackup"
+        base_folder = "$root_dir/projects/coressd/Blender"
+        # base_folder = "$root_dir/byadav/coressd/Blender"  # used when project directory was full.  
+        tmpdir =  ENV["LOCAL_TMPDIR"]  #tempdir() to save tempoary text files on hpc node. 
+        # DataDir = "$root_dir/projects/coressd/Blender/Inputs"  # INDIR. must exist  (Old = NoahMP)
+        DataDir = "$root_dir/projects/coressd/Blender/Inputs_$(RES)"  # INDIR. must exist  (Old = NoahMP)
+        OUTDIR = "$base_folder/Runs/$(RES)"  # Blender Run outputs saved here. (../temp_nc/, ../logs/, ../Outputs/ etc)
     elseif occursin(".osc.edu", host_machine)
-        root_dir = "/fs/ess/PAS1785/coressd"  # "/fs/scratch/PAS1785/coressd"
-        base_folder = "$root_dir/Blender"
+        root_dir = "/fs/ess/PAS1785"  # "/fs/scratch/PAS1785/coressd"
+        base_folder = "$root_dir/coressd/Blender"
         tmpdir =  ENV["TMPDIR"]  #tempdir()
+        DataDir = "$root_dir/coressd/Blender/Inputs"
     elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
-        root_dir = "/fs/project/howat.4/yadav.111/coressd"  # homedir()  #  Unity
+        root_dir = "/fs/project/howat.4/yadav.111"  # homedir()  #  Unity
         # base_folder = "/home/yadav.111/Github/Blender"  # old
-        base_folder = "$root_dir/Blender"  # "$root_dir/Github/coressd/Blender"
+        base_folder = "$root_dir/coressd/Blender"  # "$root_dir/Github/coressd/Blender"
         tmpdir =  ENV["TMPDIR"]  #tempdir()
+        DataDir = "$root_dir/coressd/Blender/Inputs"
         # @info("SLURM_SUBMIT_DIR: $(ENV["SLURM_SUBMIT_DIR"])")
     else
         @info("Unknown computer system. Aborting ...  ")
@@ -117,27 +126,8 @@ global_logger(info_only_logger)  # Set the global logger to logger; else logs do
 @everywhere using Rasters, NCDatasets, Distributions  # Distributions for garbage collection using uniform distribution
 @everywhere include("Estimate_v59.jl")  #https://docs.julialang.org/en/v1/manual/code-loading/; evaluated in global scope
 
-# base_folder = "$root_dir/Github/Blender"
-# DataDir= "$base_folder/nc_files"
-DataDir = "$base_folder/Inputs"  # must exist  (Old = NoahMP)
-# # use only for HPC to copy input file here (hopefully for faster i/o operation)
-# if occursin("borg", host_machine)
-#     tmpdir =  ENV["LOCAL_TMPDIR"]  #tempdir()  
-# else
-#     # TODO: on discover if node does not start with "borg" the code can still jump here!
-#     tmpdir =  ENV["TMPDIR"]  #tempdir()
-
-# # Folder for saving outputs of run. out_subfolder can be passed as ARGS. Folder/subfolders will be created if non-existent
-# # Oct 20, 2023: This out_folder is no more used in V14. but verify
-# if occursin(".osc.edu", host_machine)
-#     # out_folder = "/fs/ess/PAS1785/coressd/Blender/Runs/$out_subfolder" #  "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
-#     out_folder = "/fs/scratch/PAS1785/coressd/Blender/Runs/$out_subfolder" #  "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
-# elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
-#     out_folder = "$tmpdir/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
-# else
-#     out_folder = "$base_folder/Runs/$out_subfolder"  # "$DataDir/Runs/$out_subfolder"
-# end
-# @info("Output_folder : $out_folder")
+# DataDir = "$base_folder/Inputs"  # must exist  (Old = NoahMP)
+# DataDir = "$root_dir/projects/coressd/Blender/Inputs"  # must exist  (Old = NoahMP)
 
 # Make a folder insise HPC node because we want to copy existing files there
 exp_dir = "outputs_txt_$(start_idx)_$(end_idx)"  #"$out_folder/outputs_txt"  # tmp_txtDir(old name) To save text outputs for each pixel
@@ -148,12 +138,7 @@ mkpath(logDir)  # mkdir; must create here, else error in the current setup
 # Error on Discover (Nov 08, 2023): rm: cannot remove '/lscratch/tdirs/batch/slurm.24967584.byadav/logs': Directory not empty; Solution: #SBATCH --no-requeue
 
 # cp("$base_folder/Runs/$out_subfolder/outputs_txt", "$tmp_txtDir/$water_year")  # copy to local machine; error if running the first time as this dir would not exist
-# nc_outDir = "$out_folder/outputs"         # To convert text outputs to netcdf file
-# nc_outDir = "$base_folder/Runs/$out_subfolder/outputs"
-nc_outDir = "$base_folder/Runs/$out_subfolder/temp_nc/outputs_$(start_idx)_$(end_idx)"
-# OutDir = "$DataDir/$out_subfolder/outputs_txt"  # To save text outputs for each pixel
-# nc_exp_dir = "$DataDir/$out_subfolder/outputs_nc"  # To convert text outputs to netcdf file
-# Oct 20, 2023: exit here if folder alreay exists
+nc_outDir = "$OUTDIR/$out_subfolder/temp_nc/outputs_$(start_idx)_$(end_idx)"
 # if !ispath(exp_dir * "/SWEpv.txt") # ispath is generic for both file and folder
 # if !isfile(exp_dir * "/SWEpv.txt")  # This is better check: process the pixel only if the last file exported by optimzer (SWEpv.txt) does not yet exist
 if isdir(nc_outDir)  # process only if the pixel is not already processed
@@ -166,24 +151,9 @@ end
 # Following check are for prototyping only when running code locally, because I do not yet have NorthAmerica netcdf file
 if occursin("L-JY0R5X3", host_machine) #|| test_run  # use this for testing as well
     @info("Test Run only.")
-    # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc", lazy=true)  # Error now (Aug 15, 2023). maybe it is old file/format
     A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true)
     # subset = A[X(Between(-120.5, -120)), Y(Between(60, 60.5))]  # 10 by 10 pixels; use small chip for prototyping
-    # subset_fname = "$(DataDir)/WY_merged/subset_$(water_year)_seup_modis.nc"
-    # # isfile(subset_fname) || write(subset_fname, subset)  # save. we need for post-processing analysis of results
-    # write(subset_fname, subset)
-    # A = RasterStack(subset_fname, lazy=true)  # read again (why). for consistency
-# elseif occursin("borg", host_machine)  # TODO: discover
-#     # A = RasterStack("$DataDir/WY_merged/2013_seup_modis.nc")  # 2016_noahmp_cgf 2016_clip_noahmp_cgf #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
-#     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
-# elseif occursin(".osc.edu", host_machine)
-#     # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_cgf.nc")
-#     A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
-# elseif occursin("asc.ohio-state.edu", host_machine)
-#     A = RasterStack("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", lazy=true)
 else
-    # A = RasterStack("$DataDir/WY_merged/2016_seup_modis.nc")
-    # A = RasterStack("$DataDir/WY_merged/" * water_year * "_seup_modis.nc")
     # copy to local Node (machine) on slurm
     cp("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", "$tmpdir/$water_year" * "_seup_modis.nc", force=true)  #force=true will first remove an existing dst.
     # true required for discover when running on same node again after node_failure.
@@ -193,7 +163,6 @@ end
 running_time = (time_ns() - start_time)/1e9/60
 @info("Time until copying input netcdf to Node = $(round(running_time, digits=2)) minutes")
 
-# A = RasterStack("$DataDir/WY_merged/2016_clip3.nc")  # for NoahMP with CGF MODIS
 # Subset only the required variables because the nc file can have extraneous vars that cause problem with julia
 A = A[(:Snowf_tavg, :SWE_tavg, :Tair_f_tavg, :Qg_tavg, :MODSCAG)];  # to remove spatial ref that cause problem during subsetting
 """ General info about pixel counts
@@ -218,32 +187,15 @@ else
     A = A[1:end, start_idx:end_idx, :]  # use for default runs
 end
 
-# Now using cartesian index for iteration
-# Extract cartesian index for non-missing (ie, all) data using one-day of data 
-valid_pix_ind = findall(!ismissing, A["SWE_tavg"][Ti=1])
+# Use cartesian index for iteration
+valid_pix_ind = findall(!ismissing, A["SWE_tavg"][Ti=1])  # Extract cartesian index for non-missing (ie, all) data using one-day of data 
 valid_pix_count = length(valid_pix_ind)
 ind = valid_pix_ind
 @info("Total valid pixel count = $(valid_pix_count)")
-println("Total valid pixel count = $(valid_pix_count)")  # debug
-
-# @everywhere using SharedArrays  # must come after addprocs(cores) else won't work for julia 1.10.0 version.  
-# sizeA = size(A)  # to create sharedarrays
-# println("sizeA = $(sizeA)") # debug
-# # SWERaster = SharedArray{Float32}(10, 10, 366)
-# SWERaster = SharedArray{Float32}(sizeA)
-# SWERaster[:,:,:] .= NaN
-# GmeltRaster = deepcopy(SWERaster)  # use deepcopy; simple copy will create general array, not a sharedarray, hence, won't work in parallel  
-# GRaster = deepcopy(SWERaster)
-# PrecipRaster = deepcopy(SWERaster)
-# UsRaster = deepcopy(SWERaster)
-# GpvRaster = deepcopy(SWERaster)
-# GmeltpvRaster = deepcopy(SWERaster)
-# UpvRaster = deepcopy(SWERaster)
-# SWEpvRaster = deepcopy(SWERaster);
+# println("Total valid pixel count = $(valid_pix_count)")  # debug
 
 running_time = (time_ns() - start_time)/1e9/60
 @info("Pre-generating output nc files = $(round(running_time, digits=2)) minutes")
-
 @info("Starting with blender loop.")
 @info("==========================================================")
 @info("Processing $(length(ind)) of $(length(valid_pix_ind))")
@@ -262,19 +214,6 @@ running_time = (time_ns() - start_time)/1e9/60
     MSCF = A["MODSCAG"][X=i, Y=j].data;
     # blender(out_folder, i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)  # Call blender for the pixel. OLD.
     blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
-    # SWEhat, GmeltHat, Ghat,  Phat, Ushat, G_pv, Gmelt_pv, U_pv, SWEpv = blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
-    # SWERaster[i, j, :] = SWEhat
-    # GmeltRaster[i, j, :] = GmeltHat
-    # GRaster[i, j, :] = Ghat
-    # PrecipRaster[i, j, :] = Phat
-    # UsRaster[i, j, :] = Ushat
-    # GpvRaster[i, j, :] = G_pv
-    # GmeltpvRaster[i, j, :] = Gmelt_pv
-    # UpvRaster[i, j, :] = U_pv
-    # SWEpvRaster[i, j, :] = SWEpv;    
-    # GC.gc()  # With GC, memory footprint is smaller, even though runtime was same
-    # rand(Uniform(0,1)) < 0.1 && GC.gc();  # with 0.02 garbage collection only 2% of time; need Distributions package
-    # cp(exp_dir, "$base_folder/Runs/$out_subfolder/outputs_txt", force=True)
 end
 # without sync above one of the processor to the next step (combining text files to netcdf) which will cause error
 sleep(10)
@@ -283,55 +222,6 @@ sleep(10)
 end_time = time_ns()
 running_time = (end_time - start_time)/1e9/3600
 @info("Running Time (blender For Loop) = $(round(running_time, digits=2)) hours")
-
-# # Oct 08, 2023. To save output nc files. Create Raster matching the input and save to nc file 
-# mkpath(nc_outDir)
-# outRaster = copy(A[:SWE_tavg])  # output raster template
-# outRaster[:, :, :] = SWERaster
-# SWERaster = rebuild(outRaster; name=:SWE)
-# write("$nc_outDir/SWE.nc", SWERaster)
-
-# outRaster = copy(A[:SWE_tavg])
-# outRaster[:, :, :] = GmeltRaster
-# GmeltRaster = rebuild(outRaster; name=:Gmelt)
-# write("$nc_outDir/Gmelt.nc", GmeltRaster)
-
-# outRaster = copy(A[:SWE_tavg])
-# outRaster[:, :, :] = GRaster
-# GRaster = rebuild(outRaster; name=:G)
-# write("$nc_outDir/G.nc", GRaster)
-
-# outRaster = copy(A[:SWE_tavg])
-# outRaster[:, :, :] = PrecipRaster
-# PrecipRaster = rebuild(outRaster; name=:Precip)
-# write("$nc_outDir/Precip.nc", PrecipRaster)
-# GC.gc()
-
-# outRaster = copy(A[:SWE_tavg])
-# outRaster[:, :, :] = UsRaster
-# UsRaster = rebuild(outRaster; name=:Us)
-# write("$nc_outDir/Us.nc", UsRaster)
-
-# outRaster = copy(A[:SWE_tavg])
-# outRaster[:, :, :] = GpvRaster
-# GpvRaster = rebuild(outRaster; name=:Gpv)
-# write("$nc_outDir/Gpv.nc", GpvRaster)
-
-# outRaster = copy(A[:SWE_tavg])
-# outRaster[:, :, :] = GmeltpvRaster
-# GmeltpvRaster = rebuild(outRaster; name=:Gmeltpv)
-# write("$nc_outDir/Gmeltpv.nc", GmeltpvRaster)
-
-# outRaster = copy(A[:SWE_tavg])
-# outRaster[:, :, :] = UpvRaster
-# UpvRaster = rebuild(outRaster; name=:Upv)
-# write("$nc_outDir/Upv.nc", UpvRaster)
-
-# outRaster = copy(A[:SWE_tavg])
-# outRaster[:, :, :] = SWEpvRaster
-# SWEpvRaster = rebuild(outRaster; name=:SWEpv)
-# write("$nc_outDir/SWEpv.nc", SWEpvRaster)
-
 # exit(0)  # exit here to avoid running 2nd part (text2nc)
 
 # Step 4. PostProcessing: Combine text files into a grid and save as netcdf
@@ -344,8 +234,6 @@ running_time = (end_time - start_time)/1e9/3600
     TODO: move this fuction inside the Estimate_v53.jl script
     TODO: seems like nc file produced here cannot by plotted using xarray/hvplot
     """
-    # outRaster = copy(A[:MODSCAG])  # TODO: check for NoahMP; use other variable because it creates MODIS attrs
-    # outRaster = copy(A[:SWE_tavg])
     # Initial resulting array
     outRaster[:,:,:] .= missing
     # update the name of variable
@@ -360,9 +248,6 @@ running_time = (end_time - start_time)/1e9/3600
         x = parse(Int16, pix_xy[2])
         y = parse(Int16, pix_xy[3])
         out_vars = readdlm("$(exp_dir)/$(pix)") # readdlm("$(exp_dir)/Pix_$(x)_$(y).txt")
-        # out_vars = readdlm("$exp_dir/$pix/out_vars.txt")  # $(exp_dir)/Pix_$(i)_$(j).txt   read whole combined file for that pixel
-        # out_vars = readdlm("$tmpdir/outputs_txt/$pix/out_vars.txt")  # read whole combined file for that pixel
-        # outRaster[X=x, Y=y] = readdlm("$exp_dir/$pix/$var.txt");  # Older workflow
         outRaster[X=x, Y=y] = out_vars[:,idx]
     end
     # Save to nc file; 
@@ -370,7 +255,7 @@ running_time = (end_time - start_time)/1e9/3600
     write("$nc_outDir/$var.nc", outRaster)  # Aug 08, 2023: Error perhaps due to updates to raster/ncdataset/etc. (error tested on windows and wsl2)
 end
 
-sleep(10)
+sleep(1)
 # Count if all pixels are processed before calling the following section for converting text files to netcdf file
 pixels = readdir(exp_dir)
 pixels = [pix for pix in pixels if startswith(pix, "Pix")];
@@ -389,40 +274,15 @@ if processed_pix_count == valid_pix_count #&& system_machine == "Windows"
     end
 else
     @info("All pixels not yet processed, so OUTPUT NETCDF FILES not yet created")
-    # TODO list out what pixels were not processed (and why? at a later point)
-    # if system_machine == "Windows"
-    #     Tar.create(exp_dir, "$(exp_dir).tar.gz")
-    # else
-    #     Tar.create(exp_dir, pipeline(`gzip -9`, "$(exp_dir).tar.gz"))
-    # end
-    # mkpath("$base_folder/Runs/$out_subfolder/outputs_txt")
-    # sleep(2)
-    # cp("$(exp_dir).tar.gz", "$base_folder/Runs/$out_subfolder/outputs_txt/$(exp_dir).tar.gz", force=true)  #ERROR: LoadError: IOError: sendfile: Unknown system error -122 (Unknown system error -122)
-    # @info("Moved outputs_txt: $base_folder/Runs/$out_subfolder/outputs_txt/$(exp_dir).tar.gz")
 end
 @info("Finished: Combining Text Ouputs to NetCDF FILES")
 end_time = time_ns()
 running_time = (end_time - start_time)/1e9/3600
 @info("Running Time (convert text to nc) = $(round(running_time, digits=3)) hours")
 
-mkpath("$base_folder/Runs/$out_subfolder/logs")  # also works if path already exists
-
-# Altert : Creating Tar (large (>3GB)) file and/or copying them using Julia is unstable. Hence, this code is commeted out. Use bash/slurm script for this.  
-# # Tar move log files from compute node to permanent location
-# if system_machine == "Windows"
-#     # TODO file not really .gz on windows but works. Might be a good idea to remore .gz suffix for windows files
-#     @info("Create tar on Windows")
-#     Tar.create(logDir, "$(logDir).tar.gz")  # no native compression for tar in julia and no pipeline in windows
-# else
-#     @info("Create tar on Slurm node")
-#     Tar.create(logDir, pipeline(`gzip -9`, "$(logDir).tar.gz"))  # compress with gzip through pipeline in linux
-#     # TODO ERROR: LoadError: unsupported file type: "logs_1_110/Pix_1112_37.txt"
-#     # Undiagnosed error for now but keep an eye if it occurs again on Discover.  
-# end
-# sleep(2)
-# cp("$(logDir).tar.gz", "$base_folder/Runs/$out_subfolder/logs/$(logDir).tar.gz", force=true)  #TODO: ERROR: LoadError: IOError: sendfile: Unknown system error -175626013 (Unknown system error -175626013)
-# # Note: program crash at this point is OK. logDir will be copied so we don't loose anything.
-# @info("Moved logfile to : $base_folder/Runs/$out_subfolder/logs/$(logDir).tar.gz")
+# Create path for saving log files. tar and copy will be done in the bash script.  
+mkpath("$OUTDIR/$out_subfolder/logs")  # also works if path already exists
+@info("Logdir: $OUTDIR/$out_subfolder/logs")
 
 end_time = time_ns()
 running_time = (end_time - start_time)/1e9/60  # minutes
