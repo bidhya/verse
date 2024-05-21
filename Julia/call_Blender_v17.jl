@@ -31,6 +31,7 @@ Sep 04, 2023 : text and log files saved in separate folders; created call_Blende
 Oct 29, 2023 : Save nc files to temp_nc folder using call_Blender_v14.jl uses Estimate_v57.jl
 Dec 03, 2023 : New call_Blender_v15.jl uses Estimate_v58.jl (modifications by Jack)
 
+Usage: julia verse/Julia/call_Blender_v17.jl test_WY2016 100 101 050
 """
 arg_len = length(ARGS)
 out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_text and nc_outputs saved here
@@ -66,7 +67,8 @@ if occursin("L-JY0R5X3", host_machine)
         root_dir = "/mnt/d"  #for Ubuntu (WSL2 on windows machine
     end
     base_folder = "$root_dir/coressd/Blender"
-    DataDir = "$root_dir/coressd/Blender/Inputs"  # must exist  (Old = NoahMP)
+    DataDir = "$root_dir/coressd/Blender/Inputs_$(RES)"  # must exist  (Old = NoahMP)
+    OUTDIR = "$base_folder/Runs/$(RES)"
     log_filename = string(start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
     addprocs()
 else  
@@ -184,7 +186,7 @@ if test_run
     # subset_fname = "$(DataDir)/WY_merged/subset_$(water_year)_seup_modis.nc"
     # write(subset_fname, A)
     # A = A[1:end, 100:102, :]
-    A = A[1101:1120, start_idx:end_idx, :]  # change this as required for selecting a particular region/watershed to test on
+    A = A[1101:1109, start_idx:end_idx, :]  # change this as required for selecting a particular region/watershed to test on
 else
     @info("DEFAULT RUN  ")
     A = A[1:end, start_idx:end_idx, :]  # use for default runs
@@ -278,13 +280,13 @@ else
     @info("All pixels not yet processed, so OUTPUT NETCDF FILES not yet created")
 end
 @info("Finished: Combining Text Ouputs to NetCDF FILES")
-end_time = time_ns()
-running_time = (end_time - start_time)/1e9/3600
-@info("Running Time (convert text to nc) = $(round(running_time, digits=3)) hours")
+# end_time = time_ns()
+# running_time = (end_time - start_time)/1e9/3600
+# @info("Running Time (convert text to nc) = $(round(running_time, digits=3)) hours")
 
-# Create path for saving log files. tar and copy will be done in the bash script.  
-mkpath("$OUTDIR/$out_subfolder/logs")  # also works if path already exists
-@info("Logdir: $OUTDIR/$out_subfolder/logs")
+# # Create path for saving log files. tar and copy will be done in the bash script.  
+# mkpath("$OUTDIR/$out_subfolder/logs")  # also works if path already exists
+# @info("Logdir: $OUTDIR/$out_subfolder/logs")
 
 end_time = time_ns()
 running_time = (end_time - start_time)/1e9/60  # minutes
