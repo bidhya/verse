@@ -1,5 +1,10 @@
 # Updates to codebase in reverse chronological order
 =============================================   
+## Jun 02, 2024  
+- Merged Apr07 branch to main.  
+- Complete overhaul of processing workflow for using LIS 1km run.   
+- Tried zarr. Was fast bud did not work for final NetCDF file.  
+
 ## Mar 20, 2024  
 - Remove tar/copy from julia script and move to bash. This was crashing julia for files >3GB.   
 - increase runtime in submit_slurm job    
