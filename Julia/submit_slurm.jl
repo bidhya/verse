@@ -140,7 +140,7 @@ end
 total_runtime = 0
 cum_pix_count = 0
 row_count = 0
-start_idx = 1
+start_idx = 1  # Alert: if i changed in for loop below, update this value to the first value of i, else job will start at 1 causing node_fail error.
 # for i in StepRange(3001, step, 3003)  # for testing
 # for i in StepRange(6001, step, szY)
 for i in StepRange(1, step, szY)
@@ -159,7 +159,18 @@ for i in StepRange(1, step, szY)
     valid_pix_count = length(valid_pix_ind)
     row_count += step
     cum_pix_count += valid_pix_count
-    if cum_pix_count > 80000 || end_idx == szY  # for last job that man not have enough pixels to pass the pix count threshold
+    pix_count_threshold = 80000  # 80000 for 5km run; 20000 for 1km run
+    # Update the pix_count_threshold based on row index (ie, latitude) to account for the processing time which is higher at lower latitude. This needs further verification.
+    # dimensions(sizes): x(11700), y(4700), time(366)
+    if start_idx < 1500
+        pix_count_threshold = 50000
+    elseif start_idx < 3000
+        pix_count_threshold = 70000
+    else
+        pix_count_threshold = 100000
+    end
+
+    if cum_pix_count > pix_count_threshold || end_idx == szY  # for last job that man not have enough pixels to pass the pix count threshold
         # prepare slurm job
         # begin_delay = Int((job_count) * step/3)  
         begin_delay = Int(job_count * delay_multiplier)
