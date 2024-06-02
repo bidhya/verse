@@ -29,5 +29,5 @@ def toc():
         else:
             elapsed_time /= 3600.0
             toc_str = "Elapsed time is {:.2f} hours.".format(elapsed_time)
-    print(toc_str)
+    # print(toc_str)
     return toc_str  # so we can pass it to logging etc
