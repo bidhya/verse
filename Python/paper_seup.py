@@ -20,7 +20,8 @@ RES = args.RES
 # Generate full path to destination notebook
 # destination = source.replace('giuh', 'giuh/paper_outputs')
 # destination = source.replace('verse/Python', '03_Blender/paper_outputs')
-destination = source.replace('03_Blender/SEUP', '03_Blender/paper_outputs')
+# destination = source.replace('03_Blender/SEUP', '03_Blender/paper_outputs')
+destination = source.replace('03_Blender/LIS', '03_Blender/paper_outputs')
 destination = destination.replace('.ipynb', f'_{water_year}_{RES}.ipynb')  # save notebooks outputs by water year
 
 print(source)
