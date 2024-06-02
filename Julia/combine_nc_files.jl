@@ -15,7 +15,7 @@ water_year = out_subfolder[end-3:end] #last 4 chars are assumed year, else error
 RES = ARGS[2] # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
 
 
-using Logging, LoggingExtras
+using Logging, LoggingExtras, Dates
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # 1. Setup inputs and output directories and file locations
 # select the root directory (this will be different on windows, linux or Mac) 
@@ -56,11 +56,11 @@ else
 end
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/combine_nc.log")
+log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/combine_output_parts.log")
 # log_filename = "combine_nc.log"
 logger = FormatLogger(open(log_filename, "w"), 0) do io, args
     # Write the module, level and message only
-    println(io, args._module, " | ", "[", args.level, "] ", args.message)
+    println(io, args._module, " | ", "[", args.level, "] ", args.message, " | ", Dates.format(now(), "yyyy-mm-dd HH:MM:SS"))
 end
 info_only_logger = MinLevelLogger(logger, Logging.Info);  # Logging.Error
 global_logger(info_only_logger)  # Set the global logger to logger; else logs doing directly to console
@@ -78,7 +78,7 @@ DataDir = "$base_folder/Inputs_$(RES)"  # must exist (Old = NoahMP)
 
 start_time = time_ns()
 
-A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc")
+A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true)  # withoout lazy=true, NODE_FAIL error. Likely by loading all data in memory  
 A = A[(:Snowf_tavg, :SWE_tavg, :Tair_f_tavg, :Qg_tavg, :MODSCAG)];  # to remove spatial ref that cause problem during subsetting
 # Create output rasters based in input raster template
 outRasterTemplate = copy(A[:SWE_tavg])
@@ -92,7 +92,6 @@ nc_outDir = "$base_folder/Runs/$(RES)/$out_subfolder/temp_nc"  # /outputs_$(star
 function combine_nc(nc_outDir, var)
     # Combine nc files
     outRaster = deepcopy(outRasterTemplate)
-
     folders = readdir(nc_outDir)
     # TODO Sort these files in ascending ordering starting at index 1.
     sym_var = Symbol(var) # uppercase(var)
@@ -105,7 +104,7 @@ function combine_nc(nc_outDir, var)
     return outRaster
 end
 
-final_nc_outDir = "$base_folder/Runs/$(RES)/$out_subfolder/outputs"
+final_nc_outDir = "$base_folder/Runs/$(RES)/$out_subfolder/outputs"  # TODO local_temp_dir then tse_tempdir
 mkpath(final_nc_outDir)
 out_vars = ("SWE", "Gmelt", "G", "Precip", "Us", "Gpv", "Gmeltpv", "Upv", "SWEpv")
 for var in out_vars
@@ -114,8 +113,12 @@ for var in out_vars
         @info("Processing nc_file: $var")
         outRaster = combine_nc(nc_outDir, var)
         sym_var = Symbol(var)
+        @info("Finished combining. Next step is rebuilding raster.")
         outRaster = rebuild(outRaster; name=sym_var)
+        @info("Saving netcdf file: $var")
         write("$(final_nc_outDir)/$(var).nc", outRaster, force=true)
+        @info("Finished saving netcdf file: $var")
+        println(logger.stream, "")  # include blank line in the output log after logging this message
         # outRaster = Nothing
         # GC.gc()
     else
