@@ -1,9 +1,10 @@
 #!usr/bin/env python
 
-""" My custorm script to extract MODIS CGF over North America matching the SEUP Data 
+""" Extract MODIS CGF over North America matching the LIS/SEUP Data 
 
-    Usage       : python ../process_modis_cgf.py 2016 --cores 8
-    slurm_scipt : ../Github/Slurm_Blender/b_process_modis_cgf.sh [params = 2015, 22]
+    Usage       : 
+    python ../verse/Python/process_modis_cgf.py 2016 --RES 010 --cores 8  
+    sbatch b_process_modis_cgf.sh $water_year $RES # $cores  (Slurm script for Discover)
 
     Resources
     =========
@@ -12,31 +13,32 @@
 
     NB:
     ===
-    New May 07, 2023: Save the original DNs. Float, convertion etc in subsequent script. This will also save space
-    ie, no more reprojection match with SEUP in this script
+    1. This script is part of the Blender workflow. It extracts MODIS CGF data for North America
+    2. The MODIS CGF data is mosaicked and matched to LIS/SEUP data resolution
+    3. The final output is a concatenated MODIS CGF data for the entire water year
+    4. The final output is saved in the same folder as SEUP data for Blender run
 
-    TODO: Decide on what to do with cores; pass it or hardcode to -1
+    History
+    =======
+    June 01, 2022: Switching back to NetCDF from Zarr for MODIS CGF data. Though Zarr is faster, it is not currently usable because in the end we need NetCDF file.
+    May 16, 2024: Saving the zarr files with zarr LIS inputs as well. 
 
     Input
     =====
     Raw downloaded files in original sinusoidal projection
     modis_download_folder   = /discover/nobackup/projects/coressd/OSU/MOD10A1F.061/MODIS_Proc/download_snow     # /2016001/001
-    template_raster         = /discover/nobackup/projects/coressd/Blender/Inputs/combined/SWE_tavg/201509.nc    # HARDCODED and required      
+    template_raster         = /discover/nobackup/projects/coressd/Blender/Inputs_010/lis/WY2016/SWE_tavg.nc
     Tree cover fraction     = /discover/nobackup/projects/coressd/Blender/Modis/MOD44B/Percent_Tree_Cover/NA/MOD44B.A{water_year}065.061.nc
 
     Outputs 
     =======
-    Folder: /discover/nobackup/projects/coressd/Blender/Modis/CGF_NDSI_Snow_Cover/
-    NA2015_mosaic
-    ------------- 
-        this is temporary file only and consider deleting (or not saving)
-        each file is a daily mosaic over North America in original Sinusoidal projection
-        filename example: MOD10A1F.061_2015249.nc
-
-    NA2015
-    ------ 
-        mosaics from previous step is resampled and matched to SEUP data
-        filename example: MOD10A1F.061_2015249.nc
+    Folder: /discover/nobackup/projects/coressd/Blender/Modis/  
+    - MOD10A1F/mosaic2016_010: temporary mosaics only and consider deleting (or not saving)
+        - MOD10A1F.061_2010261.tif # notice tif file retained instead of nc. Is a daily North America mosaic in original Sinusoidal projection
+    - MOD10A1F/clipped2016_010: clipped files
+        - MOD10A1F.061_2010265.nc # clipped and reprojected to LIS resolution and extent. 15 GB.
+    - WaterYear: Final concatenated MODIS CGF data for Blender run.
+        - 2016_modis.nc
 
 """
 import os
@@ -65,11 +67,15 @@ cores = args.cores
 log_name = args.log_name
 log_name = f"{log_name}{water_year}.log"
 RES = args.RES  # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
+chunk = {"x": 2**8, "y": 2**8}
+# chunk = {"y": 2**7}  # use this same chunk size everywhere
+
 
 logging.basicConfig(filename=f'out/{log_name}', level=logging.INFO, format='%(asctime)s:%(message)s')
 logging.info('  ')
 logging.info('-------------------------START LOGGING--------------------------------------')
 logging.info(f'water_year={water_year}     \ncores={cores}')
+logging.info(f'chunks={chunk}')
 
 # List of tiles that cover North America (our AOI)
 modis_tile_list = [
@@ -105,8 +111,11 @@ year_doy_list = list(date_generated.strftime("%Y%j"))  # Does this match Day of 
 
 # Global variablees
 # Get a template raster for reprojection match. This is the SEUP data. Any nc file from ../coressd/Blender/Inputs_050/combined/SWE_tavg will work.
-seup_folder = f"{base_folder}/Blender/Inputs_{RES}"  # NoahMP
-template_raster = xr.open_dataset(f'{seup_folder}/combined/SWE_tavg/{water_year}04.nc')  # Use April month  #OLD Harcoded: 201509, 200109  
+lis_folder = f"{base_folder}/Blender/Inputs_{RES}"  # NoahMP
+# template_raster = xr.open_dataset(f'{lis_folder}/combined/SWE_tavg/{water_year}04.nc')  # Use April month  #OLD Harcoded: 201509, 200109  
+# template_raster = xr.open_zarr(f'{lis_folder}/lis/{water_year}_lis.zarr', chunks="auto")  # New LIS data saved as zarr  
+template_raster = xr.open_dataset(f'{lis_folder}/lis/WY{water_year}/SWE_tavg.nc', chunks="auto")  # switching back to nc again.  
+
 # Select just one day data
 # noah_ds_clip = noah_ds_clip.sel(time = noah_ds_clip2.time)
 template_raster = template_raster.isel(time=0)
@@ -117,11 +126,14 @@ nan_mask = np.isnan(template_raster["SWE_tavg"].data)  # we'll use this nan mask
 
 DATAFIELD_NAME = "CGF_NDSI_Snow_Cover"  # or just hardcode the variable of interest
 # Create clip folder to save clipped modis files. Initially clipping from global mosaic, hence, named clipped. 
-# No more strictly clipping in new workflow because I manually select subset of MODIS tiles  
-mosaic_folder = f"{base_folder}/Blender/Modis/MOD10A1F/mosaic_{water_year}_{RES}"  # Feb 07, 2024: inserted temp for mosaics  
+# No more strictly clipping in new workflow because I manually select subset of MODIS tiles
+modis_folder = f"{base_folder}/Blender/Modis"  
+mosaic_folder = f"{modis_folder}/MOD10A1F/mosaic{water_year}_{RES}"  # Feb 07, 2024: inserted temp for mosaics  
+clip_folder = f"{modis_folder}/MOD10A1F/clipped{water_year}_{RES}"  # TODO: change name to "clipped" folder; old name: NA{water_year}_{RES}
+combined_modis_folder = f"{modis_folder}/WaterYear"  # modis_wy_combined (old). Final concatenated MODIS CGF data for Blender run will be saved here. This file will be concatenated with lis variables by next script.  
 os.makedirs(mosaic_folder, exist_ok=True)
-clip_folder = f"{base_folder}/Blender/Modis/MOD10A1F/NA{water_year}_{RES}"
 os.makedirs(clip_folder, exist_ok=True)
+os.makedirs(combined_modis_folder, exist_ok=True)
 
 # Get Tree cover fraction data
 # daF = rioxarray.open_rasterio(f'{base_folder}/Blender/Modis/MOD44B/Percent_Tree_Cover/NA/MOD44B.A{water_year}065.061.nc').squeeze()
@@ -266,50 +278,51 @@ logging.info("Start Concatenating MODIS CGF along time dimension.")
 # modis_folder = clip_folder  #=  f"{base_folder}/Blender/Modis/MOD10A1F/NA{water_year}_{RES}"
 # Following two folders will be created by this script as required (below).
 # combined_folder = f"{base_folder}/Blender/Inputs_{RES}/WY"  # Modis/MOD10A1F/combined temp To save concatenated with origianl flags for QA/QC in future; but not really necessary for this or other workflow
-# seup_folder =     f"{base_folder}/Blender/Inputs_{RES}"  # NoahMP
+# lis_folder =     f"{base_folder}/Blender/Inputs_{RES}"  # NoahMP
 
-# hdf_files = [f for f in os.listdir(modis_folder) if f.endswith(".nc4") and f.startswith("MOD10A1F")]  # sarith has nc4 extension
-hdf_files = [f for f in os.listdir(clip_folder) if f.endswith(".nc") and f.startswith("MOD10A1F")]  # I have nc extension
+# nc_files = [f for f in os.listdir(modis_folder) if f.endswith(".nc4") and f.startswith("MOD10A1F")]  # sarith has nc4 extension
+nc_files = [f for f in os.listdir(clip_folder) if f.endswith(".nc") and f.startswith("MOD10A1F")]  # I have nc extension
 # Sort in ascending order of data
 # nc_files.sort(key = lambda x: pd.to_datetime(x.split("_")[2].split(".")[0]))
-# hdf_files.sort(key=lambda x: int(x.split(".")[1][1:]))
-hdf_files.sort(key=lambda x: int(x.split(".")[1].split("_")[-1]))
-# hdf_files = hdf_files[40:270]  # 60:240 for testing; remove later
-logging.info(len(hdf_files))
+# nc_files.sort(key=lambda x: int(x.split(".")[1][1:]))
+nc_files.sort(key=lambda x: int(x.split(".")[1].split("_")[-1]))
+# nc_files = nc_files[40:270]  # 60:240 for testing; remove later
+logging.info(len(nc_files))
 # Idea : Just extract and merge; then later convert to float, nans etc
 count = 0
 # 1. First concat the files along time dimension
 # da = None  # just declaring for red lines below
-for hdf_file in hdf_files:
+for nc_file in nc_files:
     # these are actually NetCDF files
-    # begin_dt = hdf_file.split('.')[1][1:]
-    begin_dt = hdf_file.split(".")[1].split("_")[-1]  # hdf_file.split('.')[1][1:]
+    # begin_dt = nc_file.split('.')[1][1:]
+    begin_dt = nc_file.split(".")[1].split("_")[-1]  # nc_file.split('.')[1][1:]
     begin_year = int(begin_dt[:4])
     begin_days = int(begin_dt[4:])
     begin_ymd = datetime.datetime(begin_year, 1, 1) + datetime.timedelta(begin_days - 1)
     # dt_list.append(begin_ymd)
     if count == 0:
-        # da = rioxarray.open_rasterio(f"{clip_folder}/{hdf_file}").squeeze()
-        da = xr.open_dataset(f"{clip_folder}/{hdf_file}", decode_coords="all")["CGF_NDSI_Snow_Cover"].squeeze()
+        # da = rioxarray.open_rasterio(f"{clip_folder}/{nc_file}").squeeze()
+        da = xr.open_dataset(f"{clip_folder}/{nc_file}", decode_coords="all")["CGF_NDSI_Snow_Cover"].squeeze()
         # da = da["CGF_NDSI_Snow_Cover"].squeeze()
         da["time"] = begin_ymd
     else:
-        # da_temp = rioxarray.open_rasterio(f"{clip_folder}/{hdf_file}").squeeze()
-        da_temp = xr.open_dataset(f"{clip_folder}/{hdf_file}", decode_coords="all")["CGF_NDSI_Snow_Cover"].squeeze()
+        # da_temp = rioxarray.open_rasterio(f"{clip_folder}/{nc_file}").squeeze()
+        da_temp = xr.open_dataset(f"{clip_folder}/{nc_file}", decode_coords="all")["CGF_NDSI_Snow_Cover"].squeeze()  # TODO: use chunks here but be careful because we got some unknown error with chunks
         # da_temp = ds["CGF_NDSI_Snow_Cover"].squeeze()
         da_temp["time"] = begin_ymd
         da = xr.concat([da, da_temp], dim='time')  # , dim='time'
     count += 1
-logging.info(da.shape)
+logging.info(f"Finished concatenation of modis data. Shape = {da.shape}")
 # da = da.drop(["band", "spatial_ref"])  # after shifting to xarray, these coords were introduced; so remove before combining with seup
 da = da.drop_vars(["band"])  # ValueError: These variables cannot be found in this dataset: ['spatial_ref'] 
 da = da.drop_duplicates(dim="time")  # required for Sarith script; may not be required for mine as there should be no duplicate dates 
 ds = xr.Dataset({"MODSCAG": da})  # so we can save to netcdf or append to SEUP dataset
-ds = ds.chunk(chunks={"x": 2**8, "y": 2**8})
-ds.to_netcdf(f"{seup_folder}/WY/{water_year}_modis.nc", encoding={"MODSCAG": {'zlib': True}})
-ds.to_zarr(f"{seup_folder}/WY/{water_year}_modis.zarr")
-
-logging.info(f"Saved concatenated MODIS_CGF: {seup_folder}/WY/{water_year}_modis.nc")
+logging.info("Saving concatenated MODIS_CGF")
+ds = ds.chunk(chunks=chunk)
+ds = ds.compute()  # Load numpy array in memory before saving.
+ds.to_netcdf(f"{combined_modis_folder}/{water_year}_modis.nc", encoding={"MODSCAG": {'zlib': True}})
+# ds.to_zarr(f"{combined_modis_folder}/{water_year}_modis.zarr")  # time consuming; 1.5 hours
+logging.info(f"\t Finished saving final Modis concatenated file: {combined_modis_folder}/{water_year}_modis.")
 logging.info("Finished Job.")
 
 if __name__ == "__main__":
