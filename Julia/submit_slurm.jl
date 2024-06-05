@@ -1,17 +1,27 @@
 """ Create and submit Julia Blender jobs to Slurm on Discover, OSC HPCs.
-    USAGE: pass Water Year and stepsize (number of rows)
-    julia ../verse/Julia/submit_slurm.jl 2016 10 010
-    julia ../verse/Julia/submit_slurm.jl 2016 100 050
+
+    USAGE: pass Water_Year, Resolution, and stepsize (number of rows)
+    julia ../verse/Julia/submit_slurm.jl 2016 10 010  # OLD
+    julia ../verse/Julia/submit_slurm.jl 2016 100 050 # OLD
+    julia ../verse/Julia/submit_slurm.jl 2015 010 3  # order changed. res comes first (Jun 04, 2024)
+    Good values for stepsize: 1, 2, ... upt 10. last tested with 3
+
+    Note: 1. This script will call the main script call_Blender_v18.jl
+          2. The script is called with 3 arguments: water_year, resolution, stepsize
+          3. The script reads the input netcdf file, and creates slurm jobs for each set of rows (stepsize) in the Y-direction.
+          4. The script calculates the number of pixels in each set of rows, and based on a threshold, creates a slurm job.
+          5. Calculates the runtime for each job based on the number of pixels but currently hard-coded to 12 or 24.
+          7. Mechanism of a delay in the start of each job to prevent memory related errors on Discover.
 """
 arg_len = length(ARGS)
 out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_nc saved here
 water_year = out_subfolder[end-3:end] #last 4 chars are assumed year, else error
+# Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
+RES = ARGS[2] # "050"
 # step is the count of rows (y-direction) of netcdf file to process in one job/run 
-step = ARGS[2] #|| 35 on discover
+step = ARGS[3] #|| 35 on discover
 step = parse(Int32, step)
 memory = "184gb"
-# Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
-RES = ARGS[3] # "050"
 
 # mkpath(logDir)
 mkpath("slurm_jobs/$(RES)/$(water_year)/.out")
@@ -103,7 +113,7 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         else
             write(f, "cp -r ~/Github/verse .\n")
         end
-        write(f, "julia verse/Julia/call_Blender_v17.jl $(out_subfolder) $(start_idx) $(end_idx) $(RES)\n\n")
+        write(f, "julia verse/Julia/call_Blender_v18.jl $(out_subfolder) $(start_idx) $(end_idx) $(RES)\n\n")
         write(f, "squeue --job \$SLURM_JOBID \n")
         write(f, "echo List of files on TMPDIR\n")
         write(f, "echo ---------------------------------------------------------------------\n")
@@ -128,7 +138,8 @@ using Rasters, NCDatasets
 # DataDir = "$base_folder/Inputs"  # must exist. Old --> NoahMP
 
 # 2. Read the Input netCDF file
-A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true)
+# A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true) # OLD: 1 file with all variables
+A = RasterStack("$DataDir/lis/WY$(water_year)/SWE_tavg.nc", lazy=true) # new 1km run with separate files for each variable
 A = A[:SWE_tavg][Ti=1];
 szY = size(A, 2)  # get size in Y-dimension; here dim = 2. 6500 for 1km run.
 # szY = 10 # only for debug and testing, use smaller number
@@ -140,8 +151,11 @@ end
 total_runtime = 0
 cum_pix_count = 0
 row_count = 0
-start_idx = 1  # Alert: if i changed in for loop below, update this value to the first value of i, else job will start at 1 causing node_fail error.
-# for i in StepRange(3001, step, 3003)  # for testing
+start_idx = 1  # Alert: if "i" changed in for loop below, update this value to the first value of i, else job will start at 1 causing node_fail error.
+# start_idx should normally be 1, but for testing, it can be set to a higher value (matching the starting value in for loop below)
+# test_start_idx = 1000
+# start_idx = test_start_idx
+# for i in StepRange(test_start_idx, step, 1003)  # for testing
 # for i in StepRange(6001, step, szY)
 for i in StepRange(1, step, szY)
     # start_idx = i
@@ -159,6 +173,7 @@ for i in StepRange(1, step, szY)
     valid_pix_count = length(valid_pix_ind)
     row_count += step
     cum_pix_count += valid_pix_count
+    # println("Processing rows: ", i, " to ", i+step, "and cum_pix_count = ", cum_pix_count)
     pix_count_threshold = 80000  # 80000 for 5km run; 20000 for 1km run
     # Update the pix_count_threshold based on row index (ie, latitude) to account for the processing time which is higher at lower latitude. This needs further verification.
     # dimensions(sizes): x(11700), y(4700), time(366)
@@ -170,7 +185,7 @@ for i in StepRange(1, step, szY)
         pix_count_threshold = 100000
     end
 
-    if cum_pix_count > pix_count_threshold || end_idx == szY  # for last job that man not have enough pixels to pass the pix count threshold
+    if cum_pix_count > pix_count_threshold || end_idx == szY  # last job may not have enough pixels to pass the pix count threshold
         # prepare slurm job
         # begin_delay = Int((job_count) * step/3)  
         begin_delay = Int(job_count * delay_multiplier)
@@ -207,7 +222,8 @@ for i in StepRange(1, step, szY)
             println("Exiting loop. End index already included in last job.")
             break
         end
-    
+    # else
+    #     println("No slurm job created. Cumulative pixel count = ", cum_pix_count, " less than threshold = ", pix_count_threshold)   
     end
 end
 println("Total Slurm jobs submitted = $job_count")
