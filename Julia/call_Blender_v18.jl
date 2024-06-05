@@ -159,10 +159,24 @@ if occursin("L-JY0R5X3", host_machine) #|| test_run  # use this for testing as w
     A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true)
     # subset = A[X(Between(-120.5, -120)), Y(Between(60, 60.5))]  # 10 by 10 pixels; use small chip for prototyping
 else
-    # copy to local Node (machine) on slurm
-    cp("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", "$tmpdir/$water_year" * "_seup_modis.nc", force=true)  #force=true will first remove an existing dst.
-    # true required for discover when running on same node again after node_failure.
-    A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc", lazy=true)  ## , lazy=true https://github.com/rafaqz/Rasters.jl/issues/449
+    # # copy to local Node (machine) on slurm
+    # # cp("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", "$tmpdir/$water_year" * "_seup_modis.nc", force=true)  #force=true will first remove an existing dst.
+    # # cp("$DataDir/lis/WY$(water_year)/SWE_tavg.nc", "$tmpdir/WY$(water_year)/SWE_tavg.nc", force=true)  #force=true will first remove an existing dst.
+    # # true required for discover when running on same node again after node_failure.
+    # # A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc", lazy=true)  ## , lazy=true https://github.com/rafaqz/Rasters.jl/issues/449
+    # A = RasterStack("$tmpdir/WY$(water_year)/SWE_tavg.nc", lazy=true)
+
+    # June 04, 2024
+    # cp("$DataDir/lis/WY$(water_year)", "$tmpdir/WY$(water_year)", force=true)  #force=true will first remove an existing dst. New for v18
+    # Full path to Datadir
+    files = (
+        "$DataDir/lis/WY$(water_year)/Snowf_tavg.nc",
+        "$DataDir/lis/WY$(water_year)/SWE_tavg.nc",
+        "$DataDir/lis/WY$(water_year)/Tair_f_tavg.nc",
+        "$DataDir/lis/WY$(water_year)/Qg_tavg.nc",
+        "$DataDir/lis/WY$(water_year)/MODSCAG.nc"
+        )
+    A = RasterStack(files; lazy=true)
 end
 # end_time = time_ns()
 running_time = (time_ns() - start_time)/1e9/60
@@ -211,6 +225,7 @@ running_time = (time_ns() - start_time)/1e9/60
 # for ij in ind
     i = ij[1]
     j = ij[2]
+    # TODO replace the following 5 lines with the direct access to file
     WRFSWE = A["SWE_tavg"][X=i, Y=j].data  # Here "data" is an AbstractArray.
     WRFP = A["Snowf_tavg"][X=i, Y=j].data
     WRFG = A["Qg_tavg"][X=i, Y=j].data
