@@ -87,7 +87,7 @@ else
         # base_folder = "$root_dir/byadav/coressd/Blender"  # used when project directory was full.  
         tmpdir =  ENV["LOCAL_TMPDIR"]  #tempdir() to save tempoary text files on hpc node. 
         # DataDir = "$root_dir/projects/coressd/Blender/Inputs"  # INDIR. must exist  (Old = NoahMP)
-        DataDir = "$root_dir/projects/coressd/Blender/Inputs_$(RES)"  # INDIR. must exist  (Old = NoahMP)
+        DataDir = "$root_dir/projects/coressd/Blender/x_Inputs_$(RES)"  # June 05, 2024: Last copy of old stype inputs inside the WY_merged folder. only 2010 data for 1 km run.
         OUTDIR = "$base_folder/Runs/$(RES)"  # Blender Run outputs saved here. (../temp_nc/, ../logs/, ../Outputs/ etc)
     elseif occursin(".osc.edu", host_machine)
         root_dir = "/fs/ess/PAS1785"  # "/fs/scratch/PAS1785/coressd"
