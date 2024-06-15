@@ -70,7 +70,7 @@ def main():
     out_folder = f"{base_folder}/Inputs_{RES}/lis_modis"  # WY_merged To save the final file that is ready for Blender Run
 
     # Inputs
-    lis_folder = f"{base_folder}/Inputs_{RES}/lis"  # NoahMP
+    lis_folder = f"{base_folder}/Inputs_{RES}/lis_zarr"  # NoahMP
     modis_folder = f"{base_folder}/Modis/WaterYear"  # modis_wy_combined
     # chunk = {"x": 2**8, "y": 2**8}
     # chunk = {"y": 2**7}  # use this same chunk size everywhere
@@ -127,6 +127,8 @@ def main():
     # shutil.copytree(f"{tmpdir}/{out_fname}", f"{out_folder}/{out_fname}")  # Copy back to project directory
     # shutil.rmtree(f"{tmpdir}/{out_fname}")
     # else:
+    logging.info("Compute: Load to memory (Numpy array).")
+    lis_ds = lis_ds.compute()  # persist to memory
     logging.info(f"Saving NetCDF file project directory: {out_folder}")
     out_fname = f"{water_year}_lis_modis.nc"
     encoding = {var: {'zlib': True} for var in lis_ds.data_vars}
