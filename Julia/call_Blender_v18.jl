@@ -1,7 +1,6 @@
 """
-USAGE: Hardcoded with requirments for output_folder_YEAR, start_idx, and end_idx for running on Discover
-- julia verse/Julia/call_Blender_v18.jl test_WY2015 100 101 010
-- start and end indices are for y-axis only. All x's selected by default  
+USAGE: julia verse/Julia/call_Blender_v18.jl test_WY2010 3005 3006 010
+    - start and end indices are for y-axis only. All x's selected by default  
 
 SWE estimation using Blender algorithm.
 This is a helper script to organize inputs for calling the Blender function (Estimate_v59.jl).

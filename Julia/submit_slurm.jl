@@ -138,8 +138,8 @@ using Rasters, NCDatasets
 
 # 2. Read the Input netCDF file
 # A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true) # OLD: 1 file with all variables
-A = Raster("$DataDir/lis/WY$(water_year)/SWE_tavg.nc", lazy=true) # new 1km run with separate files for each variable
-A = A[:SWE_tavg][Ti=1];
+A = Raster("$DataDir/lis/WY$(water_year)/Qg_tavg.nc", lazy=true) # new 1km run with separate files for each variable
+A = A[:Qg_tavg][Ti=1];
 szY = size(A, 2)  # get size in Y-dimension; here dim = 2. 6500 for 1km run.
 # szY = 10 # only for debug and testing, use smaller number
 job_count = 0
