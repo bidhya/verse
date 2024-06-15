@@ -38,8 +38,7 @@ if occursin("discover", host_machine) #|| occursin("borg", host_machine)
     hpc_name = "discover"
     cores = 110  # 110 for stepsize 125 for 5 km run.
     if RES == "010"
-        # for 1km run, use less cores to prevent NODE_FAIL error.
-        cores = 90  # 80. 
+        cores = 100  # 95, 80. # maybe use less cores to prevent NODE_FAIL error for 1km run (TBD). 
     end
     memory = "0" #"184gb"
 elseif occursin(".osc.edu", host_machine)
@@ -91,7 +90,7 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         write(f, "#SBATCH --nodes=1 --ntasks=$(cores)\n")  # 
         write(f, "#SBATCH --exclusive\n")  #  use whole node with all cores without sharing 
         write(f, "#SBATCH --mem=$(memory)\n")  # zero implies use all available memory
-        write(f, "#SBATCH --mail-type=END,FAIL\n")  #   ALL; BEGIN,END,FAIL,REQUEUE,TIME_LIMIT_90 (reached 90 percent of time limit)
+        write(f, "#SBATCH --mail-type=FAIL\n")  #   ALL; BEGIN,END,FAIL,REQUEUE,TIME_LIMIT_90 (reached 90 percent of time limit)
         write(f, "#SBATCH --mail-user=yadav.111@osu.edu\n")
         # Delay slurm job start by a few minutes so that the memory related problem of all nodes reading the same input nc file is resolved  
         write(f, "#SBATCH --begin=now+$(begin_delay)minutes\n")  ## minute, hour
@@ -139,7 +138,7 @@ using Rasters, NCDatasets
 
 # 2. Read the Input netCDF file
 # A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true) # OLD: 1 file with all variables
-A = RasterStack("$DataDir/lis/WY$(water_year)/SWE_tavg.nc", lazy=true) # new 1km run with separate files for each variable
+A = Raster("$DataDir/lis/WY$(water_year)/SWE_tavg.nc", lazy=true) # new 1km run with separate files for each variable
 A = A[:SWE_tavg][Ti=1];
 szY = size(A, 2)  # get size in Y-dimension; here dim = 2. 6500 for 1km run.
 # szY = 10 # only for debug and testing, use smaller number
@@ -149,7 +148,7 @@ if occursin("asc.ohio-state.edu", host_machine)
     delay_multiplier = 5  # longer delay on unity becuase of slow speeds in moving data (network related)
 end
 total_runtime = 0
-cum_pix_count = 0
+cum_valid_pix_count = 0
 row_count = 0
 start_idx = 1  # Alert: if "i" changed in for loop below, update this value to the first value of i, else job will start at 1 causing node_fail error.
 # start_idx should normally be 1, but for testing, it can be set to a higher value (matching the starting value in for loop below)
@@ -172,20 +171,20 @@ for i in StepRange(1, step, szY)
     valid_pix_ind = findall(!ismissing, B)
     valid_pix_count = length(valid_pix_ind)
     row_count += step
-    cum_pix_count += valid_pix_count
-    # println("Processing rows: ", i, " to ", i+step, "and cum_pix_count = ", cum_pix_count)
+    cum_valid_pix_count += valid_pix_count
+    # println("Processing rows: ", i, " to ", i+step, "and cum_valid_pix_count = ", cum_valid_pix_count)
     pix_count_threshold = 80000  # 80000 for 5km run; 20000 for 1km run
     # Update the pix_count_threshold based on row index (ie, latitude) to account for the processing time which is higher at lower latitude. This needs further verification.
     # dimensions(sizes): x(11700), y(4700), time(366)
-    if start_idx < 1500
-        pix_count_threshold = 50000
+    if start_idx < 2000  # 1500
+        pix_count_threshold = 60000  # 55000
     elseif start_idx < 3000
-        pix_count_threshold = 70000
+        pix_count_threshold = 75000
     else
         pix_count_threshold = 100000
     end
 
-    if cum_pix_count > pix_count_threshold || end_idx == szY  # last job may not have enough pixels to pass the pix count threshold
+    if cum_valid_pix_count > pix_count_threshold || end_idx == szY  # last job may not have enough pixels to pass the pix count threshold
         # prepare slurm job
         # begin_delay = Int((job_count) * step/3)  
         begin_delay = Int(job_count * delay_multiplier)
@@ -208,22 +207,22 @@ for i in StepRange(1, step, szY)
         # 240 seconds : timeout error on OSC, so redude time
         # runtime = "08:00:00"  # 12 "24:00:00"  # default (max for Discover)
         # runtime = "$(approx_time):00:00"
-        println(start_idx, " ", end_idx, " rows:", row_count, " pixels:", cum_pix_count)  # , " hours ", runtime
+        println(start_idx, " ", end_idx, " rows:", row_count, " pixels:", cum_valid_pix_count)  # , " hours ", runtime
         
         # create_job(hpc_name, jobname, cores, memory, runtime, "V14x_WY$(water_year)", start_idx, end_idx, valid_pix_count)
-        create_job(hpc_name, jobname, cores, memory, runtime, "WY$(water_year)", start_idx, end_idx, valid_pix_count, begin_delay)
+        create_job(hpc_name, jobname, cores, memory, runtime, "WY$(water_year)", start_idx, end_idx, cum_valid_pix_count, begin_delay)
         # sleep(1)
         global job_count += 1
         # reset the counter
         global row_count = 0
-        global cum_pix_count = 0
+        global cum_valid_pix_count = 0
         global start_idx = end_idx + 1
         if end_idx >= szY
             println("Exiting loop. End index already included in last job.")
             break
         end
     # else
-    #     println("No slurm job created. Cumulative pixel count = ", cum_pix_count, " less than threshold = ", pix_count_threshold)   
+    #     println("No slurm job created. Cumulative pixel count = ", cum_valid_pix_count, " less than threshold = ", pix_count_threshold)   
     end
 end
 println("Total Slurm jobs submitted = $job_count")
