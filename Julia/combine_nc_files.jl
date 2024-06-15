@@ -1,18 +1,19 @@
 """
 USAGE: Hardcoded with requirments for output_folder_YEAR, start_idx, and end_idx for running on Discover
-- julia combine_nc_files.jl V14_WY2015
+- julia combine_nc_files.jl WY2015 010
 Oct 29, 2023
 Bidhya N Yadav
 
 To combine small parts of nc files into a PAN-america-wide nc file for all the Blender output variables
 Slurm hint: 20 tasks with ~90 GB Ram
 parallelized using threads  
+June 09, 2024: removed parallelization due to memory limitation for 1 km run. 
 """
 
 arg_len = length(ARGS)
 out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_text and nc_outputs saved here
 water_year = out_subfolder[end-3:end] #last 4 chars are assumed year, else error. out_subfolder[3:end]
-RES = ARGS[2] # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
+RES = ARGS[2] # "050"  # Grid Resolution: 010 = 0.01 degree; 050 = 0.050 degree (5km); 025 = 0.025 degree etc
 
 
 using Logging, LoggingExtras, Dates
@@ -56,8 +57,8 @@ else
 end
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/combine_output_parts.log")
-# log_filename = "combine_nc.log"
+# log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/combine_ncfiles.log")
+log_filename = "out/combine_ncfiles.log"
 logger = FormatLogger(open(log_filename, "w"), 0) do io, args
     # Write the module, level and message only
     println(io, args._module, " | ", "[", args.level, "] ", args.message, " | ", Dates.format(now(), "yyyy-mm-dd HH:MM:SS"))
@@ -78,10 +79,18 @@ DataDir = "$base_folder/Inputs_$(RES)"  # must exist (Old = NoahMP)
 
 start_time = time_ns()
 
-A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true)  # withoout lazy=true, NODE_FAIL error. Likely by loading all data in memory  
-A = A[(:Snowf_tavg, :SWE_tavg, :Tair_f_tavg, :Qg_tavg, :MODSCAG)];  # to remove spatial ref that cause problem during subsetting
+# A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true)  # withoout lazy=true, NODE_FAIL error. Likely by loading all data in memory  
+# A = A[(:Snowf_tavg, :SWE_tavg, :Tair_f_tavg, :Qg_tavg, :MODSCAG)];  # to remove spatial ref that cause problem during subsetting
+files = (
+    "$DataDir/lis/WY$(water_year)/SCF.nc",
+    "$DataDir/lis/WY$(water_year)/SWE_tavg.nc"
+    )
+A = RasterStack(files; lazy=true)
+# A = Raster("$(DataDir)/lis/WY$(water_year)/MODSCAG.nc", lazy=true)  # 64 bit float hence output was big.
+# A = Raster("$(DataDir)/lis/WY$(water_year)/SWE_tavg.nc", lazy=true)  # this is 32 bit but may not work
 # Create output rasters based in input raster template
-outRasterTemplate = copy(A[:SWE_tavg])
+outRasterTemplate = copy(A[:SWE_tavg])  # only for rasterstack
+# outRasterTemplate = copy(A)  # for Raster. TODO: can use A directly without this copying part because now we have just one raster.
 outRasterTemplate[:,:,:] .= missing 
 
 A = nothing
@@ -95,9 +104,9 @@ function combine_nc(nc_outDir, var)
     folders = readdir(nc_outDir)
     # TODO Sort these files in ascending ordering starting at index 1.
     sym_var = Symbol(var) # uppercase(var)
-    # Threads.@threads for folder in folders
+    # Threads.@threads for folder in folders  # TODO: June 10, 2024: Investigate error when using thread.
     for folder in folders
-            B = RasterStack("$(nc_outDir)/$(folder)/$(var).nc", lazy=false)        
+            B = RasterStack("$(nc_outDir)/$(folder)/$(var).nc", lazy=false)  # TODO: change to Raster
         outRaster[At(lookup(B, X)), At(lookup(B, Y)), :] = B[sym_var]  # B[:SWE]
         sleep(1)  # this may help with unknown random error
     end
@@ -107,17 +116,19 @@ end
 final_nc_outDir = "$base_folder/Runs/$(RES)/$out_subfolder/outputs"  # TODO local_temp_dir then tse_tempdir
 mkpath(final_nc_outDir)
 out_vars = ("SWE", "Gmelt", "G", "Precip", "Us", "Gpv", "Gmeltpv", "Upv", "SWEpv")
+# out_vars = ("SWE", "Gmelt")  # for testing only
+
 for var in out_vars
     # var = "SWE"
     if !isfile("$(final_nc_outDir)/$(var).nc")
-        @info("Processing nc_file: $var")
+        @info("Combine nc files: $var")
         outRaster = combine_nc(nc_outDir, var)
         sym_var = Symbol(var)
-        @info("Finished combining. Next step is rebuilding raster.")
+        @info("Rebuild raster.")
         outRaster = rebuild(outRaster; name=sym_var)
-        @info("Saving netcdf file: $var")
+        @info("Save netcdf")
         write("$(final_nc_outDir)/$(var).nc", outRaster, force=true)
-        @info("Finished saving netcdf file: $var")
+        @info("Finished saving netcdf file.")
         println(logger.stream, "")  # include blank line in the output log after logging this message
         # outRaster = Nothing
         # GC.gc()
