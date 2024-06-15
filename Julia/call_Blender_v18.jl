@@ -1,13 +1,10 @@
 """
 USAGE: Hardcoded with requirments for output_folder_YEAR, start_idx, and end_idx for running on Discover
+- julia verse/Julia/call_Blender_v18.jl test_WY2015 100 101 010
 - start and end indices are for y-axis only. All x's selected by default  
-- julia call_Blender_v14.jl test2016 1 10  
 
-SWE estimation using Blender algorithm (Prof. Mike Durand).
-This is a helper script to organize inputs for calling the Blender function (Estimate_v57.jl).
-Therefore, manually update input/output directories here for seperate runs (say NoahMP vs WRF etc)
-Currently, only output_subfolder can optionally be passed as an argument.
-Input/Output are currently saved in same main folder, but can easily be saved at separate locations [dig down below].
+SWE estimation using Blender algorithm.
+This is a helper script to organize inputs for calling the Blender function (Estimate_v59.jl).
 
 The script is currently capable of running on my following platforms.
 - Windows machine
@@ -15,13 +12,13 @@ The script is currently capable of running on my following platforms.
 - OSC HPC
 - Ohio-State Unity HPC 
 Julia Versions
-- 1.9.3
+- 1.10.3
 Minimum extra Julia Packages required
 - JuMP, Ipopt, Rasters, NCDatasets 
 
 Approach
 ========
-This script will call Estimate_v56.jl for each script at a time, and save temporary outputs to text file. Thus can readily be parallelzed.
+This script will call Estimate_v59.jl for each script at a time, and save temporary outputs to text file. Thus can readily be parallelzed.
 Threads was stright forward but did not work here due to known limitation of Ipopt and threads module.
 Working on alternative parallelization scheme using DISTRIBUTED module
 Finally, all text output files are assembled into a nc file. The script can thus run on parts of pixels at different times, and finally combined into one nc file.
@@ -30,8 +27,12 @@ Dec 03, 2022 : Trying multinodes with ClusterManagers.jl
 Sep 04, 2023 : text and log files saved in separate folders; created call_Blender_v12.jl uses Estimate_v56.jl
 Oct 29, 2023 : Save nc files to temp_nc folder using call_Blender_v14.jl uses Estimate_v57.jl
 Dec 03, 2023 : New call_Blender_v15.jl uses Estimate_v58.jl (modifications by Jack)
+Jun 14, 2024 : call_Blender_v18.jl uses Estimate_v59.jl
+    - read five input files separately rather than one merged file: required for 1 km run due to data volume
+    - uses Qg_tavg as template replacing SWE_tavg. Possiblity to convert other 4 variables to integer for memory saving (TBD)
+    - renames MODSCAG to SCF
+    - SCF is np.uint8
 
-Usage: julia verse/Julia/call_Blender_v17.jl test_WY2016 100 101 050
 """
 arg_len = length(ARGS)
 out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_text and nc_outputs saved here
@@ -151,39 +152,50 @@ if isdir(nc_outDir)  # process only if the pixel is not already processed
     exit(0)
 end
 
-# # 2. Read the Input netCDF file
-# A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_modscag.nc")  #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
-# Following check are for prototyping only when running code locally, because I do not yet have NorthAmerica netcdf file
-if occursin("L-JY0R5X3", host_machine) #|| test_run  # use this for testing as well
-    @info("Test Run only.")
-    A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true)
-    # subset = A[X(Between(-120.5, -120)), Y(Between(60, 60.5))]  # 10 by 10 pixels; use small chip for prototyping
-else
-    # # copy to local Node (machine) on slurm
-    # # cp("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", "$tmpdir/$water_year" * "_seup_modis.nc", force=true)  #force=true will first remove an existing dst.
-    # # cp("$DataDir/lis/WY$(water_year)/SWE_tavg.nc", "$tmpdir/WY$(water_year)/SWE_tavg.nc", force=true)  #force=true will first remove an existing dst.
-    # # true required for discover when running on same node again after node_failure.
-    # # A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc", lazy=true)  ## , lazy=true https://github.com/rafaqz/Rasters.jl/issues/449
-    # A = RasterStack("$tmpdir/WY$(water_year)/SWE_tavg.nc", lazy=true)
+# # # 2. Read the Input netCDF file
+# # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_modscag.nc")  #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
+# # Following check are for prototyping only when running code locally, because I do not yet have NorthAmerica netcdf file
+# if occursin("L-JY0R5X3", host_machine) #|| test_run  # use this for testing as well
+#     @info("Test Run only.")
+#     A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true)
+#     # subset = A[X(Between(-120.5, -120)), Y(Between(60, 60.5))]  # 10 by 10 pixels; use small chip for prototyping
+# else
+#     # # copy to local Node (machine) on slurm
+#     # # cp("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", "$tmpdir/$water_year" * "_seup_modis.nc", force=true)  #force=true will first remove an existing dst.
+#     # # cp("$DataDir/lis/WY$(water_year)/SWE_tavg.nc", "$tmpdir/WY$(water_year)/SWE_tavg.nc", force=true)  #force=true will first remove an existing dst.
+#     # # true required for discover when running on same node again after node_failure.
+#     # # A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc", lazy=true)  ## , lazy=true https://github.com/rafaqz/Rasters.jl/issues/449
+#     # A = RasterStack("$tmpdir/WY$(water_year)/SWE_tavg.nc", lazy=true)
 
-    # June 04, 2024
-    # cp("$DataDir/lis/WY$(water_year)", "$tmpdir/WY$(water_year)", force=true)  #force=true will first remove an existing dst. New for v18
-    # Full path to Datadir
-    files = (
-        "$DataDir/lis/WY$(water_year)/Snowf_tavg.nc",
-        "$DataDir/lis/WY$(water_year)/SWE_tavg.nc",
-        "$DataDir/lis/WY$(water_year)/Tair_f_tavg.nc",
-        "$DataDir/lis/WY$(water_year)/Qg_tavg.nc",
-        "$DataDir/lis/WY$(water_year)/MODSCAG.nc"
-        )
-    A = RasterStack(files; lazy=true)
-end
+#     # June 04, 2024
+#     # cp("$DataDir/lis/WY$(water_year)", "$tmpdir/WY$(water_year)", force=true)  #force=true will first remove an existing dst. New for v18
+#     # Full path to Datadir
+#     files = (
+#         "$DataDir/lis/WY$(water_year)/SCF.nc",
+#         "$DataDir/lis/WY$(water_year)/Snowf_tavg.nc",
+#         "$DataDir/lis/WY$(water_year)/SWE_tavg.nc",
+#         "$DataDir/lis/WY$(water_year)/Tair_f_tavg.nc",
+#         "$DataDir/lis/WY$(water_year)/Qg_tavg.nc"
+#         )
+#     A = RasterStack(files; lazy=true)
+# end
+
+files = (
+    "$DataDir/lis/WY$(water_year)/SCF.nc",
+    "$DataDir/lis/WY$(water_year)/Snowf_tavg.nc",
+    "$DataDir/lis/WY$(water_year)/SWE_tavg.nc",
+    "$DataDir/lis/WY$(water_year)/Tair_f_tavg.nc",
+    "$DataDir/lis/WY$(water_year)/Qg_tavg.nc"
+    )
+A = RasterStack(files; lazy=true)
+
+
 # end_time = time_ns()
 running_time = (time_ns() - start_time)/1e9/60
 @info("Time until copying input netcdf to Node = $(round(running_time, digits=2)) minutes")
 
 # Subset only the required variables because the nc file can have extraneous vars that cause problem with julia
-A = A[(:Snowf_tavg, :SWE_tavg, :Tair_f_tavg, :Qg_tavg, :MODSCAG)];  # to remove spatial ref that cause problem during subsetting
+A = A[(:Snowf_tavg, :SWE_tavg, :Tair_f_tavg, :Qg_tavg, :SCF)];  # to remove spatial ref that cause problem during subsetting
 """ General info about pixel counts
     For 0.050 degree resolution, size(A) = (2336, 941); Non-missing pixel count = 1011329
     For 0.010 degree resolution, size(A) = (11700, 6500); Non-missing pixel count = 
@@ -206,7 +218,8 @@ else
     A = A[1:end, start_idx:end_idx, :]  # use for default runs
 end
 # Use cartesian index for iteration
-valid_pix_ind = findall(!ismissing, A["SWE_tavg"][Ti=1])  # Extract cartesian index for non-missing (ie, all) data using one-day of data 
+# valid_pix_ind = findall(!ismissing, A["SWE_tavg"][Ti=1])  # Extract cartesian index for non-missing (ie, all) data using one-day of data 
+valid_pix_ind = findall(!ismissing, A["Qg_tavg"][Ti=1])  # Extract cartesian index for non-missing (ie, all) data using one-day of data 
 valid_pix_count = length(valid_pix_ind)
 ind = valid_pix_ind
 @info("Total valid pixel count = $(valid_pix_count)")
@@ -230,7 +243,7 @@ running_time = (time_ns() - start_time)/1e9/60
     WRFP = A["Snowf_tavg"][X=i, Y=j].data
     WRFG = A["Qg_tavg"][X=i, Y=j].data
     AirT = A["Tair_f_tavg"][X=i, Y=j].data
-    MSCF = A["MODSCAG"][X=i, Y=j].data;
+    MSCF = A["SCF"][X=i, Y=j].data/100;  # Convert to fraction. multiplication and devision works without dot. but add/subtract will need dot.
     # blender(out_folder, i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)  # Call blender for the pixel. OLD.
     blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
 end
@@ -242,6 +255,7 @@ end_time = time_ns()
 running_time = (end_time - start_time)/1e9/3600
 @info("Running Time (blender For Loop) = $(round(running_time, digits=2)) hours")
 # exit(0)  # exit here to avoid running 2nd part (text2nc)
+# ===================================================================================================================================
 
 # Step 4. PostProcessing: Combine text files into a grid and save as netcdf
 @info("Combining Text Ouputs to NetCDF FILES")
@@ -271,7 +285,8 @@ running_time = (end_time - start_time)/1e9/3600
     end
     # Save to nc file; 
     # mkpath(nc_outDir)  # error in distributed
-    write("$nc_outDir/$var.nc", outRaster)  # Aug 08, 2023: Error perhaps due to updates to raster/ncdataset/etc. (error tested on windows and wsl2)
+    write("$nc_outDir/$var.nc", outRaster)  # ERROR1 Aug 08, 2023: Error perhaps due to updates to raster/ncdataset/etc. (error tested on windows and wsl2)
+    # June 05, 2024: NetCDF error: NetCDF: Not a valid data type or _FillValue type mismatch (NetCDF error code: -45)
 end
 
 sleep(1)
@@ -280,8 +295,8 @@ pixels = readdir(exp_dir)
 pixels = [pix for pix in pixels if startswith(pix, "Pix")];
 processed_pix_count = length(pixels)
 @info("Pixels processsed = $processed_pix_count out of $valid_pix_count")
-if processed_pix_count == valid_pix_count #&& system_machine == "Windows"
-    outRaster = copy(A[:SWE_tavg])
+if processed_pix_count == valid_pix_count #&& system_machine == "Windows"  # ERROR1
+    outRaster = copy(A[:Qg_tavg])  # copy(A[:SWE_tavg])
     var_idx_tuple = (("SWE", 1), ("Gmelt", 2), ("G", 3), ("Precip", 4), ("Us", 5), ("Gpv", 6), ("Gmeltpv", 7), ("Upv", 8), ("SWEpv", 9))
     mkpath(nc_outDir)
     # Threads.@threads (Roughly same running for threaded and non-thread version on Discover. Likely due to I/O bottleneck)
@@ -289,7 +304,7 @@ if processed_pix_count == valid_pix_count #&& system_machine == "Windows"
     @sync @distributed for var_idx in var_idx_tuple
         var_name = var_idx[1]
         var_idx = var_idx[2]
-        text2nc(var_name, var_idx, outRaster, exp_dir, nc_outDir);  # text2nc("SWE", 1, outRaster)
+        text2nc(var_name, var_idx, outRaster, exp_dir, nc_outDir);  # ERROR1
     end
 else
     @info("All pixels not yet processed, so OUTPUT NETCDF FILES not yet created")
