@@ -6,31 +6,28 @@ Basefolder for Data: ../coressd/Blender/
 
 1. paper_seup.py : Process SEUP data using papermill/jupyter notebook combination
     Use multiple cores
-    Outputs:
-        ../Blender/Inputs/combined/.. : intermediate  
-        WY/[varname]/2016.nc etc  # varname = one of SEUP variables. eg SWE_tavg  
-        WY/2016_seup.nc  All daily seup data combined to one file    
+    Outputs: All daily seup data combined to one file
+        ../Blender/Inputs_010/lis/WY2015
+        - Snowf_tavg.nc
+        - SWE_tavg.nc
+        - Tair_f_tavg.nc
+        - Qg_tavg.nc
+        - SCF.nc
 
 2. process_modis_cgf.py  
-    No dependency with 1.  
-    Extract NA (North America) scale daily Modis_CGF matching the SEUP rasters
-    Outputs: ../coressd/Blender/Modis/CGF_NDSI_Snow_Cover/
-        - temp/..    # temporary mosaic of modis tiles over NA. can be safelydeleted
-        - NA2016/..  # clipped and matched to seup resolution  
-
-3. merge_modis_seup.py  
-    Concatenate MODIS along time dim then append to SEUP varaibles. # This file is a final input for Blender run.  
-    Outputs: 
-        ../Blender/Inputs/WY_merged/2016_seup_modis.nc  
+    Hard dependency with 1.  
+    Extract NA (North America) scale daily Modis_CGF matching the LIS rasters
+    Folders: ../coressd/Blender/Modis/
+        - MOD44B : annual tree-fraction data processed by jupyter notebook
+        - MOD10A1F:
+            - clipped2015_010: clipped and matched to seup resolution
 
 ## II: To Run Blender Code
 ==========================  
-- Locally for small area: julia call_Blender_v15.jl WY2016 start_index end_index
+- Locally for small area: 
+    - julia verse/Julia/call_Blender_v18.jl test_WY2010 3005 3006 010  
 - on HPC: the following julia script will generate slurm jobs for a water_year.  
-    - julia submit_slurm.jl 2015 40  # to run for WY2015 with each job processing horizontal slice of 40 pixels.  
-
-    Following are old python based job-submission scripts. Designed for text-based outputs. Currently not used.  
-    - python submit_blender_job.py -> This will generate several slurm jobs that calls julia call_Blender_vx.jl output_folder start_index end_index  
-		Modify and update this Python script before running.
-        ~ 48 GB for 45 cores; 11 separate jobs with 100,000 pixels per job  
-	python submit_txt2nc_job.py -> Combine temporary text files into a netcdf file.  Separately for each variable.   
+    - julia submit_slurm.jl 2015 010 3  # example: for WY2015 with resolution=010 and adaptive slice = 3 rows.
+To combine nc_files
+- uses:  Github/Slurm_Blender/d_combine_out_nc_files.sh  
+    - calls: julia verse/Julia/combine_nc_files.jl WY$water_year $RES

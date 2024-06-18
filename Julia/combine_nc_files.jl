@@ -57,8 +57,8 @@ else
 end
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-# log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/combine_ncfiles.log")
-log_filename = "out/combine_ncfiles.log"
+log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/out/combine_ncfiles.log")
+# log_filename = "out/combine_ncfiles.log"
 logger = FormatLogger(open(log_filename, "w"), 0) do io, args
     # Write the module, level and message only
     println(io, args._module, " | ", "[", args.level, "] ", args.message, " | ", Dates.format(now(), "yyyy-mm-dd HH:MM:SS"))
@@ -83,13 +83,13 @@ start_time = time_ns()
 # A = A[(:Snowf_tavg, :SWE_tavg, :Tair_f_tavg, :Qg_tavg, :MODSCAG)];  # to remove spatial ref that cause problem during subsetting
 files = (
     "$DataDir/lis/WY$(water_year)/SCF.nc",
-    "$DataDir/lis/WY$(water_year)/SWE_tavg.nc"
+    "$DataDir/lis/WY$(water_year)/Qg_tavg.nc"
     )
 A = RasterStack(files; lazy=true)
 # A = Raster("$(DataDir)/lis/WY$(water_year)/MODSCAG.nc", lazy=true)  # 64 bit float hence output was big.
 # A = Raster("$(DataDir)/lis/WY$(water_year)/SWE_tavg.nc", lazy=true)  # this is 32 bit but may not work
 # Create output rasters based in input raster template
-outRasterTemplate = copy(A[:SWE_tavg])  # only for rasterstack
+outRasterTemplate = copy(A[:Qg_tavg])  # only for rasterstack
 # outRasterTemplate = copy(A)  # for Raster. TODO: can use A directly without this copying part because now we have just one raster.
 outRasterTemplate[:,:,:] .= missing 
 
