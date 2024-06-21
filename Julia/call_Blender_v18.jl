@@ -11,7 +11,7 @@ The script is currently capable of running on my following platforms.
 - OSC HPC
 - Ohio-State Unity HPC 
 Julia Versions
-- 1.10.3
+- 1.10.3 and 1.10.4
 Minimum extra Julia Packages required
 - JuMP, Ipopt, Rasters, NCDatasets 
 
@@ -26,11 +26,14 @@ Dec 03, 2022 : Trying multinodes with ClusterManagers.jl
 Sep 04, 2023 : text and log files saved in separate folders; created call_Blender_v12.jl uses Estimate_v56.jl
 Oct 29, 2023 : Save nc files to temp_nc folder using call_Blender_v14.jl uses Estimate_v57.jl
 Dec 03, 2023 : New call_Blender_v15.jl uses Estimate_v58.jl (modifications by Jack)
-Jun 14, 2024 : call_Blender_v18.jl uses Estimate_v59.jl
+Jun 20, 2024 : call_Blender_v18.jl uses Estimate_v59.jl
     - read five input files separately rather than one merged file: required for 1 km run due to data volume
-    - uses Qg_tavg as template replacing SWE_tavg. Possiblity to convert other 4 variables to integer for memory saving (TBD)
+    - uses Qg_tavg as template replacing SWE_tavg.
     - renames MODSCAG to SCF
-    - SCF is np.uint8
+    - SCF is np.uint8, thus divide by 100 to get fraction
+    - Snowf_tavg, SWE_tavg, Tair_f_tavg are np.unit16
+    - Snowf_tavg and SWE_tavg divide by 1000 get floating point values in meters.
+    - Tair_f_tavg divide by 100 to get floating point values in Kelvin.
 
 """
 arg_len = length(ARGS)
@@ -238,10 +241,10 @@ running_time = (time_ns() - start_time)/1e9/60
     i = ij[1]
     j = ij[2]
     # TODO replace the following 5 lines with the direct access to file
-    WRFSWE = A["SWE_tavg"][X=i, Y=j].data  # Here "data" is an AbstractArray.
-    WRFP = A["Snowf_tavg"][X=i, Y=j].data
+    WRFSWE = A["SWE_tavg"][X=i, Y=j].data/1000  # Here "data" is an AbstractArray.
+    WRFP = A["Snowf_tavg"][X=i, Y=j].data/1000
     WRFG = A["Qg_tavg"][X=i, Y=j].data
-    AirT = A["Tair_f_tavg"][X=i, Y=j].data
+    AirT = A["Tair_f_tavg"][X=i, Y=j].data/100
     MSCF = A["SCF"][X=i, Y=j].data/100;  # Convert to fraction. multiplication and devision works without dot. but add/subtract will need dot.
     # blender(out_folder, i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)  # Call blender for the pixel. OLD.
     blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
