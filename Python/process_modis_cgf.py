@@ -21,6 +21,12 @@
 
     History
     =======
+    June 21, 2024: 
+    - Revert back to saving final ouput as float32 but with rounding and values between (0 - 100)
+    - rouding saves space
+    - divide by 100 to get fraction between 0 and 1 in Blender run.  
+    - Error for unit8 was caused in Estimate_v59.jl, likely due to mix of missing due to actual nodata and polar-nights nodata.  
+
     June 12, 2024: 
     - Saving final ouput as uint8 (0 - 100 and _FillValue=255)and renamed as SCF.nc => updated call_Blender_v18 with this name as well
     - Will require settig 255 to nodata/missing and dividing by 100 to get fraction between 0 and 1..
@@ -319,19 +325,20 @@ for nc_file in nc_files:
         da = xr.concat([da, da_temp], dim='time')  # , dim='time'
     count += 1
 logging.info(f"\tFinished concatenation of modis data. Shape = {da.shape}")
-# da = da.drop(["band", "spatial_ref"])  # after shifting to xarray, these coords were introduced; so remove before combining with seup
-da = da.drop_vars(["band"])  # ValueError: These variables cannot be found in this dataset: ['spatial_ref'] 
-da = da.drop_duplicates(dim="time")  # required for Sarith script; may not be required for mine as there should be no duplicate dates 
-da.data = np.round(da.data * 100)  # convert to zero to 100 for saving as uint8. TODO np.round as well.
-da = da.fillna(255)  # required before converting uint8; else we only get 0 and 1 values upon conversion. 
-da.data = da.data.astype(np.uint8)  # np.float32; np.(int8 or ubyte): 0-255 (unsigned); np.byte: -128 to 127)  data was previously float64; but even int8 should be enough (TODO)
+# # da = da.drop(["band", "spatial_ref"])  # after shifting to xarray, these coords were introduced; so remove before combining with seup
+# da = da.drop_vars(["band"])  # ValueError: These variables cannot be found in this dataset: ['spatial_ref'] 
+# da = da.drop_duplicates(dim="time")  # required for Sarith script; may not be required for mine as there should be no duplicate dates 
+da.data = np.round(da.data * 100)  # Just rounding also saves space for float32 compared to unrounded. Also used uint8.
+# da = da.fillna(255)  # a)required uint8; else we only get 0 and 1 values upon conversion. 
+# da.data = da.data.astype(np.uint8)  # b)required uint8. np.float32; np.(int8 or ubyte): 0-255 (unsigned); np.byte: -128 to 127)  data was previously float64; but even int8 should be enough (TODO)
+da.data = da.data.astype(np.float32)
 ds = xr.Dataset({"SCF": da})  # MODSCAG so we can save to netcdf or append to SEUP dataset
-ds["SCF"].attrs["_FillValue"] = 255  # update fill value from nan to 255; do after creating dataset so it is nested with variable.
+# ds["SCF"].attrs["_FillValue"] = 255  # c)required uint8. update fill value from nan to 255; do after creating dataset so it is nested with variable.
 logging.info("Saving concatenated MODIS_CGF")
 ds = ds.chunk(chunks=chunk)
 ds = ds.compute()  # Load numpy array in memory before saving. Faster but can create memory error. If memory error, then comment this line
 # ds.to_netcdf(f"{combined_modis_folder}/{water_year}_modis.nc", encoding={"MODSCAG": {'zlib': True}})
-ds.to_netcdf(f"{lis_folder}/lis/WY{water_year}/SCF.nc", encoding={"SCF": {'zlib': True}})  # keep filename same as variable name. required for new rasterstack in Julia.
+ds.to_netcdf(f"{lis_folder}/lis/WY{water_year}/SCF_round.nc", encoding={"SCF": {'zlib': True}})  # keep filename same as variable name. required for new rasterstack in Julia.
 
 # ds.to_zarr(f"{combined_modis_folder}/{water_year}_modis.zarr")  # time consuming; 1.5 hours
 logging.info(f"\t Finished saving final Modis concatenated file: {lis_folder}/lis/WY{water_year}/SCF.nc")
