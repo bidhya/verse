@@ -1,9 +1,9 @@
 """ Create and submit Julia Blender jobs to Slurm on Discover, OSC HPCs.
 
     USAGE: pass Water_Year, Resolution, and stepsize (number of rows)
-    julia ../verse/Julia/submit_slurm.jl 2016 10 010  # OLD
-    julia ../verse/Julia/submit_slurm.jl 2016 100 050 # OLD
-    julia ../verse/Julia/submit_slurm.jl 2015 010 3  # order changed. res comes first (Jun 04, 2024)
+    julia verse/Julia/submit_slurm.jl 2016 10 010  # OLD
+    julia verse/Julia/submit_slurm.jl 2016 100 050 # OLD
+    julia verse/Julia/submit_slurm.jl 2015 010 3  # order changed. res comes first (Jun 04, 2024)
     Good values for stepsize: 1, 2, ... upt 10. last tested with 3
 
     Note: 1. This script will call the main script call_Blender_v18.jl
@@ -99,6 +99,10 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         write(f, "echo \$SLURM_SUBMIT_DIR\n")    
         if hpc == "discover"
             write(f, "cd \$LOCAL_TMPDIR\n")
+            # New for using Julia installed using conda on Discover (June 20, 2024)
+            write(f, "module load anaconda\n")
+            write(f, "conda activate julia\n")
+            write(f, "which julia\n")
         else
             write(f, "cd \$TMPDIR\n")
         end
@@ -129,6 +133,9 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         # write(f, "else\n")
         # write(f, "\techo Error in Blender run\n")
         # write(f, "fi\n")
+        if hpc == "discover"
+            write(f, "conda deactivate\n")  # New for Julia installed using conda
+        end
     end
     run(`sbatch $(job_file)`)  # submit the job
 end
@@ -138,7 +145,13 @@ using Rasters, NCDatasets
 
 # 2. Read the Input netCDF file
 # A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true) # OLD: 1 file with all variables
-A = Raster("$DataDir/lis/WY$(water_year)/Qg_tavg.nc", lazy=true) # new 1km run with separate files for each variable
+# A = Raster("$DataDir/lis/WY$(water_year)/Qg_tavg.nc", lazy=true) # ERROR: LoadError: ArgumentError: invalid index: :Qg_tavg of type Symbol
+files = (
+    "$DataDir/lis/WY$(water_year)/SCF.nc",
+    "$DataDir/lis/WY$(water_year)/Qg_tavg.nc"
+    )
+A = RasterStack(files; lazy=true)
+
 A = A[:Qg_tavg][Ti=1];
 szY = size(A, 2)  # get size in Y-dimension; here dim = 2. 6500 for 1km run.
 # szY = 10 # only for debug and testing, use smaller number
