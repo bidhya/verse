@@ -3,7 +3,7 @@
     USAGE: pass Water_Year, Resolution, and stepsize (number of rows)
     julia verse/Julia/submit_slurm.jl 2016 10 010  # OLD
     julia verse/Julia/submit_slurm.jl 2016 100 050 # OLD
-    julia verse/Julia/submit_slurm.jl 2015 010 3  # order changed. res comes first (Jun 04, 2024)
+    julia verse/Julia/submit_slurm.jl 2015 010 2  # order changed. res comes first (Jun 04, 2024)
     Good values for stepsize: 1, 2, ... upt 10. last tested with 3
 
     Note: 1. This script will call the main script call_Blender_v18.jl
@@ -38,7 +38,7 @@ if occursin("discover", host_machine) #|| occursin("borg", host_machine)
     hpc_name = "discover"
     cores = 110  # 110 for stepsize 125 for 5 km run.
     if RES == "010"
-        cores = 100  # 95, 80. # maybe use less cores to prevent NODE_FAIL error for 1km run (TBD). 
+        cores = 120  # 95, 80. # maybe use less cores to prevent NODE_FAIL error for 1km run (TBD). 
     end
     memory = "0" #"184gb"
 elseif occursin(".osc.edu", host_machine)
