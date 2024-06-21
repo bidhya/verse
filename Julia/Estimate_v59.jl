@@ -16,6 +16,7 @@
 # v55 Fixing error due to missing days of data due to Polar nights
 # v58 New updates by jack (Nov 2023)
 # Jan 29, 2024: Due to error on obj function σWRFG becoming zero, fixed the minimum σWRFG to 25 
+# Jun 21, 2014: No change for 1km run here. MODIS with UINT8 did not work likely because of missing due to no-data background and polar nights.
 
 using JuMP
 using Ipopt
@@ -84,7 +85,7 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
     for i=1:nt
         if ismissing(MSCF[i])
             MissingSCFData[i]=1
-            MSCF[i]=1
+            MSCF[i]=1  # June 20, 2024: cannot convert a value to missing for assignment. When using uint8 based data.
         end
     end
 
