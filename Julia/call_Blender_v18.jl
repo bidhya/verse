@@ -245,7 +245,7 @@ running_time = (time_ns() - start_time)/1e9/60
     WRFP = A["Snowf_tavg"][X=i, Y=j].data/1000
     WRFG = A["Qg_tavg"][X=i, Y=j].data
     AirT = A["Tair_f_tavg"][X=i, Y=j].data/100
-    MSCF = A["SCF"][X=i, Y=j].data/100;  # Convert to fraction. multiplication and devision works without dot. but add/subtract will need dot.
+    MSCF = A["SCF"][X=i, Y=j].data; #/100 Convert to fraction. multiplication and devision works without dot. but add/subtract will need dot.
     # blender(out_folder, i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)  # Call blender for the pixel. OLD.
     blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
 end
