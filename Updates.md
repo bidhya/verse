@@ -1,12 +1,11 @@
 # Updates to codebase in reverse chronological order
 =============================================   
-## Jun 17, 2024  
+## Jun 22, 2024  
 - Merged Jun branch to main.  
 - Even bigger workflow overhaul for LIS 1km run.   
 - Uses five input variables separately that is combined in Julia
 - Qg_tavg replaces SWE_tavg as template raster for Blender run and combining
-- MODSCAG renames SCF and np.uint8 as dtype with 255 as nodata value
-- SCF converted to 0 and 1 inside v_18.jl before calling Blender function.  
+- MODSCAG renamed SCF with values between 0 and 1
 - Adaptively generate Slurm job based on number of pixels.  
 
 
