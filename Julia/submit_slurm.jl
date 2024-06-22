@@ -189,10 +189,12 @@ for i in StepRange(1, step, szY)
     pix_count_threshold = 80000  # 80000 for 5km run; 20000 for 1km run
     # Update the pix_count_threshold based on row index (ie, latitude) to account for the processing time which is higher at lower latitude. This needs further verification.
     # dimensions(sizes): x(11700), y(4700), time(366)
-    if start_idx < 2000  # 1500
-        pix_count_threshold = 60000  # 55000
+    if start_idx < 120  # needs most memory
+        pix_count_threshold = 40000  # 
+    elseif start_idx < 2000
+        pix_count_threshold = 70000  # 60000
     elseif start_idx < 3000
-        pix_count_threshold = 75000
+        pix_count_threshold = 80000
     else
         pix_count_threshold = 100000
     end
