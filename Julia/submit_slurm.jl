@@ -10,8 +10,11 @@
           2. The script is called with 3 arguments: water_year, resolution, stepsize
           3. The script reads the input netcdf file, and creates slurm jobs for each set of rows (stepsize) in the Y-direction.
           4. The script calculates the number of pixels in each set of rows, and based on a threshold, creates a slurm job.
-          5. Calculates the runtime for each job based on the number of pixels but currently hard-coded to 12 or 24.
+          5. Calculates the runtime for each job based on the number of pixels but currently hard-coded to 12 or 24 (long QOS).
           7. Mechanism of a delay in the start of each job to prevent memory related errors on Discover.
+    Changelog:  
+    - increase number of cores to 125
+    - replacing julia installed with conda with the one installed in ../coressd/installs/julia
 """
 arg_len = length(ARGS)
 out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_nc saved here
@@ -38,7 +41,7 @@ if occursin("discover", host_machine) #|| occursin("borg", host_machine)
     hpc_name = "discover"
     cores = 110  # 110 for stepsize 125 for 5 km run.
     if RES == "010"
-        cores = 120  # 95, 80. # maybe use less cores to prevent NODE_FAIL error for 1km run (TBD). 
+        cores = 125  # 120, 95, 80. # maybe use less cores to prevent NODE_FAIL error for 1km run (TBD). 
     end
     memory = "0" #"184gb"
 elseif occursin(".osc.edu", host_machine)
@@ -99,18 +102,18 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         write(f, "echo \$SLURM_SUBMIT_DIR\n")    
         if hpc == "discover"
             write(f, "cd \$LOCAL_TMPDIR\n")
-            # New for using Julia installed using conda on Discover (June 20, 2024)
-            write(f, "module load anaconda\n")
-            write(f, "conda activate julia\n")
-            write(f, "which julia\n")
+            # # New for using Julia installed using conda on Discover (June 20, 2024). Will not work any
+            # write(f, "module load anaconda\n")
+            # write(f, "conda activate julia\n")
         else
             write(f, "cd \$TMPDIR\n")
         end
         write(f, "date; hostname; pwd\n")
         write(f, "echo Blender run for $(out_subfolder) start_idx = $(start_idx) end_idx = $(end_idx) valid_pix_count = $(valid_pix_count). \n\n")
         # write(f, "export JULIA_NUM_THREADS=\$SLURM_NTASKS\n")  # mixing thread with distributed and GC.gc might be creating Segmeentation Fault problem.  
-        write(f, "sleep 5\n")
-        write(f, "julia --version\n")
+        write(f, "sleep 3\n")
+        # write(f, "julia --version\n")
+        write(f, "which julia\n")
         if hpc == "discover"
             write(f, "cp -r /discover/nobackup/projects/coressd/Github/verse .\n")
         else
@@ -133,9 +136,9 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         # write(f, "else\n")
         # write(f, "\techo Error in Blender run\n")
         # write(f, "fi\n")
-        if hpc == "discover"
-            write(f, "conda deactivate\n")  # New for Julia installed using conda
-        end
+        # if hpc == "discover"
+        #     write(f, "conda deactivate\n")  # New for Julia installed using conda
+        # end
     end
     run(`sbatch $(job_file)`)  # submit the job
 end
@@ -156,7 +159,7 @@ A = A[:Qg_tavg][Ti=1];
 szY = size(A, 2)  # get size in Y-dimension; here dim = 2. 6500 for 1km run.
 # szY = 10 # only for debug and testing, use smaller number
 job_count = 0
-delay_multiplier = 1 # 2. delay the consecutive slurm job by ~2 minutes
+delay_multiplier = 0.5 # delay the consecutive slurm job by ~1 minutes
 if occursin("asc.ohio-state.edu", host_machine)
     delay_multiplier = 5  # longer delay on unity becuase of slow speeds in moving data (network related)
 end
