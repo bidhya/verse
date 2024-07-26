@@ -16,6 +16,7 @@ Github: codes related to Input generation, Blender runs, and post-processing.
     - Modis/Forest/05_MOD44B_on_Discover.ipynb : use directly from Jupyterhub on discover. used to process annual tree-cover data. Since, data already processed no need to run again.
     - paper_outputs : not required to check per se. Output notebooks created by papermill is saved here.
     - rest of notebooks were created during various phases of project and mostly used for protyping of ideas and analysis.  
+
 Blender: Blender related data processed by various scripts.
 1. Inputs_010/lis: LIS and MODIS files staged by water year. Input files for Blender run.
 2. Modis: MODIS intermediate files only
