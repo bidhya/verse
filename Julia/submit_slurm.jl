@@ -205,7 +205,7 @@ for i in StepRange(1, step, szY)
     if cum_valid_pix_count > pix_count_threshold || end_idx == szY  # last job may not have enough pixels to pass the pix count threshold
         # prepare slurm job
         # begin_delay = Int((job_count) * step/3)  
-        begin_delay = Int(job_count * delay_multiplier)
+        begin_delay = Int(round(job_count * delay_multiplier))
         jobname = "$(start_idx)_$(end_idx)"
         # Use next 5 lines only if re-running few folders due to error/timeout. Still testing. 
         nc_outDir = "$base_folder/Runs/WY$(water_year)/temp_nc/outputs_$(start_idx)_$(end_idx)"

@@ -3,7 +3,7 @@ The notes here are now only specific to LIS related 1km runs.
 010 refers to 0.01 degree (1km) resolution. Future runs can thus be readily adapted to any higher/lower resolution as required. 
 
 ## Project folder: /discover/nobackup/projects/coressd  
-    - everything relative to this folder on Discover  
+- everything is relative to this main folder on Discover  
 
 ### Subfolder
 OSU: Modis snow cover data downloaded here.  
