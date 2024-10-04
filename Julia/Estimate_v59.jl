@@ -18,9 +18,12 @@
 # Jan 29, 2024: Due to error on obj function σWRFG becoming zero, fixed the minimum σWRFG to 25 
 # Jun 21, 2014: No change for 1km run here. MODIS with UINT8 did not work likely because of missing due to no-data background and polar nights.
 
+using Random
 using JuMP
 using Ipopt
 using DelimitedFiles
+Random.seed!(1234)  # seed for reproducibility
+
 # using Dates, CSV, DataFrames
 # function blender(DataDir, exp_dir, WRFSWE, WRFP, WRFG, MSCF, AirT)
 # function blender(out_folder, i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)
