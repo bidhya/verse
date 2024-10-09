@@ -4,6 +4,7 @@
     julia verse/Julia/submit_slurm.jl 2016 10 010  # OLD
     julia verse/Julia/submit_slurm.jl 2016 100 050 # OLD
     julia verse/Julia/submit_slurm.jl 2015 010 2  # order changed. res comes first (Jun 04, 2024)
+    julia verse/Julia/submit_slurm.jl 2015 2 010  # order changed. step comes before RES (Oct 08, 2024)
     Good values for stepsize: 1, 2, ... upt 10. last tested with 3
 
     Note: 1. This script will call the main script call_Blender_v18.jl
@@ -19,11 +20,11 @@
 arg_len = length(ARGS)
 out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_nc saved here
 water_year = out_subfolder[end-3:end] #last 4 chars are assumed year, else error
-# Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
-RES = ARGS[2] # "050"
 # step is the count of rows (y-direction) of netcdf file to process in one job/run 
-step = ARGS[3] #|| 35 on discover
+step = ARGS[2] #|| 35 on discover
 step = parse(Int32, step)
+# Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
+RES = ARGS[3] # 010
 memory = "184gb"
 
 # mkpath(logDir)

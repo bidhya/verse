@@ -55,7 +55,7 @@ start_time = time_ns()
 
 using Logging, LoggingExtras
 using Tar
-using Distributed  # otherwise everywhere macro won't work
+using Distributed  # otherwise everywhere macro won't work; Oct 8 2024: Error in Julia 1.11.0: Illegal instruction
 # using SharedArrays  # move this line below addprocs(cores), else won't work in Julia 1.10.0
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # 1. Setup inputs and output directories and file locations
