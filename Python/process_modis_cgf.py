@@ -304,6 +304,7 @@ logging.info(f"Count of netcdf files: {len(nc_files)}")
 count = 0
 # 1. First concat the files along time dimension
 # da = None  # just declaring for red lines below
+# TODO THIS FOR LOOP IS THE MOST TIME CONSUMING. more than 11 hours for WY2011.
 for nc_file in nc_files:
     # these are actually NetCDF files
     # begin_dt = nc_file.split('.')[1][1:]
