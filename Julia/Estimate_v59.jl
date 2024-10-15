@@ -93,12 +93,12 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
     end
 
     # New Updates fro Jack (Nov, 2023)
-    σWRFG = zeros(nt,1) .+ 15
+    σWRFG = zeros(nt,1) .+ 15  # maybe 15 is not being used, but we still need to initialze the array
     σWRFG_rel = 0.5
     for i=1:nt
         if MissingSCFData[i]==1 # missing data check
 	        σWRFG[i] = 1e9
-        elseif MSCF[i]>0.1 && WRFSWE[i]>0.1  # if both are snow covered
+        elseif MSCF[i]>=0.1 && WRFSWE[i]>=0.1  # if both are snow covered
             σWRFG[i] = abs(WRFG[i]) * σWRFG_rel  # when WRFG == zero, σWRFG also becomes zero which creates problem of objective function
             # Jan 29, 2024 To solve this problem in obj function: Expression contains an invalid NaN constant. This could be produced by `Inf - Inf`.
             if σWRFG[i] < 25  # or == 0 because this is what was actually causing problem.  

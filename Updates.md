@@ -1,5 +1,9 @@
 # Updates to codebase in reverse chronological order
 =============================================   
+## Oct 15, 2024  
+- Added the missing equality sign to [elseif MSCF[i]>=0.1 && WRFSWE[i]>=0.1].  
+- Changed the order of adding resolution in Julia Slurm job.    
+
 ## Jun 22, 2024  
 - Merged Jun branch to main.  
 - Even bigger workflow overhaul for LIS 1km run.   
