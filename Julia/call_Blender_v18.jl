@@ -10,8 +10,7 @@ The script is currently capable of running on my following platforms.
 - Ubuntu (WSL2-based)
 - OSC HPC
 - Ohio-State Unity HPC 
-Julia Versions
-- 1.10.3 and 1.10.4
+Julia Versions >= 1.10.5 
 Minimum extra Julia Packages required
 - JuMP, Ipopt, Rasters, NCDatasets 
 
@@ -22,7 +21,6 @@ Threads was stright forward but did not work here due to known limitation of Ipo
 Working on alternative parallelization scheme using DISTRIBUTED module
 Finally, all text output files are assembled into a nc file. The script can thus run on parts of pixels at different times, and finally combined into one nc file.
 ==============================================================================================
-Dec 03, 2022 : Trying multinodes with ClusterManagers.jl
 Sep 04, 2023 : text and log files saved in separate folders; created call_Blender_v12.jl uses Estimate_v56.jl
 Oct 29, 2023 : Save nc files to temp_nc folder using call_Blender_v14.jl uses Estimate_v57.jl
 Dec 03, 2023 : New call_Blender_v15.jl uses Estimate_v58.jl (modifications by Jack)
@@ -32,8 +30,8 @@ Jun 20, 2024 : call_Blender_v18.jl uses Estimate_v59.jl
     - renames MODSCAG to SCF
     - SCF is np.uint8, thus divide by 100 to get fraction
     - Snowf_tavg, SWE_tavg, Tair_f_tavg are np.unit16
-    - Snowf_tavg and SWE_tavg divide by 1000 get floating point values in meters.
-    - Tair_f_tavg divide by 100 to get floating point values in Kelvin.
+        - Snowf_tavg and SWE_tavg divide by 1000 get floating point values in meters.
+        - Tair_f_tavg divide by 100 to get floating point values in Kelvin.
 
 """
 arg_len = length(ARGS)
@@ -214,7 +212,8 @@ if test_run
     # subset_fname = "$(DataDir)/WY_merged/subset_$(water_year)_seup_modis.nc"
     # write(subset_fname, A)
     # A = A[1:end, 100:102, :]
-    A = A[1101:1109, start_idx:end_idx, :]  # change this as required for selecting a particular region/watershed to test on
+    # A = A[1101:1109, start_idx:end_idx, :]  # change this as required for selecting a particular region/watershed to test on
+    A = view(A, X(-119.66 .. -119.19), Y(37.73 .. 38.12))  # Tuolmne River Basin geographic coordinate bounds
 else
     @info("DEFAULT RUN  ")
     A = A[1:end, start_idx:end_idx, :]  # use for default runs
