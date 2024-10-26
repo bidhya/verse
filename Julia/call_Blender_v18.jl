@@ -46,6 +46,8 @@ RES = ARGS[4] # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 
 if occursin("test", out_subfolder)  # TODO: either replace this with wshed or create different criteria for watershed run.  
     # if test substring is part of output subfolder then do the test run on subset of pixels
     test_run = true
+elseif occursin("wshed", out_subfolder)  # if wshed prefix substring is part of output subfolder
+    test_run = true
 else
     test_run = false
 end
@@ -217,8 +219,9 @@ if test_run
     # A = view(A, X(x0 .. x1), Y(y0 .. y1))  # using view to select a small chip around watershed, but seems slower
     A = A[X(Between(x0, x1)), Y(Between(y0, y1))]  # Another way of getting the same chip around watershed
     # To save the clipped input file for future use
-    subset_fname = "$DataDir/lis/WY$(water_year)/$(out_subfolder).nc"  # file name with fullpath for subset
-    write(subset_fname, A)
+    subset_folder = "$OUTDIR/$out_subfolder/Inputs"  # file name with fullpath for subset
+    mkpath(subset_folder)
+    write("$subset_folder/wshed.nc", A)
 else
     @info("DEFAULT RUN  ")
     A = A[1:end, start_idx:end_idx, :]  # use for default runs
