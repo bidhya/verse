@@ -43,7 +43,7 @@ start_idx = parse(Int64, start_idx)
 end_idx = parse(Int64, end_idx)
 RES = ARGS[4] # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
 
-if occursin("test", out_subfolder)
+if occursin("test", out_subfolder)  # TODO: either replace this with wshed or create different criteria for watershed run.  
     # if test substring is part of output subfolder then do the test run on subset of pixels
     test_run = true
 else
@@ -207,13 +207,18 @@ if end_idx > szY
 end
 if test_run
     @info("TEST RUN ONLY  ")
-    # # Aside: Get test set of data. This part needs re-writing before using for test [TODO].
-    # A = A[X(Between(-130, -120)), Y(Between(60, 65))]
-    # subset_fname = "$(DataDir)/WY_merged/subset_$(water_year)_seup_modis.nc"
-    # write(subset_fname, A)
-    # A = A[1:end, 100:102, :]
-    # A = A[1101:1109, start_idx:end_idx, :]  # change this as required for selecting a particular region/watershed to test on
-    A = view(A, X(-119.66 .. -119.19), Y(37.73 .. 38.12))  # Tuolmne River Basin geographic coordinate bounds
+    # Aside: Get test set of data. This part needs re-writing before using for test [TODO].
+    # A = A[1101:1109, start_idx:end_idx, :]  # for test run
+    # For watershed: give lower left and upper right longitude/latitude as corners of the bounding box (or hardcode here).
+    # TODO: read bounding box from a textfile or use shapefile.   
+    x0, x1 = -119.66, -119.19  # longitude
+    y0, y1 = 37.73, 38.12      # latitude
+    # We can use either of the following two methods to subset the data. But using view was much slower.
+    # A = view(A, X(x0 .. x1), Y(y0 .. y1))  # using view to select a small chip around watershed, but seems slower
+    A = A[X(Between(x0, x1)), Y(Between(y0, y1))]  # Another way of getting the same chip around watershed
+    # To save the clipped input file for future use
+    subset_fname = "$DataDir/lis/WY$(water_year)/$(out_subfolder).nc"  # file name with fullpath for subset
+    write(subset_fname, A)
 else
     @info("DEFAULT RUN  ")
     A = A[1:end, start_idx:end_idx, :]  # use for default runs
