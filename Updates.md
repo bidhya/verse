@@ -1,5 +1,12 @@
 # Updates to codebase in reverse chronological order
 =============================================   
+## Oct 25, 2024  
+- Adding run for watershed.  
+- prefix "wshed" for ouput folder name in julia call to run for watershed.  
+    - eg: julia verse/Julia/call_Blender_v18.jl wshed1_WY2011 1000 1001 010  
+- prefix "test" for ouput folder name test run.  
+    - eg: julia verse/Julia/call_Blender_v18.jl test1_WY2011 1100 1101 010  
+
 ## Oct 15, 2024  
 - Added the missing equality sign to [elseif MSCF[i]>=0.1 && WRFSWE[i]>=0.1].  
 - Changed the order of adding resolution in Julia Slurm job.    

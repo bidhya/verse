@@ -46,10 +46,14 @@ RES = ARGS[4] # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 
 if occursin("test", out_subfolder)  # TODO: either replace this with wshed or create different criteria for watershed run.  
     # if test substring is part of output subfolder then do the test run on subset of pixels
     test_run = true
+    wshed_run = false
 elseif occursin("wshed", out_subfolder)  # if wshed prefix substring is part of output subfolder
-    test_run = true
-else
+    wshed_run = true
     test_run = false
+else
+    # we define both these varaibles to avoid below where we check for both test or wshed run.
+    test_run = false
+    wshed_run = false
 end
 start_time = time_ns()
 
@@ -210,7 +214,9 @@ end
 if test_run
     @info("TEST RUN ONLY  ")
     # Aside: Get test set of data. This part needs re-writing before using for test [TODO].
-    # A = A[1101:1109, start_idx:end_idx, :]  # for test run
+    A = A[1101:1109, start_idx:end_idx, :]  # for test run
+elseif wshed_run
+    @info("Watershed Run  ")
     # For watershed: give lower left and upper right longitude/latitude as corners of the bounding box (or hardcode here).
     # TODO: read bounding box from a textfile or use shapefile.   
     x0, x1 = -119.66, -119.19  # longitude
@@ -221,7 +227,7 @@ if test_run
     # To save the clipped input file for future use
     subset_folder = "$OUTDIR/$out_subfolder/Inputs"  # file name with fullpath for subset
     mkpath(subset_folder)
-    write("$subset_folder/wshed.nc", A)
+    write("$subset_folder/wshed.nc", A, force=true)
 else
     @info("DEFAULT RUN  ")
     A = A[1:end, start_idx:end_idx, :]  # use for default runs
