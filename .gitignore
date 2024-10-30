@@ -34,3 +34,5 @@ slurm_jobs/
 # Julia/call_Blender_v11.jl
 Julia/Estimate_vx.jl
 Julia/scratch.txt
+
+**/.DS_Store
