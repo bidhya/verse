@@ -224,8 +224,8 @@ elseif wshed_run
         ws_idx = ARGS[5]  # read the index from command line
         ws_idx = parse(Int64, ws_idx)
         data_cells, header_cells = readdlm("$base_folder/coordinates/wshed.csv", ',', header=true, skipblanks=true)
-        wshed_name, x0, x1, y0, y1 = data_cells[ws_idx, :]  
-        @info("Watershed and bounding coords: $wshed_name $x0 $x1 $y0 $y1")
+        id, wshed_name, x0, x1, y0, y1 = data_cells[ws_idx, :]  
+        @info("Index, Watershed and bounding coords: $id $wshed_name $x0 $x1 $y0 $y1")
     else
         # Hardcoded to Tuolumne watershed
         x0, x1 = -119.66, -119.19  # longitude
