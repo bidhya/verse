@@ -59,6 +59,7 @@ start_time = time_ns()
 
 using Logging, LoggingExtras
 using Tar
+using DelimitedFiles
 using Distributed  # otherwise everywhere macro won't work; Oct 8 2024: Error in Julia 1.11.0: Illegal instruction
 # using SharedArrays  # move this line below addprocs(cores), else won't work in Julia 1.10.0
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -219,8 +220,17 @@ elseif wshed_run
     @info("Watershed Run  ")
     # For watershed: give lower left and upper right longitude/latitude as corners of the bounding box (or hardcode here).
     # TODO: read bounding box from a textfile or use shapefile.   
-    x0, x1 = -119.66, -119.19  # longitude
-    y0, y1 = 37.73, 38.12      # latitude
+    if arg_len > 4
+        ws_idx = ARGS[5]  # read the index from command line
+        ws_idx = parse(Int64, ws_idx)
+        data_cells, header_cells = readdlm("$base_folder/coordinates/wshed.csv", ',', header=true, skipblanks=true)
+        wshed_name, x0, x1, y0, y1 = data_cells[ws_idx, :]  
+        @info("Watershed and bounding coords: $wshed_name $x0 $x1 $y0 $y1")
+    else
+        # Hardcoded to Tuolumne watershed
+        x0, x1 = -119.66, -119.19  # longitude
+        y0, y1 = 37.73, 38.12      # latitude    
+    end
     # We can use either of the following two methods to subset the data. But using view was much slower.
     # A = view(A, X(x0 .. x1), Y(y0 .. y1))  # using view to select a small chip around watershed, but seems slower
     A = A[X(Between(x0, x1)), Y(Between(y0, y1))]  # Another way of getting the same chip around watershed
