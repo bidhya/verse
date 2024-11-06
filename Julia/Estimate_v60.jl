@@ -16,7 +16,8 @@
 # v55 Fixing error due to missing days of data due to Polar nights
 # v58 New updates by jack (Nov 2023)
 # Jan 29, 2024: Due to error on obj function σWRFG becoming zero, fixed the minimum σWRFG to 25 
-# Jun 21, 2014: No change for 1km run here. MODIS with UINT8 did not work likely because of missing due to no-data background and polar nights.
+# Jun 21, 2024: No change for 1km run here. MODIS with UINT8 did not work likely because of missing due to no-data background and polar nights.
+# Nov 5, 2024: simpler heat flux parameterization
 
 using Random
 using JuMP
@@ -92,6 +93,7 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
         end
     end
 
+    #= new heat flux uncertainty parameterization
     # New Updates fro Jack (Nov, 2023)
     σWRFG = zeros(nt,1) .+ 15  # maybe 15 is not being used, but we still need to initialze the array
     σWRFG_rel = 0.5
@@ -110,6 +112,7 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
             σWRFG[i] = 500 #if they disagree, then don’t use prior in cost function
         end
     end
+    =#
 
     # 1.4 Match up SWE and MSCF
     for i=1:nt
@@ -195,11 +198,27 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
         end
     end
 
+    #=
     for i=2:nt
         if Gmelt_pv[i] > Gmax
             σWRFG[i]=1.0e9
         end
     end
+    =#
+
+    # this is a much simpler parameterization of prior heat flux and its uncertainty
+    Gmelt_prior=zeros(nt,1)
+    σWRFG=zeros(nt,1)
+    for i=1:nt
+	if i>240 && i<280
+	    Gmelt_prior[i]=50
+	    σWRFG[i]=50
+	else
+	    Gmelt_prior[i]=0
+	    σWRFG[i]=5
+        end
+    end
+			
 
     # 3.2 Solve for the posterior using prior valid
     m = Model(optimizer_with_attributes(Ipopt.Optimizer, "max_iter"=>5000))
@@ -210,7 +229,8 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
     @variable(m, Us[i=1:nt] <=0, start=U_pv[i])
     #@objective(m,Min,sum( (SWE-SWEpv).^2 ./σWSWE.^2)+sum((Precip-WRFP).^2 ./σWRFP.^2)+
     #                   sum((G-G_pv).^2 ./σWRFG.^2) )
-    @objective(m,Min,sum((Precip-WRFP).^2 ./σWRFP.^2)+ sum((Gmelt-Gmelt_pv).^2 ./σWRFG.^2) )
+    #@objective(m,Min,sum((Precip-WRFP).^2 ./σWRFP.^2)+ sum((Gmelt-Gmelt_pv).^2 ./σWRFG.^2) )
+    @objective(m,Min,sum((Precip-WRFP).^2 ./σWRFP.^2)+ sum((Gmelt-Gmelt_prior).^2 ./σWRFG.^2) )
     for i in 1:nt-1
         @constraint(m,SWE[i+1]==SWE[i]+Precip[i]-Gmelt[i]*Δt/Lf/ρw)
         @NLconstraint(m,Us[i+1]==Us[i]+(1-(tanh(Us[i]/10000)+1))*G[i]*MSCF[i]*Δt+
