@@ -206,16 +206,16 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
     end
     =#
 
-    # this is a much simpler parameterization of prior heat flux and its uncertainty
+    # this is a much simpler parameterization of prior heat flux and its uncertainty (Nov5, 2024)
     Gmelt_prior=zeros(nt,1)
     σWRFG=zeros(nt,1)
     for i=1:nt
-	if i>240 && i<280
-	    Gmelt_prior[i]=50
-	    σWRFG[i]=50
-	else
-	    Gmelt_prior[i]=0
-	    σWRFG[i]=5
+        if i>240 && i<280
+            Gmelt_prior[i]=50
+            σWRFG[i]=50
+        else
+            Gmelt_prior[i]=0
+            σWRFG[i]=5
         end
     end
 			

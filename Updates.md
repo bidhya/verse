@@ -1,5 +1,10 @@
 # Updates to codebase in reverse chronological order
 =============================================   
+## Nov 05, 2024  
+- M Durand created a much simpler parameterization for heat flux
+- reflected "Estimate_v60.jl" script
+- call_Blender_v18 now uses this new "Estimate_v60.jl" script.   
+
 ## Oct 25, 2024  
 - Adding run for watershed.  
 - prefix "wshed" for ouput folder name in julia call to run for watershed.  
