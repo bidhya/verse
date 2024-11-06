@@ -137,7 +137,7 @@ global_logger(info_only_logger)  # Set the global logger to logger; else logs do
 
 # Everywhere should come after cores are already added
 @everywhere using Rasters, NCDatasets, Distributions  # Distributions for garbage collection using uniform distribution
-@everywhere include("Estimate_v59.jl")  #https://docs.julialang.org/en/v1/manual/code-loading/; evaluated in global scope
+@everywhere include("Estimate_v60.jl")  #https://docs.julialang.org/en/v1/manual/code-loading/; evaluated in global scope
 
 # DataDir = "$base_folder/Inputs"  # must exist  (Old = NoahMP)
 # DataDir = "$root_dir/projects/coressd/Blender/Inputs"  # must exist  (Old = NoahMP)
