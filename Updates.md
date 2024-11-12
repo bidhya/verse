@@ -1,9 +1,10 @@
 # Updates to codebase in reverse chronological order
 =============================================   
-## Nov 05, 2024  
+## Nov 12, 2024  
 - M Durand created a much simpler parameterization for heat flux
 - reflected "Estimate_v60.jl" script
-- call_Blender_v18 now uses this new "Estimate_v60.jl" script.   
+- newer call_Blender_v19 now uses this new "Estimate_v60.jl" script but not yet incorporated in submit_blender.jl workflow.   
+- older call_Blender_v18 still uses older "Estimate_v59.jl" script.
 
 ## Oct 25, 2024  
 - Adding run for watershed.  
