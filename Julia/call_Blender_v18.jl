@@ -83,6 +83,9 @@ else
     # Prepare folder, environment and workers for parallel compute for SLURM
     system_machine = "Slurm"
     log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/",start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
+    if wshed_run
+        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/wshed", water_year, "_v18", ".log")
+    end
     # cores = parse(Int, ENV["SLURM_CPUS_PER_TASK"])  # ERROR: LoadError: KeyError: key "SLURM_CPUS_PER_TASK" not found [when not supplied on slurm scipt]
     cores = parse(Int, ENV["SLURM_NTASKS"])  # pick ntasks from slurm job script. must be provided.    
     # # cores = parse(Int, ENV["SLURM_JOB_CPUS_PER_NODE"])  # if one node provided; else we have parse as follows
