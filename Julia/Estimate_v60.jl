@@ -70,6 +70,10 @@ function sigmaG(opt, WRFSWE, MSCF, Gmelt_pv, nt, fG=0.3)
                 Gmelt_prior[i] = 0
                 σWRFG[i] = 1
             end
+            if σWRFG[i] == 0  # to guard against zero σWRFG error when dividing by it in objective function
+                # Due to division by σWRFG when can become zero; propogated from Gmelt_pv being 0.0
+                σWRFG[i] = 1
+            end
         end
     end
     return Gmelt_prior, σWRFG
