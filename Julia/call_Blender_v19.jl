@@ -42,6 +42,8 @@ end_idx = ARGS[3]
 start_idx = parse(Int64, start_idx)
 end_idx = parse(Int64, end_idx)
 RES = ARGS[4] # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
+opt = parse(Int, ARGS[5])  # 1 or 2 optional choices for different parameterization of G
+# ws_idx = ARGS[6]  # watershed index. hardcoded below if run for wshed.
 
 if occursin("test", out_subfolder)  # TODO: either replace this with wshed or create different criteria for watershed run.  
     # if test substring is part of output subfolder then do the test run on subset of pixels
@@ -84,7 +86,7 @@ else
     system_machine = "Slurm"
     log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/",start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
     if wshed_run
-        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/wshed", water_year, "_v19", ".log")
+        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/wshed", water_year, "_v19_", opt, ".log")
     end
     # cores = parse(Int, ENV["SLURM_CPUS_PER_TASK"])  # ERROR: LoadError: KeyError: key "SLURM_CPUS_PER_TASK" not found [when not supplied on slurm scipt]
     cores = parse(Int, ENV["SLURM_NTASKS"])  # pick ntasks from slurm job script. must be provided.    
@@ -223,11 +225,11 @@ elseif wshed_run
     @info("Watershed Run  ")
     # For watershed: give lower left and upper right longitude/latitude as corners of the bounding box (or hardcode here).
     # TODO: read bounding box from a textfile or use shapefile.   
-    if arg_len > 4
-        ws_idx = ARGS[5]  # read the index from command line
+    if arg_len > 5
+        ws_idx = ARGS[6]  # read the index from command line
         ws_idx = parse(Int64, ws_idx)
         data_cells, header_cells = readdlm("$base_folder/coordinates/wshed.csv", ',', header=true, skipblanks=true)
-        id, wshed_name, x0, x1, y0, y1 = data_cells[ws_idx, :]  
+        id, wshed_name, x0, x1, y0, y1 = data_cells[ws_idx, :]
         @info("Index, Watershed and bounding coords: $id $wshed_name $x0 $x1 $y0 $y1")
     else
         # Hardcoded to Tuolumne watershed
@@ -273,7 +275,7 @@ running_time = (time_ns() - start_time)/1e9/60
     AirT = A["Tair_f_tavg"][X=i, Y=j].data/100
     MSCF = A["SCF"][X=i, Y=j].data; #/100 Convert to fraction. multiplication and devision works without dot. but add/subtract will need dot.
     # blender(out_folder, i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)  # Call blender for the pixel. OLD.
-    blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
+    blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt)
 end
 # without sync above one of the processor to the next step (combining text files to netcdf) which will cause error
 sleep(10)

@@ -1,5 +1,9 @@
 # Updates to codebase in reverse chronological order
 =============================================   
+## Nov 19, 2024  
+- updating Estimate_v60.jl to use function to parameterize G
+- call_Blender_v19 passes opt (1 or 2), which is passed to Estimate_v60.jl
+
 ## Nov 12, 2024  
 - M Durand created a much simpler parameterization for heat flux
 - reflected "Estimate_v60.jl" script
