@@ -25,10 +25,60 @@ using Ipopt
 using DelimitedFiles
 Random.seed!(1234)  # seed for reproducibility
 
+function sigmaG(opt, WRFSWE, MSCF, Gmelt_pv, nt, fG=0.3)
+    """
+    if we pass WRFSWE and MSCF then opt is not really required.
+
+    This function returns the sigma_G and Gmelt_prior
+        fg: fraction of G
+    Inputs:
+    =======
+        WRFSWE: LIS data
+        MSCF: MODIS data
+    """
+    # fG = 0.3  # fraction of G
+    Gmelt_prior=zeros(nt,1)
+    σWRFG=zeros(nt,1) #.+ 1 # default of 1 everywhere
+    if opt == 1 # default
+        for i=1:nt
+            if i>240 && i<280
+                Gmelt_prior[i]=50
+                σWRFG[i]=50
+            else
+                Gmelt_prior[i]=0
+                σWRFG[i]=5
+            end
+        end
+    elseif opt == 2
+        # TODO: What will be threshold for no snow cover? == 0. or some small value?
+        for i=1:nt
+            if WRFSWE[i]>0. && MSCF[i] >0. # both LIS and MODIS says snowy
+                Gmelt_prior[i] = Gmelt_pv[i]
+                σWRFG[i] = fG * abs(Gmelt_pv[i])
+            elseif WRFSWE[i]<=0. && MSCF[i]<=0. # both LIS and MODIS says not snowy
+                Gmelt_prior[i] = 0
+                σWRFG[i] = 1
+            elseif WRFSWE[i] <= 0. && MSCF[i] <= 0. # LIS not snowy but MODIS snowy
+                if i > 120  # Late season; approximated here around start of February
+                    Gmelt_prior[i] = 50
+                    σWRFG[i] = fG * abs(Gmelt_pv[i])
+                else
+                    Gmelt_prior[i] = 5
+                    σWRFG[i] = fG * abs(Gmelt_pv[i])
+                end
+            elseif WRFSWE[i] > 0. && MSCF[i] <= 0. # LIS snowy but MODIS says not snow
+                Gmelt_prior[i] = 0
+                σWRFG[i] = 1
+            end
+        end
+    end
+    return Gmelt_prior, σWRFG
+end
+
 # using Dates, CSV, DataFrames
 # function blender(DataDir, exp_dir, WRFSWE, WRFP, WRFG, MSCF, AirT)
 # function blender(out_folder, i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)
-function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
+function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt)
     """
     Note: keyword argument defined after positional with ; if no default value provided, it is required
     Inputs
@@ -208,17 +258,22 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
 
     # this is a much simpler parameterization of prior heat flux and its uncertainty (Nov5, 2024)
     # TODO: Make this a function
-    Gmelt_prior=zeros(nt,1)
-    σWRFG=zeros(nt,1)
-    for i=1:nt
-        if i>240 && i<280
-            Gmelt_prior[i]=50
-            σWRFG[i]=50
-        else
-            Gmelt_prior[i]=0
-            σWRFG[i]=5
-        end
-    end
+    # TODO call the function here. we will have Gmelt_prior, σWRFG
+    # opt = 1 #1 # 2 
+    Gmelt_prior, σWRFG = sigmaG(opt, WRFSWE, MSCF, Gmelt_pv, nt, 0.3)
+    # println("Min Max: Gmelt_pv $(minimum(Gmelt_pv))  $(maximum(Gmelt_pv)) and σWRFG: $(minimum(σWRFG))   $(maximum(σWRFG))")
+
+    # Gmelt_prior=zeros(nt,1)
+    # σWRFG=zeros(nt,1)
+    # for i=1:nt
+    #     if i>240 && i<280
+    #         Gmelt_prior[i]=50
+    #         σWRFG[i]=50
+    #     else
+    #         Gmelt_prior[i]=0
+    #         σWRFG[i]=5
+    #     end
+    # end
 			
 
     # 3.2 Solve for the posterior using prior valid
@@ -231,7 +286,7 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
     #@objective(m,Min,sum( (SWE-SWEpv).^2 ./σWSWE.^2)+sum((Precip-WRFP).^2 ./σWRFP.^2)+
     #                   sum((G-G_pv).^2 ./σWRFG.^2) )
     #@objective(m,Min,sum((Precip-WRFP).^2 ./σWRFP.^2)+ sum((Gmelt-Gmelt_pv).^2 ./σWRFG.^2) )
-    @objective(m,Min,sum((Precip-WRFP).^2 ./σWRFP.^2)+ sum((Gmelt-Gmelt_prior).^2 ./σWRFG.^2) )
+    @objective(m,Min,sum((Precip-WRFP).^2 ./σWRFP.^2)+ sum((Gmelt-Gmelt_prior).^2 ./σWRFG.^2) )  #  Expression contains an invalid NaN constant. This could be produced by `Inf - Inf`.
     for i in 1:nt-1
         @constraint(m,SWE[i+1]==SWE[i]+Precip[i]-Gmelt[i]*Δt/Lf/ρw)
         @NLconstraint(m,Us[i+1]==Us[i]+(1-(tanh(Us[i]/10000)+1))*G[i]*MSCF[i]*Δt+
