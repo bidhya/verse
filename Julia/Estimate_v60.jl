@@ -319,7 +319,8 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt)
     Ushat=JuMP.value.(Us)
     Phat=JuMP.value.(Precip)
 
-    out_vars = hcat(SWEhat, GmeltHat, Ghat, Phat, Ushat, G_pv, Gmelt_pv, U_pv, SWEpv)
+    # out_vars = hcat(SWEhat, GmeltHat, Ghat, Phat, Ushat, G_pv, Gmelt_pv, U_pv, SWEpv)  # 9 columns original
+    out_vars = hcat(SWEhat, GmeltHat, Ghat, Phat, Ushat, G_pv, Gmelt_pv, U_pv, SWEpv, Gmelt_prior, σWRFG)    # additional variables: Gmelt_prior, σWRFG for diagnosis of new G parameterization
     writedlm("$(exp_dir)/Pix_$(i)_$(j).txt", out_vars)
 
     # writedlm(exp_dir * "/SWE.txt",SWEhat)

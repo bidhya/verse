@@ -327,7 +327,7 @@ processed_pix_count = length(pixels)
 @info("Pixels processsed = $processed_pix_count out of $valid_pix_count")
 if processed_pix_count == valid_pix_count #&& system_machine == "Windows"  # ERROR1
     outRaster = copy(A[:Qg_tavg])  # copy(A[:SWE_tavg])
-    var_idx_tuple = (("SWE", 1), ("Gmelt", 2), ("G", 3), ("Precip", 4), ("Us", 5), ("Gpv", 6), ("Gmeltpv", 7), ("Upv", 8), ("SWEpv", 9))
+    var_idx_tuple = (("SWE", 1), ("Gmelt", 2), ("G", 3), ("Precip", 4), ("Us", 5), ("Gpv", 6), ("Gmeltpv", 7), ("Upv", 8), ("SWEpv", 9), ("Gmelt_prior", 10), ("sigmaWRFG", 11)) 
     mkpath(nc_outDir)
     # Threads.@threads (Roughly same running for threaded and non-thread version on Discover. Likely due to I/O bottleneck)
     # Threads.@threads for var_idx in var_idx_tuple
