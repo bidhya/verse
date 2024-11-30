@@ -4,8 +4,8 @@
     julia verse/Julia/submit_slurm.jl 2016 10 010  # OLD
     julia verse/Julia/submit_slurm.jl 2016 100 050 # OLD
     julia verse/Julia/submit_slurm.jl 2015 010 2  # order changed. res comes first (Jun 04, 2024)
-    julia verse/Julia/submit_slurm.jl 2015 2 010  # order changed. step comes before RES (Oct 08, 2024)
-    Good values for stepsize: 1, 2, ... upt 10. last tested with 3
+    julia verse/Julia/submit_slurm.jl 2015 1 010  # order changed. step comes before RES (Oct 08, 2024)
+    Good values for stepsize: 1, 2, ... upt 10. last tested with 3. Use 1 for more finer control.  
 
     Note: 1. This script will call the main script call_Blender_v18.jl
           2. The script is called with 3 arguments: water_year, resolution, stepsize
@@ -193,12 +193,12 @@ for i in StepRange(1, step, szY)
     pix_count_threshold = 80000  # 80000 for 5km run; 20000 for 1km run
     # Update the pix_count_threshold based on row index (ie, latitude) to account for the processing time which is higher at lower latitude. This needs further verification.
     # dimensions(sizes): x(11700), y(4700), time(366)
-    if start_idx < 120  # needs most memory
-        pix_count_threshold = 40000  # 
+    if start_idx < 100  # needs most memory. old=120.
+        pix_count_threshold = 50000  # 43000
     elseif start_idx < 2000
-        pix_count_threshold = 70000  # 60000
+        pix_count_threshold = 73000  # 60000
     elseif start_idx < 3000
-        pix_count_threshold = 80000
+        pix_count_threshold = 83000
     else
         pix_count_threshold = 100000
     end
