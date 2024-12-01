@@ -57,8 +57,8 @@ print(f"Number of temp_nc_files: {temp_nc_files}")
 slurm_job_folder = f"{root_dir}/Github/slurm_jobs/{RES}/{wy}"
 slurm_files = os.listdir(slurm_job_folder)
 slurm_files = [f for f in slurm_files if f.endswith(".job")]
-logging.info(f"Number of slurm files: {len(slurm_files)}")
-print(f"Number of slurm files: {len(slurm_files)}")
+logging.info(f"Number of slurm job files: {len(slurm_files)}")
+print(f"Number of slurm job files: {len(slurm_files)}")
 
 # 3. Check Slurm job output files 
 OUTDIR = f"{root_dir}/Github/slurm_jobs/{RES}/{wy}/.out"
