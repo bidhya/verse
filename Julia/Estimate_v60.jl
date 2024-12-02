@@ -25,7 +25,7 @@ using Ipopt
 using DelimitedFiles
 Random.seed!(1234)  # seed for reproducibility
 
-function sigmaG(opt, WRFSWE, MSCF, Gmelt_pv, nt, fG=0.3)
+function sigmaG(opt, WRFSWE, MSCF, Gmelt_pv, nt, fG=0.3,σWRFGmin=1)
     """
     if we pass WRFSWE and MSCF then opt is not really required.
 
@@ -76,6 +76,14 @@ function sigmaG(opt, WRFSWE, MSCF, Gmelt_pv, nt, fG=0.3)
             end
         end
     end
+    # set minimum limit on σWRFG
+    for i=1:nt
+	if σWRFG[i] < σWRFGmin
+	    σWRFG[i]=σWRFGmin
+        end
+    end
+
+	
     return Gmelt_prior, σWRFG
 end
 
@@ -123,6 +131,7 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt)
     Δt=86400 #daily
     Gmax=300 # to prevent craziness. more than adequate for daily
     Gmin=-300 # to prevent craziness. more than adequate for daily
+    Pmax=0.2 # 170 mm in one day of SWE corresponds to Sierra Nevada snowfall record
     ρnew=100 #density of new snow
     z0=0.01 # roughness length used in SDC
     mf=1.0 # melt factor used in SDC
@@ -210,6 +219,13 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt)
         # to prevent σWRFP from becoming zero if nsnowday=0.
         σWRFP = σWRFP .* sqrt(nsnowday * 0.5)
     end
+
+    # change precipitation to snowfall, by setting precipitation to zero if air temp is too high
+    for i=1:nt 
+	if WRFP[i]>0 && AirT[i] > 1.5
+	    WRFP[i]=0
+	end
+    end
     
     # # New-BNY For Arctic night [Feb 14, 2023] <-- Superceded by updates from Jack in Nov 2023.
     # # Set the vector to 15 everythere unless SCF is undefined for Arctic Nights, then set to large number
@@ -283,7 +299,7 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt)
     # 3.2 Solve for the posterior using prior valid
     m = Model(optimizer_with_attributes(Ipopt.Optimizer, "max_iter"=>5000))
     @variable(m, SWEmin <= SWE[i=1:nt] <= SWEmax[i],start=SWEpv[i] )
-    @variable(m,  Precip[i=1:nt]>=0. ,start=WRFP[i])
+    @variable(m,   0 <= Precip[i=1:nt]<= Pmax. ,start=WRFP[i])
     @variable(m,  G[i=1:nt] , start=G_pv[i])
     @variable(m, 0 <= Gmelt[i=1:nt] <= Gmax, start=Gmelt_pv[i])
     @variable(m, Us[i=1:nt] <=0, start=U_pv[i])
