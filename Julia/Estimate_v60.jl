@@ -25,7 +25,7 @@ using Ipopt
 using DelimitedFiles
 Random.seed!(1234)  # seed for reproducibility
 
-function sigmaG(opt, WRFSWE, MSCF, Gmelt_pv, nt, fG=0.3)
+function sigmaG(opt, WRFSWE, MSCF, Gmelt_pv, nt, fG=0.3,σWRFGmin=1)
     """
     if we pass WRFSWE and MSCF then opt is not really required.
 
@@ -76,6 +76,14 @@ function sigmaG(opt, WRFSWE, MSCF, Gmelt_pv, nt, fG=0.3)
             end
         end
     end
+    # set minimum limit on σWRFG
+    for i=1:nt
+	if σWRFG[i] < σWRFGmin
+	    σWRFG[i]=σWRFGmin
+        end
+    end
+
+	
     return Gmelt_prior, σWRFG
 end
 
