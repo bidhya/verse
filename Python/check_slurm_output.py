@@ -62,7 +62,7 @@ print(f"Number of slurm job files: {len(slurm_files)}")
 
 # 3. Check Slurm job output files 
 OUTDIR = f"{root_dir}/Github/slurm_jobs/{RES}/{wy}/.out"
-files = os.listdir(OUTDIR)
+files = [f for f in os.listdir(OUTDIR) if f.endswith(".out")]  # required if error files are also present
 logging.info(f"Number of files: {len(files)}")
 print(f"Number of files: {len(files)}")
 # Remove some of thes files that were renamed x1, x2_ etc during separate test or wshed runs

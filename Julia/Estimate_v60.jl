@@ -264,7 +264,7 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt)
     # TODO: Make this a function
     # TODO call the function here. we will have Gmelt_prior, σWRFG
     # opt = 1 #1 # 2 
-    Gmelt_prior, σWRFG = sigmaG(opt, WRFSWE, MSCF, Gmelt_pv, nt, 0.3)
+    Gmelt_prior, σWRFG = sigmaG(opt, WRFSWE, MSCF, Gmelt_pv, nt, 0.5)  # first run with 0.3.
     # println("Min Max: Gmelt_pv $(minimum(Gmelt_pv))  $(maximum(Gmelt_pv)) and σWRFG: $(minimum(σWRFG))   $(maximum(σWRFG))")
 
     # Gmelt_prior=zeros(nt,1)

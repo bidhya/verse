@@ -90,6 +90,7 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         end
         write(f, "#SBATCH --job-name=$(jobname).job\n")
         write(f, "#SBATCH --output=.out/$(jobname).out\n")
+        write(f, "#SBATCH --error=.out/$(jobname).err\n")
         write(f, "#SBATCH --time=$(runtime):00:00\n")
         write(f, "#SBATCH --nodes=1 --ntasks=$(cores)\n")  # 
         write(f, "#SBATCH --exclusive\n")  #  use whole node with all cores without sharing 
@@ -126,20 +127,31 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         write(f, "echo ---------------------------------------------------------------------\n")
         write(f, "ls -ltrh\n")
         write(f, "echo -n Count of outputs_txt files: ; ls outputs_txt_*|wc -l\n")  # more specific: outputs_txt_$(start_idx)_$(end_idx)
-        # # write(f, "echo -n Logs: ; ls logs_$(start_idx)_$(end_idx)|wc -l\n")  # logs_* only can be a bit misleading because it will match other files with logs prefix, so be explicit.  
-        # write(f, "ECODE=\$?\n")
-        # write(f, "if [ \$ECODE -eq 0 ]; then\n")
-        # write(f, "\ttar -czf logs_$(start_idx)_$(end_idx).tar.gz logs*\n")  # list log files on node
-        # write(f, "\tcp logs_$(start_idx)_$(end_idx).tar.gz $base_folder/Runs/$(RES)/$out_subfolder/logs\n")  # folder created at end of call_Blender script  
-        # # write(f, "cp logs_$(start_idx)_$(end_idx).tar.gz \$SLURM_SUBMIT_DIR\n")
-        # # TODO Write/Call a python script (or Jupyter notebook) to QA/QC the run: count, tables, figures.  
-        # write(f, "\techo Finished Slurm job successfully\n\n")
-        # write(f, "else\n")
-        # write(f, "\techo Error in Blender run\n")
-        # write(f, "fi\n")
+        # write(f, "echo -n Logs: ; ls logs_$(start_idx)_$(end_idx)|wc -l\n")  # logs_* can be  misleading as it matches other files with logs prefix, so be explicit.  
+        
+        # To move log files from node to main folder, create a tar file and copy to main folder.
+        write(f, "ECODE=\$?\n")
+        write(f, "if [ \$ECODE -eq 0 ]; then\n")
+        write(f, "\ttar -czf logs_$(start_idx)_$(end_idx).tar.gz logs*\n")  # list log files on node
+        write(f, "\tmkdir -p $base_folder/Runs/$(RES)/$out_subfolder/logs\n")  # will copy logs here.
+        write(f, "\tcp logs_$(start_idx)_$(end_idx).tar.gz $base_folder/Runs/$(RES)/$out_subfolder/logs\n")  
+        # write(f, "cp logs_$(start_idx)_$(end_idx).tar.gz \$SLURM_SUBMIT_DIR\n")
+        # TODO Write/Call a python script (or Jupyter notebook) to QA/QC the run: count, tables, figures.  
+        write(f, "\techo Finished Slurm job successfully\n")
+        write(f, "else\n")
+        write(f, "\techo Error in Blender run\n")
+        write(f, "fi\n\n")
+
         # if hpc == "discover"
         #     write(f, "conda deactivate\n")  # New for Julia installed using conda
         # end
+
+        # Cleanup the files on the node (not strictly necessary but good practice)
+        write(f, "echo Cleaning up files on node\n")
+        write(f, "rm -rf verse\n")
+        write(f, "rm -rf outputs_txt_*\n")
+        write(f, "rm -rf logs*\n")
+        write(f, "echo ==============================================================================\n")
     end
     run(`sbatch $(job_file)`)  # submit the job
 end
