@@ -218,6 +218,13 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt)
         # to prevent σWRFP from becoming zero if nsnowday=0.
         σWRFP = σWRFP .* sqrt(nsnowday * 0.5)
     end
+
+    # change precipitation to snowfall, by setting precipitation to zero if air temp is too high
+    for i=1:nt 
+	if WRFP[i]>0 && AirT[i] > 1.5
+	    WRFP[i]=0
+	end
+    end
     
     # # New-BNY For Arctic night [Feb 14, 2023] <-- Superceded by updates from Jack in Nov 2023.
     # # Set the vector to 15 everythere unless SCF is undefined for Arctic Nights, then set to large number
