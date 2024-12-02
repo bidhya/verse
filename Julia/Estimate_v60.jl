@@ -131,6 +131,7 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt)
     Δt=86400 #daily
     Gmax=300 # to prevent craziness. more than adequate for daily
     Gmin=-300 # to prevent craziness. more than adequate for daily
+    Pmax=0.2 # 170 mm in one day of SWE corresponds to Sierra Nevada snowfall record
     ρnew=100 #density of new snow
     z0=0.01 # roughness length used in SDC
     mf=1.0 # melt factor used in SDC
@@ -298,7 +299,7 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt)
     # 3.2 Solve for the posterior using prior valid
     m = Model(optimizer_with_attributes(Ipopt.Optimizer, "max_iter"=>5000))
     @variable(m, SWEmin <= SWE[i=1:nt] <= SWEmax[i],start=SWEpv[i] )
-    @variable(m,  Precip[i=1:nt]>=0. ,start=WRFP[i])
+    @variable(m,   0 <= Precip[i=1:nt]<= Pmax. ,start=WRFP[i])
     @variable(m,  G[i=1:nt] , start=G_pv[i])
     @variable(m, 0 <= Gmelt[i=1:nt] <= Gmax, start=Gmelt_pv[i])
     @variable(m, Us[i=1:nt] <=0, start=U_pv[i])
