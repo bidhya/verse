@@ -25,7 +25,7 @@ using Ipopt
 using DelimitedFiles
 Random.seed!(1234)  # seed for reproducibility
 
-function sigmaG(opt, WRFSWE, MSCF, Gmelt_pv, nt, fG=0.3,σWRFGmin=1)
+function sigmaG(opt, WRFSWE, MSCF, Gmelt_pv, nt, fG=0.3, σWRFGmin=1)
     """
     if we pass WRFSWE and MSCF then opt is not really required.
 
@@ -280,7 +280,7 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt)
     # TODO: Make this a function
     # TODO call the function here. we will have Gmelt_prior, σWRFG
     # opt = 1 #1 # 2 
-    Gmelt_prior, σWRFG = sigmaG(opt, WRFSWE, MSCF, Gmelt_pv, nt, 0.5)  # first run with 0.3.
+    Gmelt_prior, σWRFG = sigmaG(opt, WRFSWE, MSCF, Gmelt_pv, nt, 0.5)  # added σWRFGmin=1
     # println("Min Max: Gmelt_pv $(minimum(Gmelt_pv))  $(maximum(Gmelt_pv)) and σWRFG: $(minimum(σWRFG))   $(maximum(σWRFG))")
 
     # Gmelt_prior=zeros(nt,1)
@@ -299,7 +299,7 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt)
     # 3.2 Solve for the posterior using prior valid
     m = Model(optimizer_with_attributes(Ipopt.Optimizer, "max_iter"=>5000))
     @variable(m, SWEmin <= SWE[i=1:nt] <= SWEmax[i],start=SWEpv[i] )
-    @variable(m,   0 <= Precip[i=1:nt]<= Pmax. ,start=WRFP[i])
+    @variable(m, 0 <= Precip[i=1:nt]<= Pmax,start=WRFP[i])
     @variable(m,  G[i=1:nt] , start=G_pv[i])
     @variable(m, 0 <= Gmelt[i=1:nt] <= Gmax, start=Gmelt_pv[i])
     @variable(m, Us[i=1:nt] <=0, start=U_pv[i])
