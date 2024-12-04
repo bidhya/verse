@@ -131,7 +131,7 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt)
     Δt=86400 #daily
     Gmax=300 # to prevent craziness. more than adequate for daily
     Gmin=-300 # to prevent craziness. more than adequate for daily
-    Pmax=0.2 # 170 mm in one day of SWE corresponds to Sierra Nevada snowfall record
+    Pmax=0.2 # 170 (rounded to 200) mm in one day of SWE corresponds to Sierra Nevada snowfall record
     ρnew=100 #density of new snow
     z0=0.01 # roughness length used in SDC
     mf=1.0 # melt factor used in SDC
@@ -280,7 +280,7 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt)
     # TODO: Make this a function
     # TODO call the function here. we will have Gmelt_prior, σWRFG
     # opt = 1 #1 # 2 
-    Gmelt_prior, σWRFG = sigmaG(opt, WRFSWE, MSCF, Gmelt_pv, nt, 0.5)  # added σWRFGmin=1
+    Gmelt_prior, σWRFG = sigmaG(opt, WRFSWE, MSCF, Gmelt_pv, nt, 0.5, 100)  # added σWRFGmin=1; run with σWRFGmin set to 10 and 20 and 100 …. keep fG=0.5 for all runs
     # println("Min Max: Gmelt_pv $(minimum(Gmelt_pv))  $(maximum(Gmelt_pv)) and σWRFG: $(minimum(σWRFG))   $(maximum(σWRFG))")
 
     # Gmelt_prior=zeros(nt,1)
