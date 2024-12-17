@@ -47,17 +47,17 @@ RES = ARGS[4] # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 
 opt = parse(Int, ARGS[5])  # 1 or 2 optional choices for different parameterization of G
 # ws_idx = ARGS[6]  # watershed index. hardcoded below if run for wshed.
 
-if occursin("test", out_subfolder)  # TODO: either replace this with wshed or create different criteria for watershed run.  
+test_run = false
+pixel_run = false
+wshed_run = false
+if occursin("test", out_subfolder)  
     # if test substring is part of output subfolder then do the test run on subset of pixels
     test_run = true
-    wshed_run = false
+elseif occursin("pixel", out_subfolder)  
+    # if test substring is part of output subfolder then do the test run on subset of pixels
+    pixel_run = true
 elseif occursin("wshed", out_subfolder)  # if wshed prefix substring is part of output subfolder
     wshed_run = true
-    test_run = false
-else
-    # we define both these varaibles to avoid below where we check for both test or wshed run.
-    test_run = false
-    wshed_run = false
 end
 start_time = time_ns()
 
@@ -223,7 +223,10 @@ end
 if test_run
     @info("TEST RUN ONLY  ")
     # Aside: Get test set of data. This part needs re-writing before using for test [TODO].
-    # A = A[1101:1109, start_idx:end_idx, :]  # for test run
+    A = A[1101:1109, start_idx:end_idx, :]  # for test run
+    # A = A[X=Near([-100.2]), Y=Near([50.1])]  # Using lon/lat. Ti is optional here.  
+elseif pixel_run
+    @info("Pixel Run  ")
     # To select just one pixel. Index of coordinates must be passed as vector (ie [1101] not 1101), esle it will loose the dimension of X, Y and subsequent code with cartesian index will not work.
     # A = A[[1101], [3001], :]  # using index for X and Y respectively
     A = A[X=Near([-100.2]), Y=Near([50.1])]  # Using lon/lat. Ti is optional here.  
