@@ -49,20 +49,32 @@ Order of Script Execution for coressd project
 - intermediate outputs: ../coressd/Blender/Modis/MOD10A1F/clipped2015_010: clipped and matched to seup resolution
 - ../Blender/Inputs_010/lis/WY2015/SCF.nc : ie, same location as LIS outputs as above.  
 
-## II: To Run Blender Julia Code
+## II: To Run Blender (Julia) Code
 ================================  
+Install the following Julia packages:  
+- add JuMP Ipopt Rasters NCDatasets CSV LoggingExtras Distributions  
+
 1. On HPC (Discover): the following julia script will generate slurm jobs for a water_year.  
 - cd to Github folder  
 - julia verse/Julia/submit_slurm.jl 2015 2 010  # example: for WY2015 with resolution=010 and adaptive slice = 2 rows.
     - generate ~600 slurm jobs that calls the following julia script:
-    - julia verse/Julia/call_Blender_v18.jl WY2010 1 17 010  : example script for Blender run for WY2010 from slice 1 to 17
+    - julia verse/Julia/call_Blender_v18.jl WY2010 1 17 010  : example script for Blender run for WY2010 for slice 1 to 17
     - slurm job folder: 
         - ../slurm_jobs/010/2015/
             - .out/ : slurm outputs saved here  
 Blender Outputs: ../Blender/Runs/010/WY2015/temp_nc/ : These netcdf files for each slice will be combined by next script, after which this folder can be deleted. 
-- Aside: locally for small area: use "test" prefix to WY. Example: test_WY2015 while calling call_Blender julia script.   
-    - julia verse/Julia/call_Blender_v18.jl test_WY2015 3005 3006 010  
 
 2. Post-processing (Required for continental map): Combine individual nc_files into PAN American netcdf file  
 - uses:  Github/Slurm_Blender/d_combine_out_nc_files.sh  
 - calls: julia verse/Julia/combine_nc_files.jl WY$water_year $RES
+
+### Edge Cases
+For test run:
+- Use "test" prefix to WY. Example: test_WY2015 while calling call_Blender julia script.   
+- folder and sub-folders created within script to save outputs.  
+    - usage: julia verse/Julia/call_Blender_v19.jl "test/test_WY2015" 3204 3104 010 2
+
+For watershed run:
+- need a text file of watershed bounding box (../coressd/Blender/coordinates/wshed.csv)  
+- select watershed by passing the index (1-based in Julia) of watershed  
+- usage: julia verse/Julia/call_Blender_v19.jl "wshed/Tuolumne/wshed_WY2015" 100 100 010 2 1
