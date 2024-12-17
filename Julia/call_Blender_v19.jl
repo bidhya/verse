@@ -1,5 +1,5 @@
 """
-USAGE: julia verse/Julia/call_Blender_v18.jl test_WY2010 3005 3006 010
+USAGE: julia verse/Julia/call_Blender_v19.jl test_WY2010 3005 3006 010 2
     - start and end indices are for y-axis only. All x's selected by default  
 
 SWE estimation using Blender algorithm.
@@ -32,6 +32,8 @@ Jun 20, 2024 : call_Blender_v18.jl uses Estimate_v59.jl
     - Snowf_tavg, SWE_tavg, Tair_f_tavg are np.unit16
         - Snowf_tavg and SWE_tavg divide by 1000 get floating point values in meters.
         - Tair_f_tavg divide by 100 to get floating point values in Kelvin.
+Nov 20, 2024 : call_Blender_v19.jl uses Estimate_v60.jl . Currently in prototyping phase on a GFix branch.  
+Dec 17, 2024 : Adding option to run for just one pixel for testing. 
 
 """
 arg_len = length(ARGS)
@@ -135,6 +137,7 @@ end
 info_only_logger = MinLevelLogger(logger, Logging.Info);  # Logging.Error
 global_logger(info_only_logger)  # Set the global logger to logger; else logs doing directly to console
 
+@info("Water Year : $water_year")
 @info("base_folder : $base_folder")
 @info("Host computer machine: $host_machine")
 @info("Number of processes (procs): $(nprocs())")
@@ -220,7 +223,10 @@ end
 if test_run
     @info("TEST RUN ONLY  ")
     # Aside: Get test set of data. This part needs re-writing before using for test [TODO].
-    A = A[1101:1109, start_idx:end_idx, :]  # for test run
+    # A = A[1101:1109, start_idx:end_idx, :]  # for test run
+    # To select just one pixel. Index of coordinates must be passed as vector (ie [1101] not 1101), esle it will loose the dimension of X, Y and subsequent code with cartesian index will not work.
+    # A = A[[1101], [3001], :]  # using index for X and Y respectively
+    A = A[X=Near([-100.2]), Y=Near([50.1])]  # Using lon/lat. Ti is optional here.  
 elseif wshed_run
     @info("Watershed Run  ")
     # For watershed: give lower left and upper right longitude/latitude as corners of the bounding box (or hardcode here).
