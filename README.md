@@ -72,7 +72,7 @@ Blender Outputs: ../Blender/Runs/010/WY2015/temp_nc/ : These netcdf files for ea
 For test run:
 - Use "test" prefix to WY. Example: test_WY2015 while calling call_Blender julia script.   
 - folder and sub-folders created within script to save outputs.  
-    - usage: julia verse/Julia/call_Blender_v19.jl "test/test_WY2015" 3204 3104 010 2
+    - usage: julia verse/Julia/call_Blender_v19.jl "test/test_WY2015" 3204 3204 010 2
 
 For 1 pixel run:
 - Use "pixel" prefix to WY. Example: pixel_WY2015 while calling call_Blender julia script.   
