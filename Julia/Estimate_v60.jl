@@ -257,11 +257,13 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt)
     end
     for i=2:nt
         if Gmelt_pv[i]>0. && MSCF[i] >0.  # TypeError: non-boolean (Missing) used in boolean context
-            G_pv[i]=Gmelt_pv[i]/MSCF[i]
+            #G_pv[i]=Gmelt_pv[i]/MSCF[i]
+	    G_pv[i]=Gmelt_pv[i]
             U_pv[i]=0.
         else
             G_pv[i]=WRFG[i]
-            U_pv[i]=U_pv[i-1]+WRFP[i-1]*AirT[i-1]*ρw*cs_ice + G_pv[i-1]*MSCF[i-1]*Δt  # MethodError: Cannot `convert` an object of type Missing to an object of type Float64
+            #U_pv[i]=U_pv[i-1]+WRFP[i-1]*AirT[i-1]*ρw*cs_ice + G_pv[i-1]*MSCF[i-1]*Δt  # MethodError: Cannot `convert` an object of type Missing to an object of type Float64
+	    U_pv[i]=U_pv[i-1]+WRFP[i-1]*AirT[i-1]*ρw*cs_ice + G_pv[i-1]*Δt  # 
             if U_pv[i]>0. || SWEpv[i]==0.
                 U_pv[i]=0.
             end
@@ -309,13 +311,15 @@ function blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt)
     @objective(m,Min,sum((Precip-WRFP).^2 ./σWRFP.^2)+ sum((Gmelt-Gmelt_prior).^2 ./σWRFG.^2) )  #  Expression contains an invalid NaN constant. This could be produced by `Inf - Inf`.
     for i in 1:nt-1
         @constraint(m,SWE[i+1]==SWE[i]+Precip[i]-Gmelt[i]*Δt/Lf/ρw)
-        @NLconstraint(m,Us[i+1]==Us[i]+(1-(tanh(Us[i]/10000)+1))*G[i]*MSCF[i]*Δt+
+        #@NLconstraint(m,Us[i+1]==Us[i]+(1-(tanh(Us[i]/10000)+1))*G[i]*MSCF[i]*Δt+
+        @NLconstraint(m,Us[i+1]==Us[i]+(1-(tanh(Us[i]/10000)+1))*G[i]*Δt+			
                                 Precip[i]*AirT[i]*ρw*cs_ice) #m x K x kg/m3 x J/kg/K
     end
     @constraint(m,Us[1]==0) 
     @constraint(m,Us[nt]==0)
     for i in 1:nt
-        @NLconstraint(m,Gmelt[i]==G[i]*MSCF[i]*(tanh(Us[i]/10000)+1))
+        #@NLconstraint(m,Gmelt[i]==G[i]*MSCF[i]*(tanh(Us[i]/10000)+1))
+	@NLconstraint(m,Gmelt[i]==G[i]*(tanh(Us[i]/10000)+1))
     end
     
     # optimize!(m)
