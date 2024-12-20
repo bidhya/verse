@@ -61,6 +61,8 @@ elseif occursin("wshed", out_subfolder)  # if wshed prefix substring is part of 
 end
 start_time = time_ns()
 
+randint = 2  # abs(rand(Int8(1)))  # random integer for log file name (wshed and pixel run)
+
 using Logging, LoggingExtras
 using Tar
 using DelimitedFiles
@@ -88,7 +90,10 @@ else
     system_machine = "Slurm"
     log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/",start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
     if wshed_run
-        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/wshed", water_year, "_v19_", opt, ".log")
+        # log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/wshed", water_year, "_v19_", opt, ".log")
+        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/wshed", water_year, "_v19_", randint, ".log")
+    elseif pixel_run
+        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/pixel", water_year, "_v19_", randint, ".log")
     end
     # cores = parse(Int, ENV["SLURM_CPUS_PER_TASK"])  # ERROR: LoadError: KeyError: key "SLURM_CPUS_PER_TASK" not found [when not supplied on slurm scipt]
     cores = parse(Int, ENV["SLURM_NTASKS"])  # pick ntasks from slurm job script. must be provided.    
@@ -229,7 +234,8 @@ elseif pixel_run
     @info("Pixel Run  ")
     # To select just one pixel. Index of coordinates must be passed as vector (ie [1101] not 1101), esle it will loose the dimension of X, Y and subsequent code with cartesian index will not work.
     # A = A[[1101], [3001], :]  # using index for X and Y respectively
-    A = A[X=Near([-100.2]), Y=Near([50.1])]  # Using lon/lat. Ti is optional here.  
+    # A = A[X=Near([-100.2]), Y=Near([50.1])]  # Using lon/lat. Ti is optional here.  
+    A = A[X=Near([-119.348099]), Y=Near([37.876408])]  # Using lon/lat. Ti is optional here.  
 elseif wshed_run
     @info("Watershed Run  ")
     # For watershed: give lower left and upper right longitude/latitude as corners of the bounding box (or hardcode here).
