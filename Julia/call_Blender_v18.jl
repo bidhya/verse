@@ -10,7 +10,7 @@ The script is currently capable of running on my following platforms.
 - Ubuntu (WSL2-based)
 - OSC HPC
 - Ohio-State Unity HPC 
-Julia Versions >= 1.10.5 
+Julia Versions >= 1.11.2 
 Minimum extra Julia Packages required
 - JuMP, Ipopt, Rasters, NCDatasets 
 
@@ -42,20 +42,23 @@ end_idx = ARGS[3]
 start_idx = parse(Int64, start_idx)
 end_idx = parse(Int64, end_idx)
 RES = ARGS[4] # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
+# ws_idx = ARGS[5]  # watershed index. hardcoded below if run for wshed.
 
-if occursin("test", out_subfolder)  # TODO: either replace this with wshed or create different criteria for watershed run.  
-    # if test substring is part of output subfolder then do the test run on subset of pixels
-    test_run = true
-    wshed_run = false
+pixel_run = false
+wshed_run = false
+test_run = false
+if occursin("pixel", out_subfolder)  
+    # if pixel substring is part of output subfolder then run on one pixel
+    pixel_run = true
 elseif occursin("wshed", out_subfolder)  # if wshed prefix substring is part of output subfolder
     wshed_run = true
-    test_run = false
-else
-    # we define both these varaibles to avoid below where we check for both test or wshed run.
-    test_run = false
-    wshed_run = false
+elseif occursin("test", out_subfolder)  
+    # if test substring is part of output subfolder then do the test run on subset of pixels
+    test_run = true
 end
 start_time = time_ns()
+
+randint = 2  # abs(rand(Int8(1)))  # random integer for log file name (wshed and pixel run)
 
 using Logging, LoggingExtras
 using Tar
@@ -84,7 +87,10 @@ else
     system_machine = "Slurm"
     log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/",start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
     if wshed_run
-        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/wshed", water_year, "_v18", ".log")
+        # log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/wshed", water_year, "_v18_", opt, ".log")
+        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/wshed", water_year, "_v18_", randint, ".log")
+    elseif pixel_run
+        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/pixel", water_year, "_v18_", randint, ".log")
     end
     # cores = parse(Int, ENV["SLURM_CPUS_PER_TASK"])  # ERROR: LoadError: KeyError: key "SLURM_CPUS_PER_TASK" not found [when not supplied on slurm scipt]
     cores = parse(Int, ENV["SLURM_NTASKS"])  # pick ntasks from slurm job script. must be provided.    
@@ -133,6 +139,7 @@ end
 info_only_logger = MinLevelLogger(logger, Logging.Info);  # Logging.Error
 global_logger(info_only_logger)  # Set the global logger to logger; else logs doing directly to console
 
+@info("Water Year : $water_year")
 @info("base_folder : $base_folder")
 @info("Host computer machine: $host_machine")
 @info("Number of processes (procs): $(nprocs())")
@@ -219,6 +226,13 @@ if test_run
     @info("TEST RUN ONLY  ")
     # Aside: Get test set of data. This part needs re-writing before using for test [TODO].
     A = A[1101:1109, start_idx:end_idx, :]  # for test run
+    # A = A[X=Near([-100.2]), Y=Near([50.1])]  # Using lon/lat. Ti is optional here.  
+elseif pixel_run
+    @info("Pixel Run  ")
+    # To select just one pixel. Index of coordinates must be passed as vector (ie [1101] not 1101), esle it will loose the dimension of X, Y and subsequent code with cartesian index will not work.
+    # A = A[[1101], [3001], :]  # using index for X and Y respectively
+    # A = A[X=Near([-100.2]), Y=Near([50.1])]  # Using lon/lat. Ti is optional here.  
+    A = A[X=Near([-119.348099]), Y=Near([37.876408])]  # Using lon/lat. Ti is optional here.  
 elseif wshed_run
     @info("Watershed Run  ")
     # For watershed: give lower left and upper right longitude/latitude as corners of the bounding box (or hardcode here).
@@ -227,7 +241,7 @@ elseif wshed_run
         ws_idx = ARGS[5]  # read the index from command line
         ws_idx = parse(Int64, ws_idx)
         data_cells, header_cells = readdlm("$base_folder/coordinates/wshed.csv", ',', header=true, skipblanks=true)
-        id, wshed_name, x0, x1, y0, y1 = data_cells[ws_idx, :]  
+        id, wshed_name, x0, x1, y0, y1 = data_cells[ws_idx, :]
         @info("Index, Watershed and bounding coords: $id $wshed_name $x0 $x1 $y0 $y1")
     else
         # Hardcoded to Tuolumne watershed
