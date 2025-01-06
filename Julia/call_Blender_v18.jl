@@ -32,11 +32,12 @@ Jun 20, 2024 : call_Blender_v18.jl uses Estimate_v59.jl
     - Snowf_tavg, SWE_tavg, Tair_f_tavg are np.unit16
         - Snowf_tavg and SWE_tavg divide by 1000 get floating point values in meters.
         - Tair_f_tavg divide by 100 to get floating point values in Kelvin.
+Jan 05, 2025 : Synchronized to v19 to incorporate pixel and wshed runs.
 
 """
 arg_len = length(ARGS)
 out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_text and nc_outputs saved here
-water_year = out_subfolder[end-3:end] #last 4 chars are assumed year, else error. out_subfolder[3:end]
+water_year = out_subfolder[end-3:end] #last 4 chars are assumed year, else error. 
 start_idx = ARGS[2]  # this is string
 end_idx = ARGS[3]
 start_idx = parse(Int64, start_idx)
@@ -97,7 +98,6 @@ else
     # # cores = parse(Int, ENV["SLURM_JOB_CPUS_PER_NODE"])  # if one node provided; else we have parse as follows
     # subs = Dict("x"=>"*", "(" => "", ")" => "");
     # cores = sum(eval(Meta.parse(replace(ENV["SLURM_JOB_CPUS_PER_NODE"], r"x|\(|\)" => s -> subs[s]))))  # for 1 or more nodes (generic); Int64 
-    @info("SLURM Cores: $cores")
     if occursin("borg", host_machine)  # TODO: discover
         root_dir = "/discover/nobackup"
         base_folder = "$root_dir/projects/coressd/Blender"

@@ -206,13 +206,13 @@ for i in StepRange(1, step, szY)
     # Update the pix_count_threshold based on row index (ie, latitude) to account for the processing time which is higher at lower latitude. This needs further verification.
     # dimensions(sizes): x(11700), y(4700), time(366)
     if start_idx < 100  # needs most memory. old=120.
-        pix_count_threshold = 50000  # 43000
+        pix_count_threshold = 55000  # 50000
     elseif start_idx < 2000
-        pix_count_threshold = 73000  # 60000
+        pix_count_threshold = 75000  # 73000
     elseif start_idx < 3000
-        pix_count_threshold = 83000
+        pix_count_threshold = 85000  # 83000
     else
-        pix_count_threshold = 100000
+        pix_count_threshold = 105000  # 105000
     end
 
     if cum_valid_pix_count > pix_count_threshold || end_idx == szY  # last job may not have enough pixels to pass the pix count threshold
