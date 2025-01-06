@@ -47,17 +47,17 @@ RES = ARGS[4] # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 
 opt = parse(Int, ARGS[5])  # 1 or 2 optional choices for different parameterization of G
 # ws_idx = ARGS[6]  # watershed index. hardcoded below if run for wshed.
 
-test_run = false
 pixel_run = false
 wshed_run = false
-if occursin("test", out_subfolder)  
-    # if test substring is part of output subfolder then do the test run on subset of pixels
-    test_run = true
-elseif occursin("pixel", out_subfolder)  
-    # if test substring is part of output subfolder then do the test run on subset of pixels
+test_run = false
+if occursin("pixel", out_subfolder)  
+    # if pixel substring is part of output subfolder then run on one pixel
     pixel_run = true
 elseif occursin("wshed", out_subfolder)  # if wshed prefix substring is part of output subfolder
     wshed_run = true
+elseif occursin("test", out_subfolder)  
+    # if test substring is part of output subfolder then do the test run on subset of pixels
+    test_run = true
 end
 start_time = time_ns()
 

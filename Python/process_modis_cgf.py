@@ -274,7 +274,8 @@ del lower_left_da, upper_right_da, lower_left_granule, upper_right_granule, file
 #     extract_modis(download_folder)  # Serial processing
 Parallel(n_jobs=cores)(delayed(extract_modis)(download_folder, daF) for download_folder in download_folder_list)
 # with n_jobs=-1 give out of memory error on Discover, likely because it is using all cores even though only a few
-# requested by Slurm. Hence, write a explicit number rather than -1.  
+# requested by Slurm. Hence, write a explicit number rather than -1. Keep cores below 30 to avoid NodeFailError  
+# Runtime ~10 mins for 1 year with 26 cores.
 logging.info("Finished Reproj match of MODIS to SEUP Resolution.")
 
 # ========================================================================================================
@@ -304,7 +305,7 @@ logging.info(f"Count of netcdf files: {len(nc_files)}")
 count = 0
 # 1. First concat the files along time dimension
 # da = None  # just declaring for red lines below
-# TODO THIS FOR LOOP IS THE MOST TIME CONSUMING. more than 11 hours for WY2011.
+# TODO THIS FOR LOOP IS THE MOST TIME CONSUMING. more than 10 hours for WY2011.
 for nc_file in nc_files:
     # these are actually NetCDF files
     # begin_dt = nc_file.split('.')[1][1:]
