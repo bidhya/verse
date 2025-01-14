@@ -234,7 +234,15 @@ elseif pixel_run
     # To select just one pixel. Index of coordinates must be passed as vector (ie [1101] not 1101), esle it will loose the dimension of X, Y and subsequent code with cartesian index will not work.
     # A = A[[1101], [3001], :]  # using index for X and Y respectively
     # A = A[X=Near([-100.2]), Y=Near([50.1])]  # Using lon/lat. Ti is optional here.  
-    A = A[X=Near([-119.348099]), Y=Near([37.876408])]  # Using lon/lat. Ti is optional here.  
+    # A = A[X=Near([-119.348099]), Y=Near([37.876408])]  # Using lon/lat. Ti is optional here.  
+    # Passing pixels using csv file
+    pix_idx = ARGS[6]  # read the index from command line
+    ws_idx = parse(Int64, pix_idx)
+    data_cells, header_cells = readdlm("$base_folder/coordinates/pixels.csv", ',', header=true, skipblanks=true)
+    id, pix_name, x0, y0, comment = data_cells[ws_idx, :]
+    @info("Index, Namae and bounding coords: $id $pix_name $x0  $y0 $comment")
+    A = A[X=Near([x0]), Y=Near([y0])]  # Using lon/lat. Ti is optional here.  
+
 elseif wshed_run
     @info("Watershed Run  ")
     # For watershed: give lower left and upper right longitude/latitude as corners of the bounding box (or hardcode here).
