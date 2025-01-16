@@ -77,7 +77,7 @@ For test run:
 For 1 pixel run:
 - Use "pixel" prefix to WY. Example: pixel_WY2015 while calling call_Blender julia script.   
 - folder and sub-folders created within script to save outputs.  
-    - usage: julia verse/Julia/call_Blender_v19.jl "pixel/pixel_WY2015" 4200 4200 010 2
+    - usage: julia verse/Julia/call_Blender_v19.jl "pixel/pixel_WY2015" 200 200 010 2 1
 
 For watershed run:
 - need a text file of watershed bounding box (../coressd/Blender/coordinates/wshed.csv)  
