@@ -242,6 +242,10 @@ elseif pixel_run
     id, pix_name, x0, y0, comment = data_cells[ws_idx, :]
     @info("Index, Namae and bounding coords: $id $pix_name $x0  $y0 $comment")
     A = A[X=Near([x0]), Y=Near([y0])]  # Using lon/lat. Ti is optional here.  
+    # To save inputs for making plotting and analysis 
+    subset_folder = "$OUTDIR/$out_subfolder/Inputs"  # file name with fullpath for subset
+    mkpath(subset_folder)
+    write("$subset_folder/pixel.nc", A, force=true)
 
 elseif wshed_run
     @info("Watershed Run  ")
