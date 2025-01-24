@@ -7,7 +7,8 @@ Bidhya N Yadav
 To combine small parts of nc files into a PAN-america-wide nc file for all the Blender output variables
 Slurm hint: 20 tasks with ~90 GB Ram
 parallelized using threads  
-June 09, 2024: removed parallelization due to memory limitation for 1 km run. 
+Jun 09, 2024: removed parallelization due to memory limitation for 1 km run. 
+Jan 24, 2024: Save netcdf files with compression.  
 """
 
 arg_len = length(ARGS)
@@ -127,7 +128,7 @@ for var in out_vars
         @info("Rebuild raster.")
         outRaster = rebuild(outRaster; name=sym_var)
         @info("Save netcdf")
-        write("$(final_nc_outDir)/$(var).nc", outRaster, force=true)
+        write("$(final_nc_outDir)/$(var).nc", outRaster, force=true, deflatelevel=1)  # deflate to compress 1 is faster and similar size to 9
         @info("Finished saving netcdf file.")
         println(logger.stream, "")  # include blank line in the output log after logging this message
         # outRaster = Nothing

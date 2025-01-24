@@ -240,7 +240,7 @@ elseif pixel_run
     ws_idx = parse(Int64, pix_idx)
     data_cells, header_cells = readdlm("$base_folder/coordinates/pixels.csv", ',', header=true, skipblanks=true)
     id, pix_name, x0, y0, comment = data_cells[ws_idx, :]
-    @info("Index, Namae and bounding coords: $id $pix_name $x0  $y0 $comment")
+    @info("Index, Name and bounding coords: $id $pix_name $x0  $y0 $comment")
     A = A[X=Near([x0]), Y=Near([y0])]  # Using lon/lat. Ti is optional here.  
     # To save inputs for making plotting and analysis 
     subset_folder = "$OUTDIR/$out_subfolder/Inputs"  # file name with fullpath for subset
