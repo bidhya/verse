@@ -33,7 +33,8 @@ Notes:
 
 Updates:
     Nov 28, 2024 : Exported from Jupyter/Papermill workflow. Moving forward, this script will be used to extract LIS data for Blender optimization routine.
-
+    Mar 02, 2025 : Removing RES as an argument. Will only work for 0.01 degree resolution. And simplifying the script.
+    Mar 07, 2025 : Adding format="NETCDF4", engine="h5netcdf" while savig to netcdf(). Requires h5netcdf and h5py to be installed (conda-forge).
 """
 
 # import sys
@@ -56,16 +57,16 @@ node = platform.node()
 
 parser = argparse.ArgumentParser(description='Extract LIS data.')
 parser.add_argument('water_year', help='Water Year', type=str)
-parser.add_argument('--RES', help='Grid size (Resolution) of SEUP Inputs', type=str, default="010")  # SEUP was 050 but may not work here.
+# parser.add_argument('--RES', help='Grid size (Resolution) of SEUP Inputs', type=str, default="010")  # SEUP was 050 but may not work here.
 # parser.add_argument('--cores', help='Number of cores for multiprocessing', type=int, default=12)  # don' use -1 on DISCOVER  
 args = parser.parse_args()
 water_year = args.water_year
-RES = args.RES  # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
-logging.basicConfig(filename=f"out/extract_lis_{water_year}_{RES}.log", level=logging.INFO, format='%(asctime)s : %(message)s')
+# RES = args.RES  # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
+logging.basicConfig(filename=f"out/extract_lis_{water_year}.log", level=logging.INFO, format='%(asctime)s : %(message)s')  # _{RES}
 
 # Hardcoded: Path to LIS data and Output folder. Will only work on Discover.
 lis_folder = "/discover/nobackup/projects/coressd/mwrzesie/runOL/out.OL/SURFACEMODEL"  # new 1 km data
-out_folder = f"/discover/nobackup/projects/coressd/Blender/Inputs_{RES}"  # output of this script will be saved in this parent folder.
+out_folder = "/discover/nobackup/projects/coressd/Blender/Inputs"  # _{RES} output of this script will be saved in this parent folder.
 
 variables = ["Snowf_tavg", "SWE_tavg", "Tair_f_tavg", "Qg_tavg"]  # LIS variables to extract for Blender optimization routine
 # Generate list of water year and months. May seem a bit convoluted because of the way water year is defined.
@@ -77,7 +78,7 @@ yr_mon_list = yr_mon_list1 + yr_mon_list2
 # Take a sample netcdf file to extract a-priori data and attrs
 # Assumption: All files follow the same structure. Final output may be all crap if this assumption does not hold
 month_subfolder = yr_mon_list[6]
-print(month_subfolder)
+logging.info(month_subfolder)
 folder = f"{lis_folder}/{month_subfolder}"
 nc_files = [f for f in os.listdir(folder) if f.endswith(".nc")]
 nc_files = [f for f in nc_files if f.startswith("LIS_HIST_")]  # remove this extra LIS output generated Melissa.  
@@ -91,16 +92,17 @@ ds = xr.open_dataset(f"{folder}/{nc_file}", engine='netcdf4')
 # ds[variables]  # not good because it seems to drop the time dimension
 # extra_variables = [v for v in list(ds.data_vars) if not v in variables]  # this also remove lon, lat variables which need for now. 
 extra_variables = ['AvgSurfT_tavg', 'Albedo_tavg', 'SnowDepth_tavg', 'Snowcover_tavg', 'LAI_tavg', 'Greenness_inst', 'TotalPrecip_tavg']
-print(f"Drop these variables from the dataset: \n {extra_variables}")
+logging.info(f"Drop these variables from the dataset: \n {extra_variables}")
 ds = ds.drop_vars(extra_variables)
 
 # Manually genenate lan/lon values. Use this to replace unevenly spaced lat/lon from LIS runs. These likely persisited dut to floating point conversion.
 ll_lon = ds.attrs["SOUTH_WEST_CORNER_LON"]
 ll_lat = ds.attrs["SOUTH_WEST_CORNER_LAT"]
 # Hardcode DX and DY because extracting this from attrs adds some decimals (probably float related or real not sure)
-DX = 0.01  # ds.attrs["DX"]  #0.05 # grid spacing in x-direction; TODO: check why this is not exactly 0.05 but rather DX=0.05000000074505806; same issue for DY
+# TODO: check why this is not exactly 0.05 but rather DX=0.05000000074505806; same issue for DY
+DX = 0.01  # ds.attrs["DX"]  #0.05 # grid spacing in x-direction;
 DY = 0.01  # ds.attrs["DY"]  #0.05 # grid spacing in y-direction; 
-print(f"ll_lon: {ll_lon} , ll_lat: {ll_lat}, DX: {DX}, DY: {DY}")
+logging.info(f"ll_lon: {ll_lon} , ll_lat: {ll_lat}, DX: {DX}, DY: {DY}")
 
 lon = ds.east_west.data * DX + ll_lon
 lat = ds.north_south.data * DY + ll_lat
@@ -114,14 +116,12 @@ dt_list = []
 count = 0
 tic()
 for month_subfolder in yr_mon_list:
-    print(month_subfolder)
     folder = f"{lis_folder}/{month_subfolder}"
     nc_files = [f for f in os.listdir(folder) if f.endswith(".nc")]
     nc_files = [f for f in nc_files if f.startswith("LIS_HIST_")]  # new files by Melissa has one new file. remove it.
     # Sort in ascending order of data
     nc_files.sort(key=lambda x: pd.to_datetime(x.split("_")[2].split(".")[0]))
     for nc_file in nc_files:
-        # print(f"nc_file : {nc_file}")
         dt_list.append(pd.to_datetime(nc_file.split("_")[2].split(".")[0]))
         if count == 0:
             ds = xr.open_dataset(f"{folder}/{nc_file}", engine='netcdf4', chunks={"lon": 2**8, "lat": 2**8})
@@ -134,7 +134,8 @@ for month_subfolder in yr_mon_list:
             ds_temp = ds_temp.set_coords(["lon", "lat"])
             ds = xr.concat([ds, ds_temp], dim='time')  #, dim='time'
         count += 1
-    toc()
+    logging.info(f"YearMonth: {month_subfolder} : {count} files read")
+logging.info(f"{toc()}")
 tic()
 # Replace the old data with new ones I created
 ds["lon"].data = np.around(lon, 3)
@@ -155,7 +156,7 @@ ds.attrs["SOUTH_WEST_CORNER_LAT"] = ds.y.min().data.item(0)  # new we changes lo
 logging.info(f"File size after latitude slice (30, 72): {ds.nbytes / 1e9} GB")
 logging.info("====================================================")
 
-combined_folder = f"{out_folder}/lis/WY{water_year}"
+combined_folder = f"{out_folder}/WY{water_year}"  # f"{out_folder}/lis/WY{water_year}"
 os.makedirs(combined_folder, exist_ok=True)
 
 int_variables = ["Snowf_tavg", "SWE_tavg", "Tair_f_tavg"]  # , "Qg_tavg". Use only the variables that will be saved to uint16 
@@ -165,7 +166,7 @@ nodata_value = np.iinfo(d_type).max  # 65535 for uint16
 for var in int_variables:
     logging.info(f"Saving {var}")
     if var == "Snowf_tavg":
-        print(f"Convert units for {var}")
+        logging.info(f"Convert units for {var}")
         # 1. Convert unit of snowfall
         # kg m-2 s-1 to kg m-2 hr-1 convert rate to accumulation per second in 24 hours;ie, 3600 seconds x 24 hours
         ds1 = ds[var]  # .to_dataset() # keep as dataarray for calculations
@@ -190,9 +191,9 @@ for var in int_variables:
     # To save netcdf file. But takes forever to save!
     # encoding = {var: {'zlib': True} for var in ds.data_vars}
     encoding = {var: {'zlib': True}}  # 'complevel':5 
-    ds1.to_netcdf(f"{combined_file}.nc", encoding=encoding)  # ~20 minutes with original floats.
+    ds1.to_netcdf(f"{combined_file}.nc", encoding=encoding, format="NETCDF4", engine="h5netcdf")  # ~20 minutes with original floats.
     # ds1.to_netcdf(f"{combined_file}_uncompress.nc")
-    logging.info(f"\tDone Saving: {var}")
+    logging.info(f"\tDone Saving: {var}. {toc()}")
     logging.info("---------------------------------------------------")
 
 var = "Qg_tavg"  # Qg_tavg is the only variable that will be saved in float. This is used as template, mask, missing_val etc. in all of Julia workflow.
@@ -205,7 +206,7 @@ combined_file = f'{combined_folder}/{var}'
 # To save netcdf file. But takes forever to save!
 # encoding = {var: {'zlib': True} for var in ds.data_vars}
 encoding = {var: {'zlib': True}}  # 'complevel':5 
-ds1.to_netcdf(f"{combined_file}.nc", encoding=encoding)  # ~20 minutes.
+ds1.to_netcdf(f"{combined_file}.nc", encoding=encoding, format="NETCDF4", engine="h5netcdf")  # ~20 minutes.
 # ds1.to_netcdf(f"{combined_file}_uncompress.nc")
 logging.info(f"\tDone Saving: {var} \n")
 logging.info(f"Output saved here: {combined_file}")
