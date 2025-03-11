@@ -33,7 +33,7 @@ Jun 20, 2024 : call_Blender_v18.jl uses Estimate_v59.jl
         - Snowf_tavg and SWE_tavg divide by 1000 get floating point values in meters.
         - Tair_f_tavg divide by 100 to get floating point values in Kelvin.
 Jan 05, 2025 : Synchronized to v19 to incorporate pixel and wshed runs.
-
+Mar 02, 2025 : Removing "RES" everywhere to simplify the script. 
 """
 arg_len = length(ARGS)
 out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_text and nc_outputs saved here
@@ -42,8 +42,8 @@ start_idx = ARGS[2]  # this is string
 end_idx = ARGS[3]
 start_idx = parse(Int64, start_idx)
 end_idx = parse(Int64, end_idx)
-RES = ARGS[4] # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
-# ws_idx = ARGS[5]  # watershed index. hardcoded below if run for wshed.
+# RES = ARGS[4] # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
+# ws_idx = ARGS[4]  # watershed index. hardcoded below if run for wshed.
 
 pixel_run = false
 wshed_run = false
@@ -79,8 +79,8 @@ if occursin("L-JY0R5X3", host_machine)
         root_dir = "/mnt/d"  #for Ubuntu (WSL2 on windows machine
     end
     base_folder = "$root_dir/coressd/Blender"
-    DataDir = "$root_dir/coressd/Blender/Inputs_$(RES)"  # must exist  (Old = NoahMP)
-    OUTDIR = "$base_folder/Runs/$(RES)"
+    DataDir = "$root_dir/coressd/Blender/Inputs"  # _$(RES) must exist  (Old = NoahMP)
+    OUTDIR = "$base_folder/Runs"  # /$(RES)
     log_filename = string(start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
     addprocs()
 else  
@@ -104,21 +104,21 @@ else
         # base_folder = "$root_dir/byadav/coressd/Blender"  # used when project directory was full.  
         tmpdir =  ENV["LOCAL_TMPDIR"]  #tempdir() to save tempoary text files on hpc node. 
         # DataDir = "$root_dir/projects/coressd/Blender/Inputs"  # INDIR. must exist  (Old = NoahMP)
-        DataDir = "$root_dir/projects/coressd/Blender/Inputs_$(RES)"  # INDIR. must exist  (Old = NoahMP)
-        OUTDIR = "$base_folder/Runs/$(RES)"  # Blender Run outputs saved here. (../temp_nc/, ../logs/, ../Outputs/ etc)
+        DataDir = "$root_dir/projects/coressd/Blender/Inputs"  # _$(RES)  INDIR. must exist  (Old = NoahMP)
+        OUTDIR = "$base_folder/Runs"  # /$(RES) Blender Run outputs saved here. (../temp_nc/, ../logs/, ../Outputs/ etc)
     elseif occursin(".osc.edu", host_machine)
         root_dir = "/fs/ess/PAS1785"  # "/fs/scratch/PAS1785/coressd"
         base_folder = "$root_dir/coressd/Blender"
         tmpdir =  ENV["TMPDIR"]  #tempdir()
-        DataDir = "$root_dir/coressd/Blender/Inputs_$(RES)"  # Inputs
-        OUTDIR = "$base_folder/Runs/$(RES)"
+        DataDir = "$root_dir/coressd/Blender/Inputs"  # _$(RES)
+        OUTDIR = "$base_folder/Runs"  # /$(RES)
     elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
         root_dir = "/fs/project/howat.4/yadav.111"  # homedir()  #  Unity
         # base_folder = "/home/yadav.111/Github/Blender"  # old
         base_folder = "$root_dir/coressd/Blender"  # "$root_dir/Github/coressd/Blender"
         tmpdir =  ENV["TMPDIR"]  #tempdir()
-        DataDir = "$root_dir/coressd/Blender/Inputs_$(RES)"
-        OUTDIR = "$base_folder/Runs/$(RES)"
+        DataDir = "$root_dir/coressd/Blender/Inputs"  # _$(RES)
+        OUTDIR = "$base_folder/Runs"  # /$(RES)
         # @info("SLURM_SUBMIT_DIR: $(ENV["SLURM_SUBMIT_DIR"])")
     else
         @info("Unknown computer system. Aborting ...  ")
@@ -198,11 +198,11 @@ end
 # end
 
 files = (
-    "$DataDir/lis/WY$(water_year)/SCF.nc",
-    "$DataDir/lis/WY$(water_year)/Snowf_tavg.nc",
-    "$DataDir/lis/WY$(water_year)/SWE_tavg.nc",
-    "$DataDir/lis/WY$(water_year)/Tair_f_tavg.nc",
-    "$DataDir/lis/WY$(water_year)/Qg_tavg.nc"
+    "$DataDir/WY$(water_year)/SCF.nc",
+    "$DataDir/WY$(water_year)/Snowf_tavg.nc",
+    "$DataDir/WY$(water_year)/SWE_tavg.nc",
+    "$DataDir/WY$(water_year)/Tair_f_tavg.nc",
+    "$DataDir/WY$(water_year)/Qg_tavg.nc"
     )
 A = RasterStack(files; lazy=true)
 
@@ -238,7 +238,7 @@ elseif wshed_run
     # For watershed: give lower left and upper right longitude/latitude as corners of the bounding box (or hardcode here).
     # TODO: read bounding box from a textfile or use shapefile.   
     if arg_len > 4
-        ws_idx = ARGS[5]  # read the index from command line
+        ws_idx = ARGS[4]  # read the index from command line
         ws_idx = parse(Int64, ws_idx)
         data_cells, header_cells = readdlm("$base_folder/coordinates/wshed.csv", ',', header=true, skipblanks=true)
         id, wshed_name, x0, x1, y0, y1 = data_cells[ws_idx, :]
