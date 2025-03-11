@@ -1,11 +1,8 @@
 """ Create and submit Julia Blender jobs to Slurm on Discover, OSC HPCs.
 
-    USAGE: pass Water_Year, Resolution, and stepsize (number of rows)
-    julia verse/Julia/submit_slurm.jl 2016 10 010  # OLD
-    julia verse/Julia/submit_slurm.jl 2016 100 050 # OLD
-    julia verse/Julia/submit_slurm.jl 2015 010 2  # order changed. res comes first (Jun 04, 2024)
-    julia verse/Julia/submit_slurm.jl 2015 1 010  # order changed. step comes before RES (Oct 08, 2024)
-    Good values for stepsize: 1, 2, ... upt 10. last tested with 3. Use 1 for more finer control.  
+    USAGE: pass Water_Year and stepsize (number of rows)
+    julia verse/Julia/submit_slurm.jl 2016 1
+        good values for stepsize: 1, 2, ... upto 10. last tested with 3. Use 1 for more finer control.  
 
     Note: 1. This script will call the main script call_Blender_v18.jl
           2. The script is called with 3 arguments: water_year, resolution, stepsize
@@ -16,6 +13,7 @@
     Changelog:  
     - increase number of cores to 125
     - replacing julia installed with conda with the one installed in ../coressd/installs/julia
+    - remove RES from the arguments to simplify the script. RES is not used in the script.
 """
 arg_len = length(ARGS)
 out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_nc saved here
@@ -24,12 +22,12 @@ water_year = out_subfolder[end-3:end] #last 4 chars are assumed year, else error
 step = ARGS[2] #|| 35 on discover
 step = parse(Int32, step)
 # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
-RES = ARGS[3] # 010
+# RES = ARGS[3] # 010
 memory = "184gb"
 
 # mkpath(logDir)
-mkpath("slurm_jobs/$(RES)/$(water_year)/.out")
-cd("slurm_jobs/$(RES)/$(water_year)")
+mkpath("slurm_jobs/$(water_year)/.out")  # /$(RES)
+cd("slurm_jobs/$(water_year)")  # /$(RES)
 
 # 1. Setup inputs and output directories and file locations
 # select the root directory (this will be different on windows, linux or Mac) 
@@ -38,17 +36,17 @@ if occursin("discover", host_machine) #|| occursin("borg", host_machine)
     root_dir = "/discover/nobackup"
     base_folder = "$root_dir/projects/coressd/Blender"
     # base_folder = "$root_dir/byadav/coressd/Blender"  # aside: temporary when main storage was full.
-    DataDir = "$root_dir/projects/coressd/Blender/Inputs_$(RES)"  # INDIR. must exist  (Old = NoahMP)
+    DataDir = "$root_dir/projects/coressd/Blender/Inputs"  # _$(RES)  INDIR. must exist  (Old = NoahMP)
     hpc_name = "discover"
-    cores = 110  # 110 for stepsize 125 for 5 km run.
-    if RES == "010"
-        cores = 125  # 120, 95, 80. # maybe use less cores to prevent NODE_FAIL error for 1km run (TBD). 
-    end
+    cores = 125  # 110 for stepsize 125 for 5 km run.
+    # if RES == "010"
+    #     cores = 125  # 120, 95, 80. # maybe use less cores to prevent NODE_FAIL error for 1km run (TBD). 
+    # end
     memory = "0" #"184gb"
 elseif occursin(".osc.edu", host_machine)
     root_dir = "/fs/ess/PAS1785/coressd"  # "/fs/scratch/PAS1785/coressd"
     base_folder = "$root_dir/Blender"
-    DataDir = "$base_folder/Inputs_$(RES)"
+    DataDir = "$base_folder/Inputs"  # _$(RES)
     hpc_name = "osc"
     cores = 48  # 40
     memory = "0" #"175gb"
@@ -56,7 +54,7 @@ elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
     root_dir = "/fs/project/howat.4/yadav.111/coressd"  # homedir()  #  Unity
     # base_folder = "/home/yadav.111/Github/Blender"  # old
     base_folder = "$root_dir/Blender"  # "$root_dir/Github/coressd/Blender"
-    DataDir = "$base_folder/Inputs_$(RES)"
+    DataDir = "$base_folder/Inputs"  # _$(RES)
     hpc_name = "unity"
     cores = 40  # 39 24 cores with 96GB memory for old node
     memory = "0"  # 186gb seems max allowed
@@ -121,7 +119,7 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         else
             write(f, "cp -r ~/Github/verse .\n")
         end
-        write(f, "julia verse/Julia/call_Blender_v18.jl $(out_subfolder) $(start_idx) $(end_idx) $(RES)\n\n")
+        write(f, "julia verse/Julia/call_Blender_v18.jl $(out_subfolder) $(start_idx) $(end_idx)\n\n")  #  $(RES)
         write(f, "squeue --job \$SLURM_JOBID \n")
         write(f, "echo List of files on TMPDIR\n")
         write(f, "echo ---------------------------------------------------------------------\n")
@@ -133,11 +131,16 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         write(f, "ECODE=\$?\n")
         write(f, "if [ \$ECODE -eq 0 ]; then\n")
         write(f, "\ttar -czf logs_$(start_idx)_$(end_idx).tar.gz logs*\n")  # list log files on node
-        write(f, "\tmkdir -p $base_folder/Runs/$(RES)/$out_subfolder/logs\n")  # will copy logs here.
-        write(f, "\tcp logs_$(start_idx)_$(end_idx).tar.gz $base_folder/Runs/$(RES)/$out_subfolder/logs\n")  
+        write(f, "\tmkdir -p $base_folder/Runs/$out_subfolder/logs\n")  # /$(RES) will copy logs here.  
+        write(f, "\tcp logs_$(start_idx)_$(end_idx).tar.gz $base_folder/Runs/$out_subfolder/logs\n")  # /$(RES) 
         # write(f, "cp logs_$(start_idx)_$(end_idx).tar.gz \$SLURM_SUBMIT_DIR\n")
         # TODO Write/Call a python script (or Jupyter notebook) to QA/QC the run: count, tables, figures.  
         write(f, "\techo Finished Slurm job successfully\n")
+        # Cleanup the files on the node (not strictly necessary but good practice)
+        write(f, "\techo Cleaning up files on node\n")
+        write(f, "\trm -rf verse\n")
+        write(f, "\trm -rf outputs_txt_*\n")
+        write(f, "\trm -rf logs*\n")
         write(f, "else\n")
         write(f, "\techo Error in Blender run\n")
         write(f, "fi\n\n")
@@ -145,12 +148,6 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         # if hpc == "discover"
         #     write(f, "conda deactivate\n")  # New for Julia installed using conda
         # end
-
-        # Cleanup the files on the node (not strictly necessary but good practice)
-        write(f, "echo Cleaning up files on node\n")
-        write(f, "rm -rf verse\n")
-        write(f, "rm -rf outputs_txt_*\n")
-        write(f, "rm -rf logs*\n")
         write(f, "echo ==============================================================================\n")
     end
     run(`sbatch $(job_file)`)  # submit the job
@@ -163,8 +160,8 @@ using Rasters, NCDatasets
 # A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true) # OLD: 1 file with all variables
 # A = Raster("$DataDir/lis/WY$(water_year)/Qg_tavg.nc", lazy=true) # ERROR: LoadError: ArgumentError: invalid index: :Qg_tavg of type Symbol
 files = (
-    "$DataDir/lis/WY$(water_year)/SCF.nc",
-    "$DataDir/lis/WY$(water_year)/Qg_tavg.nc"
+    "$DataDir/WY$(water_year)/SCF.nc",
+    "$DataDir/WY$(water_year)/Qg_tavg.nc"
     )
 A = RasterStack(files; lazy=true)
 
@@ -206,13 +203,13 @@ for i in StepRange(1, step, szY)
     # Update the pix_count_threshold based on row index (ie, latitude) to account for the processing time which is higher at lower latitude. This needs further verification.
     # dimensions(sizes): x(11700), y(4700), time(366)
     if start_idx < 100  # needs most memory. old=120.
-        pix_count_threshold = 55000  # 50000
+        pix_count_threshold = 60000  # 59000
     elseif start_idx < 2000
-        pix_count_threshold = 75000  # 73000
+        pix_count_threshold = 80000  # 79000
     elseif start_idx < 3000
-        pix_count_threshold = 85000  # 83000
+        pix_count_threshold = 90000  # 89000
     else
-        pix_count_threshold = 105000  # 105000
+        pix_count_threshold = 110000  # 109000
     end
 
     if cum_valid_pix_count > pix_count_threshold || end_idx == szY  # last job may not have enough pixels to pass the pix count threshold
