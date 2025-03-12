@@ -1,5 +1,11 @@
 # Updates to codebase in reverse chronological order
 ====================================================   
+## Mar 11, 2024  
+- Removed "RES" resolution from all scripts to simplify the code for 1-km LIS only data
+- Removed "lis" subfolder of input files
+- Converted Extract_LIS_1km.ipynb  to Extract_LIS.py script  
+- Prototyping on GFix branch for sigmawrfG, cloud cover, etc.
+
 ## Nov 19, 2024  
 - Adding option to run on one pixel  
 
