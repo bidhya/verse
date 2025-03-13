@@ -155,7 +155,9 @@ function define_uncertainty(Pprior,SWEprior,AirT,SCFobs,nt,tmelt_smooth)
             nsnowday+=1
         end
     end
-    σP=σP*sqrt(nsnowday);    
+    if nsnowday > 0
+        σP=σP*sqrt(nsnowday);    
+    end
     
     # 2.2.2 SWE Uncertainty
     fSWE=0.4
