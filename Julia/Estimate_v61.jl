@@ -8,6 +8,7 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir)
 
     # variable sizes: SWE and SCF are storage terms, so will be length nt. 
     #                 P, Melt, and G are flux terms, so will be length nt-1
+    #                 for input, all variables are length nt, so just use Pprior[1:nt-1]. Note, Gprior currently unused
     #                 for output in section 4, will output fluxes as nt, with the last element set to 0.    
 
     # 0 handle variable sizes
