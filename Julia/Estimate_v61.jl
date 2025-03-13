@@ -130,6 +130,10 @@ function smoothdata(SCF_inst,twindow,nt,smoothfunc)
 end
 
 function define_uncertainty(Pprior,SWEprior,AirT,SCFobs,nt,tmelt_smooth)
+
+    # convert air temperature C-> K
+    AirT=AirT.-273.15
+    
     # 2.2.1 Precipitation Uncertainty
     RelPUnc=0.3; #[-] this applies to cumulative precipitation
     # Uncertainty for accumulation . precip is size nt-1
