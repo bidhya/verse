@@ -5,12 +5,15 @@ using DelimitedFiles
 Random.seed!(1234)  # seed for reproducibility
 
 function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir)
+  """
+  variable sizes
+  =============== 
+  SWE and SCF are storage terms, so will be length nt. 
+  P, Melt, and G are flux terms, so will be length nt-1
+  for input, all variables are length nt, so just use Pprior[1:nt-1]. Note, Gprior currently unused
+  for output in section 4, will output fluxes as nt, with the last element set to 0.    
 
-    # variable sizes: SWE and SCF are storage terms, so will be length nt. 
-    #                 P, Melt, and G are flux terms, so will be length nt-1
-    #                 for input, all variables are length nt, so just use Pprior[1:nt-1]. Note, Gprior currently unused
-    #                 for output in section 4, will output fluxes as nt, with the last element set to 0.    
-
+  """
     # 0 handle variable sizes
     nt=length(SCFinst)
     Pprior=Pprior[1:nt-1]
@@ -60,7 +63,7 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir)
 
     # 3 Solve
     m = Model(optimizer_with_attributes(Ipopt.Optimizer,"max_iter"=>5000))
-    set_silent(m)
+    # set_silent(m)
     # define variables and bounds
     @variable(m, SWEmin_global <= SWE[i=1:nt] <= SWEmax[i],start=SWEprior[i] );
     @variable(m,  Precip[i=1:nt-1]>=0. ,start=Pprior[i]);
@@ -74,9 +77,12 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir)
       @constraint(m,SWE[i+1]==SWE[i]+Precip[i]-Melt[i])
     end
     # define objective function
-    @objective(m,Min,sum((Precip-Pprior).^2 ./σP.^2) + sum((SWE-SWEprior ).^2 ./ σSWE.^2) + sum(Mcost.^2)  );
+    @objective(m,Min,sum((Precip-Pprior).^2 ./σP.^2) + sum((SWE-SWEprior ).^2 ./ σSWE.^2) + sum(Mcost.^2));
+    log_file =  "$logDir/Pix_$(i)_$(j).txt"  # original
     # solve
-    optimize!(m)        
+    redirect_stdio(stdout=log_file, stderr=log_file) do
+      optimize!(m)
+    end
     print(termination_status(m))
     
     # 4 extract
@@ -107,7 +113,6 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir)
     m = nothing
     GC.gc()
     return nothing    
-    
 end
 
 function smoothdata(SCF_inst,twindow,nt,smoothfunc)
