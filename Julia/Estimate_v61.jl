@@ -1,11 +1,15 @@
+using Random
+using JuMP
+using Ipopt
 using DelimitedFiles
+Random.seed!(1234)  # seed for reproducibility
 
 function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir)
     
     # 1 Smooth SCF observations
     nt=length(SCFinst)
     twindow=5
-    SCF_obs=smoothdata(SCFinst,twindow,nt,"mean");    
+    SCFobs=smoothdata(SCFinst,twindow,nt,"mean");    
     twindow=60
     SCF_smooth_season=smoothdata(SCFinst,twindow,nt,"mean");
 
@@ -40,13 +44,12 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir)
     Meltmax=0.075;
     
     # 2.3 Define uncertainty
-    σP,σSWE=define_uncertainty(Pprior,SWEprior,nt,tmelt_smooth)
-    
+    σP,σSWE=define_uncertainty(Pprior,SWEprior,AirT,SCFobs,nt,tmelt_smooth)
     # 2.4 Melt cost function parameters
     k=500
     Melt0=0.05
     L=1
-    
+
     # 3 Solve
     m = Model(optimizer_with_attributes(Ipopt.Optimizer,"max_iter"=>5000))
     set_silent(m)
@@ -119,7 +122,7 @@ function smoothdata(SCF_inst,twindow,nt,smoothfunc)
     return SCF_smooth
 end
 
-function define_uncertainty(Pprior,SWEprior,nt,tmelt_smooth)
+function define_uncertainty(Pprior,SWEprior,AirT,SCFobs,nt,tmelt_smooth)
     # 2.2.1 Precipitation Uncertainty
     RelPUnc=0.3; #[-] this applies to cumulative precipitation
     # Uncertainty for accumulation . precip is size nt-1
@@ -137,7 +140,7 @@ function define_uncertainty(Pprior,SWEprior,nt,tmelt_smooth)
     nsnowday=0
     Pmin=0.001
     for i=1:nt-1
-        if Pprior[i]>0.001 && Tair[i] < 1.5
+        if Pprior[i]>0.001 && AirT[i] < 1.5
             nsnowday+=1
         end
     end
