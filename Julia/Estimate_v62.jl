@@ -106,7 +106,7 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir)
     SWEpv=ones(nt,1)*NODATAvalue;
     
     # 5 output
-    out_vars = hcat(SWEhat, GmeltHat, Ghat, Phat, Ushat, G_pv, Gmelt_pv, U_pv, SWEpv,SCFobs)
+    out_vars = hcat(SWEhat, GmeltHat, Ghat, Phat, Ushat, G_pv, Gmelt_pv, U_pv, SWEpv, SCFobs)
     writedlm("$(exp_dir)/Pix_$(i)_$(j).txt", out_vars)
     
     # 6 clean up
