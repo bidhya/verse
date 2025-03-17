@@ -29,33 +29,33 @@ The notes here are now only specific to LIS related 1km runs.
     - `WY2015/outputs`: Final PAN Americal Outputs created by merging files from "temp_nc" folder
 
 # Order of Script Execution for coressd project
-## I. To Prepare data
+## I. Generate Input Files for Blender Run
 Code Location: `../coressd/Github`
 
 1. `Slurm_Jobs/a_lis_process.sh` : Process LIS generate input files for Blender run.  
-    Use multiple cores  
-    `Outputs`: All daily LIS netcdf files saved separately as follows  
-        ..`coress/Blender/Inputs/WY2015`
-        - `Snowf_tavg.nc`
-        - `SWE_tavg.nc`
-        - `Tair_f_tavg.nc`
-        - `Qg_tavg.nc`
-        - `SCF.nc` (will be created by next slurm job (b_process_modis_cgf.sh))  
+Use multiple cores  
+`Outputs`: All daily LIS netcdf files saved separately as follows
+   - `../coress/Blender/Inputs/WY2015`  
+      - `Snowf_tavg.nc`
+      - `SWE_tavg.nc`
+      - `Tair_f_tavg.nc`
+      - `Qg_tavg.nc`
+      - `SCF.nc` (will be created by next slurm job (`b_process_modis_cgf.sh`))  
 
-2. Slurm_Jobs/b_process_modis_cgf.sh: Extract NA (North America) scale daily Modis_CGF matching the LIS rasters
-- uses `process_modis_cgf.py`  
-- uses `../OSU/MOD10A1F.061/MODIS_Proc/download_snow/..` for snow-cover data
-- uses MOD44B for tree-cover correction  
-- Hard dependency to use "Qg_tavg.nc" as template and mask    
-- intermediate outputs: `../coressd/Blender/Modis/MOD10A1F/clipped2015_010`: clipped and matched to seup resolution
-- `../Blender/Inputs/WY2015/SCF.nc` : ie, same location as LIS outputs as above.  
+2. `Slurm_Jobs/b_process_modis_cgf.sh`: Extract NA (North America) scale daily Modis_CGF matching the LIS rasters
+   - uses `process_modis_cgf.py`
+   - uses `../OSU/MOD10A1F.061/MODIS_Proc/download_snow/..` for snow-cover data
+   - uses `MOD44B` for tree-cover correction
+   - Hard dependency to use `Qg_tavg.nc` as template and mask
+   - intermediate outputs: `../coressd/Blender/Modis/MOD10A1F/clipped2015_010`: clipped and matched to seup resolution
+   - `../Blender/Inputs/WY2015/SCF.nc` : ie, same location as LIS outputs as above.  
 
-## II. To Run Blender (Julia) Code
-Required Julia packages: JuMP Ipopt Rasters NCDatasets CSV LoggingExtras Distributions  
+## II. Run Blender (Julia) Code
+Required Julia packages: `JuMP Ipopt Rasters NCDatasets CSV LoggingExtras Distributions`  
 
 1. On HPC (Discover): the following julia script will generate slurm jobs for a water_year.  
    - cd to `Github` folder
-      - `julia verse/Julia/submit_slurm.jl 2015 1`  # generate and submit slurm jobs for WY2015 with adaptive slice = 1 row.  
+      - `julia verse/Julia/submit_slurm.jl 2015 1`  # generate and submit slurm jobs for WY2015 with adaptive slice = 1 row.
       - generate ~ 500 slurm jobs that calls the following julia script:
       - `julia verse/Julia/call_Blender_v18.jl WY2015 1 17`  : example script for Blender run for WY2015 for slice 1 to 17
       - slurm job folder: 
