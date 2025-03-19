@@ -33,7 +33,7 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir)
     SCF_smooth_season = smoothdata(SCFinst,twindow,nt,"mean");
 
     # 2 Define hyperparameters
-    tmelt,tmelt_smooth,SWEmax,SWEmin_global,Meltmax,σP,σSWE,k,Melt0,L=define_hyperparameters(SCF_smooth_season,nt,Pprior,SWEprior,AirT)
+    tmelt,tmelt_smooth,SWEmax,SWEmin_global,Meltmax,σP,σSWE,k,Melt0,L=define_hyperparameters(SCF_smooth_season,nt,Pprior,SWEprior,AirT, SCFobs)
 
     # 3 Solve
     m = Model(optimizer_with_attributes(Ipopt.Optimizer,"max_iter"=>5000))
@@ -156,7 +156,7 @@ function define_uncertainty(Pprior,SWEprior,AirT,SCFobs,nt,tmelt_smooth)
     return σP, σSWE
 end
 
-function define_hyperparameters(SCF_smooth_season,nt,Pprior,SWEprior,AirT)
+function define_hyperparameters(SCF_smooth_season,nt,Pprior,SWEprior,AirT, SCFobs)
     """
     list of hyperparameters
     =======================
