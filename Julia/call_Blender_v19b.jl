@@ -149,7 +149,7 @@ info_only_logger = MinLevelLogger(logger, Logging.Info);  # Logging.Error
 global_logger(info_only_logger)  # Set the global logger to logger; else logs doing directly to console
 
 using Dates
-@info("==========================================================")
+@info("================================== START ==================================")
 @info("ARGS: $ARGS" )  # print the script name and arguments to the console
 @info("PROGRAM_FILE: $(PROGRAM_FILE)")  # print the script name and arguments to the console
 @info("@__DIR__  $(@__DIR__)")   # directory of this script
@@ -292,7 +292,7 @@ ind = valid_pix_ind
 running_time = (time_ns() - start_time)/1e9/60
 @info("Pre-generating output nc files = $(round(running_time, digits=2)) minutes")
 @info("Starting with blender loop.")
-@info("==========================================================")
+@info("---------------------------")
 @info("Processing $(length(ind)) of $(length(valid_pix_ind))")
 σWRFGmin_list = collect(0:5:200)  # as range 1:5:120
 # σWRFGmin_list[1] = 1  # to ensure that 1 is included in the list
@@ -393,10 +393,6 @@ else
     @info("All pixels not yet processed, so OUTPUT NETCDF FILES not yet created")
 end
 @info("Finished: Combining Text Ouputs to NetCDF FILES")
-# end_time = time_ns()
-# running_time = (end_time - start_time)/1e9/3600
-# @info("Running Time (convert text to nc) = $(round(running_time, digits=3)) hours")
-
 # # Create path for saving log files. tar and copy will be done in the bash script.  
 # mkpath("$OUTDIR/$out_subfolder/logs")  # also works if path already exists
 # @info("Logdir: $OUTDIR/$out_subfolder/logs")
@@ -409,3 +405,5 @@ else
     running_time = running_time/60 # convert to hours
     @info("Grant Total Running Time = $(round(running_time, digits=2)) hours")
 end
+@info("================================== END ==================================\n")
+close(logger)  # close the logger file
