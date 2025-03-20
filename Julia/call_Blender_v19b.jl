@@ -35,7 +35,7 @@ Jun 20, 2024 : call_Blender_v18.jl uses Estimate_v59.jl
 Nov 20, 2024 : call_Blender_v19.jl uses Estimate_v60.jl . Currently in prototyping phase on a GFix branch.  
 Dec 17, 2024 : Adding option to run for just one pixel for testing. 
 Mar 02, 2025 : Removing "RES" everywhere to simplify the script. 
-
+Mar 20, 2025 : Removing test runs because both pixel and watershed runs are now available and can be concidered as test run.
 """
 arg_len = length(ARGS)
 out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_text and nc_outputs saved here
@@ -59,15 +59,11 @@ verse_dir = joinpath(splitpath(@__DIR__)[1:end-1])  # get parent folder of curre
 
 pixel_run = false
 wshed_run = false
-test_run = false
 if occursin("pixel", out_subfolder)  
     # if pixel substring is part of output subfolder then run on one pixel
     pixel_run = true
 elseif occursin("wshed", out_subfolder)  # if wshed prefix substring is part of output subfolder
     wshed_run = true
-elseif occursin("test", out_subfolder)  
-    # if test substring is part of output subfolder then do the test run on subset of pixels
-    test_run = true
 end
 start_time = time_ns()
 
@@ -243,12 +239,7 @@ szY = size(A, 2)  # get size in Y-dimension; here dim = 2
 if end_idx > szY
     end_idx = szY
 end
-if test_run
-    @info("TEST RUN ONLY  ")
-    # Aside: Get test set of data. This part needs re-writing before using for test [TODO].
-    A = A[1101:1109, start_idx:end_idx, :]  # for test run
-    # A = A[X=Near([-100.2]), Y=Near([50.1])]  # Using lon/lat. Ti is optional here.  
-elseif pixel_run
+if pixel_run
     @info("Pixel Run  ")
     # To select just one pixel. Index of coordinates must be passed as vector (ie [1101] not 1101), esle it will loose the dimension of X, Y and subsequent code with cartesian index will not work.
     # A = A[[1101], [3001], :]  # using index for X and Y respectively
@@ -268,6 +259,8 @@ elseif pixel_run
     write("$subset_folder/pixel_$ws_pix_idx.nc", A, force=true)  # !isfile("$subset_folder/pixel.nc") && ## error when two processors try to write at the same time
 elseif wshed_run
     @info("Watershed Run  ")
+    # A = A[1101:1109, start_idx:end_idx, :]  # now deleted test run slice
+    # # A = A[X=Near([-100.2]), Y=Near([50.1])]  # Using lon/lat. Ti is optional here.  
     # For watershed: give lower left and upper right longitude/latitude as corners of the bounding box (or hardcode here).
     # data_cells, header_cells = readdlm("$base_folder/coordinates/wshed.csv", ',', header=true, skipblanks=true)
     wshed_csv = joinpath(verse_dir, "data", "wshed.csv")  # append the rest of the path
