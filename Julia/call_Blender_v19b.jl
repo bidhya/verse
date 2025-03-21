@@ -250,8 +250,8 @@ if pixel_run
     pixel_csv = joinpath(verse_dir, "data", "pixels.csv")  # append the rest of the path
     data_cells, header_cells = readdlm(pixel_csv, ',', header=true, skipblanks=true)
 
-    id, pix_name, x0, y0, comment = data_cells[ws_pix_idx, :]
-    @info("Pixel Index, Name and bounding coords: $id $pix_name $x0  $y0 $comment")
+    id, pix_name, x0, y0, wshed, wsid = data_cells[ws_pix_idx, :]
+    @info("Pixel Index, Name and bounding coords: $id $pix_name $x0  $y0 $wshed $wsid")
     A = A[X=Near([x0]), Y=Near([y0])]  # Using lon/lat. Ti is optional here.  
     # To save inputs for making plotting and analysis 
     subset_folder = "$OUTDIR/$out_subfolder/Inputs"  # file name with fullpath for subset
@@ -333,9 +333,9 @@ else
     running_time = running_time/60 # convert to hours
     @info("Running Time (blender For Loop) = $(round(running_time, digits=2)) hours")
 end
-if pixel_run
-    exit(0)  # exit here to avoid running 2nd part (text2nc)
-end
+# if pixel_run
+#     exit(0)  # exit here to avoid running 2nd part (text2nc)
+# end
 # ===================================================================================================================================
 
 # Step 4. PostProcessing: Combine text files into a grid and save as netcdf
@@ -406,4 +406,3 @@ else
     @info("Grant Total Running Time = $(round(running_time, digits=2)) hours")
 end
 @info("================================== END ==================================\n")
-close(logger)  # close the logger file
