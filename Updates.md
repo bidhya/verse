@@ -1,5 +1,25 @@
 # Updates to codebase in reverse chronological order
-=============================================   
+====================================================   
+## Mar 21, 2024  
+- Estimate_v61.jl created by Mike as a new optimization routine that only used mass balance  
+- removing "test" keywork from runs because pixel and watershed runs are test runs  
+- data folder with pixel and wshed csv files  
+- code cleanup by removing older files to Archive folder  
+- plan to merge "GFix" branch to "develop" branch using squash  
+
+## Mar 11, 2024  
+- Removed "RES" resolution from all scripts to simplify the code for 1-km LIS only data
+- Removed "lis" subfolder of input files
+- Converted Extract_LIS_1km.ipynb  to Extract_LIS.py script  
+- Prototyping on GFix branch for sigmawrfG, cloud cover, etc.
+
+## Nov 19, 2024  
+- Adding option to run on one pixel  
+
+## Nov 19, 2024  
+- updating Estimate_v60.jl to use function to parameterize G
+- call_Blender_v19 passes opt (1 or 2), which is passed to Estimate_v60.jl
+
 ## Nov 12, 2024  
 - M Durand created a much simpler parameterization for heat flux
 - reflected "Estimate_v60.jl" script

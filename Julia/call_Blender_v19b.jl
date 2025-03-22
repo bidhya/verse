@@ -1,18 +1,18 @@
 """
-USAGE: julia verse/Julia/call_Blender_v18.jl test_WY2010 3005 3006 010
+USAGE: julia verse/Julia/call_Blender_v19b.jl test_WY2010 3005 3006 2
     - start and end indices are for y-axis only. All x's selected by default  
 
 SWE estimation using Blender algorithm.
-This is a helper script to organize inputs for calling the Blender function (Estimate_v59.jl).
+This is a helper script to organize inputs for calling the Blender function (Estimate_v61.jl).
 
 The script is currently capable of running on my following platforms.
 - Windows machine
 - Ubuntu (WSL2-based)
 - OSC HPC
 - Ohio-State Unity HPC 
-Julia Versions >= 1.11.2 
-Minimum extra Julia Packages required
-- JuMP, Ipopt, Rasters, NCDatasets 
+Julia Versions >= 1.11.3 
+Minimum extra Julia Packages to install  
+- JuMP, Ipopt, Rasters, NCDatasets, LoggingExtras, Distributions 
 
 Approach
 ========
@@ -32,8 +32,10 @@ Jun 20, 2024 : call_Blender_v18.jl uses Estimate_v59.jl
     - Snowf_tavg, SWE_tavg, Tair_f_tavg are np.unit16
         - Snowf_tavg and SWE_tavg divide by 1000 get floating point values in meters.
         - Tair_f_tavg divide by 100 to get floating point values in Kelvin.
-Jan 05, 2025 : Synchronized to v19 to incorporate pixel and wshed runs.
+Nov 20, 2024 : call_Blender_v19.jl uses Estimate_v60.jl . Currently in prototyping phase on a GFix branch.  
+Dec 17, 2024 : Adding option to run for just one pixel for testing. 
 Mar 02, 2025 : Removing "RES" everywhere to simplify the script. 
+Mar 20, 2025 : Removing test runs because both pixel and watershed runs are now available and can be concidered as test run.
 """
 arg_len = length(ARGS)
 out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_text and nc_outputs saved here
@@ -43,23 +45,29 @@ end_idx = ARGS[3]
 start_idx = parse(Int64, start_idx)
 end_idx = parse(Int64, end_idx)
 # RES = ARGS[4] # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
-# ws_idx = ARGS[4]  # watershed index. hardcoded below if run for wshed.
+opt = parse(Int, ARGS[4])  # 1 or 2 optional choices for different parameterization of G
+# Extra arguments for various test runs: pixel, watershed, modis_fix etc.
+if arg_len > 4
+    ws_pix_idx = parse(Int64, ARGS[5])  # watershed or pixel index. hardcoded below if run for wshed.
+end
+fix_modis_flag = 0  # default=0 means don't apply fix to MODIS.
+if arg_len > 5
+    fix_modis_flag = parse(Int64, ARGS[6]) # 0=false, 1=true  # to fix MODIS using Jack's approach.
+end
+# Get path to the directory of the script. This is only used to access the test data for pixel and watershed runs
+verse_dir = joinpath(splitpath(@__DIR__)[1:end-1])  # get parent folder of current script; later used to retrieve pixel or wshed csv file
 
 pixel_run = false
 wshed_run = false
-test_run = false
 if occursin("pixel", out_subfolder)  
     # if pixel substring is part of output subfolder then run on one pixel
     pixel_run = true
 elseif occursin("wshed", out_subfolder)  # if wshed prefix substring is part of output subfolder
     wshed_run = true
-elseif occursin("test", out_subfolder)  
-    # if test substring is part of output subfolder then do the test run on subset of pixels
-    test_run = true
 end
 start_time = time_ns()
 
-randint = 2  # abs(rand(Int8(1)))  # random integer for log file name (wshed and pixel run)
+# randint = 2  # abs(rand(Int8(1)))  # random integer for log file name (wshed and pixel run)
 
 using Logging, LoggingExtras
 using Tar
@@ -79,19 +87,19 @@ if occursin("L-JY0R5X3", host_machine)
         root_dir = "/mnt/d"  #for Ubuntu (WSL2 on windows machine
     end
     base_folder = "$root_dir/coressd/Blender"
-    DataDir = "$root_dir/coressd/Blender/Inputs"  # _$(RES) must exist  (Old = NoahMP)
+    DataDir = "$root_dir/coressd/Blender/Inputs"  # _$(RES)  must exist  (Old = NoahMP)
     OUTDIR = "$base_folder/Runs"  # /$(RES)
-    log_filename = string(start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
+    log_filename = string("logs/", start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
     addprocs()
-else  
+else
     # Prepare folder, environment and workers for parallel compute for SLURM
     system_machine = "Slurm"
-    log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/",start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
+    log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/logs/",start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
     if wshed_run
-        # log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/wshed", water_year, "_v18_", opt, ".log")
-        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/wshed", water_year, "_v18_", randint, ".log")
+        # log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/wshed", water_year, "_v19_", opt, ".log")
+        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/logs/wshed", water_year, "_v19_", ws_pix_idx, ".log")
     elseif pixel_run
-        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/pixel", water_year, "_v18_", randint, ".log")
+        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/logs/pixel", water_year, "_v19_", ws_pix_idx, ".log")
     end
     # cores = parse(Int, ENV["SLURM_CPUS_PER_TASK"])  # ERROR: LoadError: KeyError: key "SLURM_CPUS_PER_TASK" not found [when not supplied on slurm scipt]
     cores = parse(Int, ENV["SLURM_NTASKS"])  # pick ntasks from slurm job script. must be provided.    
@@ -104,7 +112,7 @@ else
         # base_folder = "$root_dir/byadav/coressd/Blender"  # used when project directory was full.  
         tmpdir =  ENV["LOCAL_TMPDIR"]  #tempdir() to save tempoary text files on hpc node. 
         # DataDir = "$root_dir/projects/coressd/Blender/Inputs"  # INDIR. must exist  (Old = NoahMP)
-        DataDir = "$root_dir/projects/coressd/Blender/Inputs"  # _$(RES)  INDIR. must exist  (Old = NoahMP)
+        DataDir = "$root_dir/projects/coressd/Blender/Inputs"  # _$(RES) INDIR. must exist  (Old = NoahMP)
         OUTDIR = "$base_folder/Runs"  # /$(RES) Blender Run outputs saved here. (../temp_nc/, ../logs/, ../Outputs/ etc)
     elseif occursin(".osc.edu", host_machine)
         root_dir = "/fs/ess/PAS1785"  # "/fs/scratch/PAS1785/coressd"
@@ -132,13 +140,22 @@ else
 end
 # addprocs()  # Works but on cluster will use all cores, even though we not asked for. 
 # also with exclusive option will use all cores which may result in memory error.  
-logger = FormatLogger(open(log_filename, "w"), 0) do io, args
+mkpath(dirname(log_filename))  # dirname gets the directory part of name (ie, without the filename) ; mkpath("logs")
+logger = FormatLogger(open("$log_filename", "a+"), 0) do io, args  # w=write (original); a(a+)=(read), write,create,append
     # Write the module, level and message only
     println(io, args._module, " | ", "[", args.level, "] ", args.message)
 end
 info_only_logger = MinLevelLogger(logger, Logging.Info);  # Logging.Error
 global_logger(info_only_logger)  # Set the global logger to logger; else logs doing directly to console
 
+using Dates
+@info("================================== START ==================================")
+@info("ARGS: $ARGS" )  # print the script name and arguments to the console
+@info("PROGRAM_FILE: $(PROGRAM_FILE)")  # print the script name and arguments to the console
+@info("@__DIR__  $(@__DIR__)")   # directory of this script
+@info("@__FILE__ $(@__FILE__)" )  # name of this script
+@info("verse_dir: $verse_dir" )
+@info("Script Run on $(Dates.now())")
 @info("Water Year : $water_year")
 @info("base_folder : $base_folder")
 @info("Host computer machine: $host_machine")
@@ -147,15 +164,15 @@ global_logger(info_only_logger)  # Set the global logger to logger; else logs do
 
 # Everywhere should come after cores are already added
 @everywhere using Rasters, NCDatasets, Distributions  # Distributions for garbage collection using uniform distribution
-@everywhere include("Estimate_v59.jl")  #https://docs.julialang.org/en/v1/manual/code-loading/; evaluated in global scope
+@everywhere include("Estimate_v61.jl")  #https://docs.julialang.org/en/v1/manual/code-loading/; evaluated in global scope
 
 # DataDir = "$base_folder/Inputs"  # must exist  (Old = NoahMP)
 # DataDir = "$root_dir/projects/coressd/Blender/Inputs"  # must exist  (Old = NoahMP)
 
 # Make a folder insise HPC node because we want to copy existing files there
-exp_dir = "outputs_txt_$(start_idx)_$(end_idx)"  #"$out_folder/outputs_txt"  # tmp_txtDir(old name) To save text outputs for each pixel
+exp_dir = "$out_subfolder/outputs_txt_$(start_idx)_$(end_idx)"  #"$out_folder/outputs_txt"  # tmp_txtDir(old name) To save text outputs for each pixel
 mkpath(exp_dir)  # mkdir
-logDir = "logs_$(start_idx)_$(end_idx)"  # "logs"  "$out_folder/logs"   # Save logs in separate folder
+logDir = "$out_subfolder/JuMP_logs_$(start_idx)_$(end_idx)"  # to save logs created by optimizer. 
 # logDir = "$base_folder/Runs/$out_subfolder/logs/logs_$(start_idx)_$(end_idx)"  # For Debug: save on same folder and outputs  
 mkpath(logDir)  # mkdir; must create here, else error in the current setup  
 # Error on Discover (Nov 08, 2023): rm: cannot remove '/lscratch/tdirs/batch/slurm.24967584.byadav/logs': Directory not empty; Solution: #SBATCH --no-requeue
@@ -222,39 +239,44 @@ szY = size(A, 2)  # get size in Y-dimension; here dim = 2
 if end_idx > szY
     end_idx = szY
 end
-if test_run
-    @info("TEST RUN ONLY  ")
-    # Aside: Get test set of data. This part needs re-writing before using for test [TODO].
-    A = A[1101:1109, start_idx:end_idx, :]  # for test run
-    # A = A[X=Near([-100.2]), Y=Near([50.1])]  # Using lon/lat. Ti is optional here.  
-elseif pixel_run
+if pixel_run
     @info("Pixel Run  ")
     # To select just one pixel. Index of coordinates must be passed as vector (ie [1101] not 1101), esle it will loose the dimension of X, Y and subsequent code with cartesian index will not work.
     # A = A[[1101], [3001], :]  # using index for X and Y respectively
     # A = A[X=Near([-100.2]), Y=Near([50.1])]  # Using lon/lat. Ti is optional here.  
-    A = A[X=Near([-119.348099]), Y=Near([37.876408])]  # Using lon/lat. Ti is optional here.  
+    # A = A[X=Near([-119.348099]), Y=Near([37.876408])]  # Using lon/lat. Ti is optional here.  
+    # Passing pixels using csv file
+    # data_cells, header_cells = readdlm("$base_folder/coordinates/pixels.csv", ',', header=true, skipblanks=true)
+    pixel_csv = joinpath(verse_dir, "data", "pixels.csv")  # append the rest of the path
+    data_cells, header_cells = readdlm(pixel_csv, ',', header=true, skipblanks=true)
+
+    id, pix_name, x0, y0, wshed, wsid = data_cells[ws_pix_idx, :]
+    @info("Pixel Index, Name and bounding coords: $id $pix_name $x0  $y0 $wshed $wsid")
+    A = A[X=Near([x0]), Y=Near([y0])]  # Using lon/lat. Ti is optional here.  
+    # To save inputs for making plotting and analysis 
+    subset_folder = "$OUTDIR/$out_subfolder/Inputs"  # file name with fullpath for subset
+    mkpath(subset_folder)
+    write("$subset_folder/pixel_$ws_pix_idx.nc", A, force=true)  # !isfile("$subset_folder/pixel.nc") && ## error when two processors try to write at the same time
 elseif wshed_run
     @info("Watershed Run  ")
+    # A = A[1101:1109, start_idx:end_idx, :]  # now deleted test run slice
+    # # A = A[X=Near([-100.2]), Y=Near([50.1])]  # Using lon/lat. Ti is optional here.  
     # For watershed: give lower left and upper right longitude/latitude as corners of the bounding box (or hardcode here).
-    # TODO: read bounding box from a textfile or use shapefile.   
-    if arg_len > 4
-        ws_idx = ARGS[4]  # read the index from command line
-        ws_idx = parse(Int64, ws_idx)
-        data_cells, header_cells = readdlm("$base_folder/coordinates/wshed.csv", ',', header=true, skipblanks=true)
-        id, wshed_name, x0, x1, y0, y1 = data_cells[ws_idx, :]
-        @info("Index, Watershed and bounding coords: $id $wshed_name $x0 $x1 $y0 $y1")
-    else
-        # Hardcoded to Tuolumne watershed
-        x0, x1 = -119.66, -119.19  # longitude
-        y0, y1 = 37.73, 38.12      # latitude    
-    end
+    # data_cells, header_cells = readdlm("$base_folder/coordinates/wshed.csv", ',', header=true, skipblanks=true)
+    wshed_csv = joinpath(verse_dir, "data", "wshed.csv")  # append the rest of the path
+    data_cells, header_cells = readdlm(wshed_csv, ',', header=true, skipblanks=true)
+    id, wshed_name, x0, x1, y0, y1 = data_cells[ws_pix_idx, :]
+    @info("Watershed Index and bounding coords: $id $wshed_name $x0 $x1 $y0 $y1")
+    # # Hardcoded to Tuolumne watershed
+    # x0, x1 = -119.66, -119.19  # longitude
+    # y0, y1 = 37.73, 38.12      # latitude    
     # We can use either of the following two methods to subset the data. But using view was much slower.
     # A = view(A, X(x0 .. x1), Y(y0 .. y1))  # using view to select a small chip around watershed, but seems slower
     A = A[X(Between(x0, x1)), Y(Between(y0, y1))]  # Another way of getting the same chip around watershed
     # To save the clipped input file for future use
     subset_folder = "$OUTDIR/$out_subfolder/Inputs"  # file name with fullpath for subset
     mkpath(subset_folder)
-    write("$subset_folder/wshed.nc", A, force=true)
+    write("$subset_folder/wshed_$ws_pix_idx.nc", A, force=true)  ## error when two processors try to write at the same time
 else
     @info("DEFAULT RUN  ")
     A = A[1:end, start_idx:end_idx, :]  # use for default runs
@@ -270,8 +292,14 @@ ind = valid_pix_ind
 running_time = (time_ns() - start_time)/1e9/60
 @info("Pre-generating output nc files = $(round(running_time, digits=2)) minutes")
 @info("Starting with blender loop.")
-@info("==========================================================")
+@info("---------------------------")
 @info("Processing $(length(ind)) of $(length(valid_pix_ind))")
+σWRFGmin_list = collect(0:5:200)  # as range 1:5:120
+# σWRFGmin_list[1] = 1  # to ensure that 1 is included in the list
+# σWRFGmin_list = [1, 5, 10, 15, 25, 50, 100, 200, 300, 400,500]
+σWRFGmin_list = [10]
+@info(σWRFGmin_list)
+@info("Fix MODIS flag = $fix_modis_flag")
 # @sync makes the code wait for all processes to finish their part of the computation before moving on from the loop
 # ie, without @sync, the on of the processors may move to next while loop is still running, creating error and crash whole script prematurely 
 # Threads.@threads for ij in ind
@@ -287,16 +315,27 @@ running_time = (time_ns() - start_time)/1e9/60
     AirT = A["Tair_f_tavg"][X=i, Y=j].data/100
     MSCF = A["SCF"][X=i, Y=j].data; #/100 Convert to fraction. multiplication and devision works without dot. but add/subtract will need dot.
     # blender(out_folder, i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)  # Call blender for the pixel. OLD.
+    # @sync @distributed for σWRFGmin in σWRFGmin_list
+        # blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt, σWRFGmin, fix_modis_flag)
     blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
+    # end
 end
 # without sync above one of the processor to the next step (combining text files to netcdf) which will cause error
 sleep(10)
 @everywhere GC.gc()
 
 end_time = time_ns()
-running_time = (end_time - start_time)/1e9/3600
-@info("Running Time (blender For Loop) = $(round(running_time, digits=2)) hours")
-# exit(0)  # exit here to avoid running 2nd part (text2nc)
+running_time = (end_time - start_time)/1e9/60  # 3600
+# @info("Running Time (blender For Loop) = $(round(running_time, digits=2)) minutes\n")  # hours
+if running_time < 60
+    @info("Running Time (blender For Loop) = $(round(running_time, digits=2)) minutes")
+else
+    running_time = running_time/60 # convert to hours
+    @info("Running Time (blender For Loop) = $(round(running_time, digits=2)) hours")
+end
+# if pixel_run
+#     exit(0)  # exit here to avoid running 2nd part (text2nc)
+# end
 # ===================================================================================================================================
 
 # Step 4. PostProcessing: Combine text files into a grid and save as netcdf
@@ -339,7 +378,9 @@ processed_pix_count = length(pixels)
 @info("Pixels processsed = $processed_pix_count out of $valid_pix_count")
 if processed_pix_count == valid_pix_count #&& system_machine == "Windows"  # ERROR1
     outRaster = copy(A[:Qg_tavg])  # copy(A[:SWE_tavg])
-    var_idx_tuple = (("SWE", 1), ("Gmelt", 2), ("G", 3), ("Precip", 4), ("Us", 5), ("Gpv", 6), ("Gmeltpv", 7), ("Upv", 8), ("SWEpv", 9))
+    # var_idx_tuple = (("SWE", 1), ("Gmelt", 2), ("G", 3), ("Precip", 4), ("Us", 5), ("Gpv", 6), ("Gmeltpv", 7), ("Upv", 8), ("SWEpv", 9))
+    # var_idx_tuple = (("SWE", 1), ("Gmelt", 2), ("G", 3), ("Precip", 4), ("Us", 5), ("Gpv", 6), ("Gmeltpv", 7), ("Upv", 8), ("SWEpv", 9), ("Gmelt_prior", 10), ("sigmaWRFG", 11)) 
+    var_idx_tuple = (("SWE", 1), ("Gmelt", 2), ("G", 3), ("Precip", 4), ("Us", 5), ("Gpv", 6), ("Gmeltpv", 7), ("Upv", 8), ("SWEpv", 9), ("SCFobs", 10))
     mkpath(nc_outDir)
     # Threads.@threads (Roughly same running for threaded and non-thread version on Discover. Likely due to I/O bottleneck)
     # Threads.@threads for var_idx in var_idx_tuple
@@ -352,10 +393,6 @@ else
     @info("All pixels not yet processed, so OUTPUT NETCDF FILES not yet created")
 end
 @info("Finished: Combining Text Ouputs to NetCDF FILES")
-# end_time = time_ns()
-# running_time = (end_time - start_time)/1e9/3600
-# @info("Running Time (convert text to nc) = $(round(running_time, digits=3)) hours")
-
 # # Create path for saving log files. tar and copy will be done in the bash script.  
 # mkpath("$OUTDIR/$out_subfolder/logs")  # also works if path already exists
 # @info("Logdir: $OUTDIR/$out_subfolder/logs")
@@ -368,3 +405,4 @@ else
     running_time = running_time/60 # convert to hours
     @info("Grant Total Running Time = $(round(running_time, digits=2)) hours")
 end
+@info("================================== END ==================================\n")

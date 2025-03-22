@@ -39,7 +39,7 @@
     =====
     Raw downloaded files in original sinusoidal projection
     modis_download_folder   = /discover/nobackup/projects/coressd/OSU/MOD10A1F.061/MODIS_Proc/download_snow     # /2016001/001
-    template_raster         = /discover/nobackup/projects/coressd/Blender/Inputs_010/lis/WY2016/SWE_tavg.nc
+    template_raster         = /discover/nobackup/projects/coressd/Blender/Inputs/WY2016/SWE_tavg.nc  # _010/lis
     Tree cover fraction     = /discover/nobackup/projects/coressd/Blender/Modis/MOD44B/Percent_Tree_Cover/NA/MOD44B.A{water_year}065.061.nc
 
     Outputs 
@@ -59,6 +59,7 @@ import datetime
 import pandas as pd
 
 # from giuh_helpers import tic, toc
+from tictoc import tic, toc
 import numpy as np
 import xarray as xr
 import rioxarray
@@ -72,13 +73,13 @@ parser = argparse.ArgumentParser(description='Extract MODIS CGF files for North 
 parser.add_argument('water_year', help='Water Year for processing', type=str)
 parser.add_argument('--log_name', help='Name of Log file', type=str, default='process_modis_cgf')
 parser.add_argument('--cores', help='Number of cores to use for multiprocessing', type=int, default=2)  # don' use -1 on DISCOVER  
-parser.add_argument('--RES', help='Grid size (Resolution) of SEUP Inputs', type=str)
+# parser.add_argument('--RES', help='Grid size (Resolution) of SEUP Inputs', type=str)
 args = parser.parse_args()
 water_year = args.water_year
 cores = args.cores
 log_name = args.log_name
 log_name = f"{log_name}{water_year}.log"
-RES = args.RES  # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
+# RES = args.RES  # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
 chunk = {"x": 2**8, "y": 2**8}
 # chunk = {"y": 2**7}  # use this same chunk size everywhere
 
@@ -122,10 +123,10 @@ year_doy_list = list(date_generated.strftime("%Y%j"))  # Does this match Day of 
 
 # Global variablees
 # Get a template raster for reprojection match. This is the SEUP data. Any nc file from ../coressd/Blender/Inputs_050/combined/SWE_tavg will work.
-lis_folder = f"{base_folder}/Blender/Inputs_{RES}"  # NoahMP
+lis_folder = f"{base_folder}/Blender/Inputs"  # _{RES} NoahMP
 # template_raster = xr.open_dataset(f'{lis_folder}/combined/SWE_tavg/{water_year}04.nc')  # Use April month  #OLD Harcoded: 201509, 200109  
 # template_raster = xr.open_zarr(f'{lis_folder}/lis/{water_year}_lis.zarr', chunks="auto")  # New LIS data saved as zarr  
-template_raster = xr.open_dataset(f'{lis_folder}/lis/WY{water_year}/SWE_tavg.nc', chunks="auto")  # switching back to nc again.  
+template_raster = xr.open_dataset(f'{lis_folder}/WY{water_year}/SWE_tavg.nc', chunks="auto")  # lis/  switching back to nc again.  
 
 # Select just one day data
 # noah_ds_clip = noah_ds_clip.sel(time = noah_ds_clip2.time)
@@ -141,7 +142,7 @@ DATAFIELD_NAME = "CGF_NDSI_Snow_Cover"  # or just hardcode the variable of inter
 modis_folder = f"{base_folder}/Blender/Modis"  
 # mosaic_folder = f"{modis_folder}/MOD10A1F/mosaic{water_year}_{RES}"  # Feb 07, 2024: inserted temp for mosaics  
 # os.makedirs(mosaic_folder, exist_ok=True)
-clip_folder = f"{modis_folder}/MOD10A1F/clipped{water_year}_{RES}"  # Changed name to "clipped" folder; old name: NA{water_year}_{RES}
+clip_folder = f"{modis_folder}/MOD10A1F/clipped{water_year}"  # _{RES}  Changed name to "clipped" folder; old name: NA{water_year}_{RES}
 os.makedirs(clip_folder, exist_ok=True)
 # combined_modis_folder = f"{modis_folder}/WaterYear"  # modis_wy_combined (old). Final concatenated MODIS CGF data for Blender run will be saved here. This file will be concatenated with lis variables by next script.  
 # os.makedirs(combined_modis_folder, exist_ok=True)
@@ -272,10 +273,12 @@ del lower_left_da, upper_right_da, lower_left_granule, upper_right_granule, file
 # ------------------------------------------------------------------------------------------------
 # for download_folder in download_folder_list:
 #     extract_modis(download_folder)  # Serial processing
+tic()
 Parallel(n_jobs=cores)(delayed(extract_modis)(download_folder, daF) for download_folder in download_folder_list)
 # with n_jobs=-1 give out of memory error on Discover, likely because it is using all cores even though only a few
-# requested by Slurm. Hence, write a explicit number rather than -1.  
-logging.info("Finished Reproj match of MODIS to SEUP Resolution.")
+# requested by Slurm. Hence, write a explicit number rather than -1. Keep cores below 30 to avoid NodeFailError  
+# Runtime ~10 mins for 1 year with 26 cores.
+logging.info(f"Finished Reproj match of MODIS to SEUP Resolution. {toc()}")
 
 # ========================================================================================================
 # ========================================================================================================
@@ -304,7 +307,7 @@ logging.info(f"Count of netcdf files: {len(nc_files)}")
 count = 0
 # 1. First concat the files along time dimension
 # da = None  # just declaring for red lines below
-# TODO THIS FOR LOOP IS THE MOST TIME CONSUMING. more than 11 hours for WY2011.
+# TODO THIS FOR LOOP IS THE MOST TIME CONSUMING. more than 10 hours for WY2011.
 for nc_file in nc_files:
     # these are actually NetCDF files
     # begin_dt = nc_file.split('.')[1][1:]
@@ -339,10 +342,10 @@ logging.info("Saving concatenated MODIS_CGF")
 ds = ds.chunk(chunks=chunk)
 ds = ds.compute()  # Load numpy array in memory before saving. Faster but can create memory error. If memory error, then comment this line
 # ds.to_netcdf(f"{combined_modis_folder}/{water_year}_modis.nc", encoding={"MODSCAG": {'zlib': True}})
-ds.to_netcdf(f"{lis_folder}/lis/WY{water_year}/SCF.nc", encoding={"SCF": {'zlib': True}})  # keep filename same as variable name. required for new rasterstack in Julia.
+ds.to_netcdf(f"{lis_folder}/WY{water_year}/SCF.nc", encoding={"SCF": {'zlib': True}}, format="NETCDF4", engine="h5netcdf")  # lis/ keep filename same as variable name. required for new rasterstack in Julia.
 
 # ds.to_zarr(f"{combined_modis_folder}/{water_year}_modis.zarr")  # time consuming; 1.5 hours
-logging.info(f"\t Finished saving final Modis concatenated file: {lis_folder}/lis/WY{water_year}/SCF.nc")
+logging.info(f"\t Finished saving final Modis concatenated file: {lis_folder}/WY{water_year}/SCF.nc")
 logging.info("Finished Job.")
 
 if __name__ == "__main__":
