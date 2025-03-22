@@ -1,5 +1,12 @@
 # Updates to codebase in reverse chronological order
 ====================================================   
+## Mar 21, 2024  
+- Estimate_v61.jl created by Mike as a new optimization routine that only used mass balance  
+- removing "test" keywork from runs because pixel and watershed runs are test runs  
+- data folder with pixel and wshed csv files  
+- code cleanup by removing older files to Archive folder  
+- plan to merge "GFix" branch to "develop" branch using squash  
+
 ## Mar 11, 2024  
 - Removed "RES" resolution from all scripts to simplify the code for 1-km LIS only data
 - Removed "lis" subfolder of input files
