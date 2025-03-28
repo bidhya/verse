@@ -4,7 +4,7 @@ using Ipopt
 using DelimitedFiles
 Random.seed!(1234)  # seed for reproducibility
 
-function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir)
+function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir, twindow)
   """
   inputs
   ==============
@@ -27,10 +27,10 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir)
     Pprior = Pprior[1:nt-1]
     
     # 1 Smooth SCF observations    
-    twindow = 5
+    # twindow = 5
     SCFobs = smoothdata(SCFinst,twindow,nt,"mean");    
-    twindow = 60
-    SCF_smooth_season = smoothdata(SCFinst,twindow,nt,"mean");
+    # twindow = 60
+    SCF_smooth_season = smoothdata(SCFinst,60,nt,"mean");
 
     # 2 Define hyperparameters
     tmelt,tmelt_smooth,SWEmax,SWEmin_global,Meltmax,σP,σSWE,k,Melt0,L=define_hyperparameters(SCF_smooth_season,nt,Pprior,SWEprior,AirT, SCFobs)
@@ -52,7 +52,7 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir)
     end
     # define objective function
     @objective(m,Min,sum((Precip-Pprior).^2 ./σP.^2) + sum((SWE-SWEprior ).^2 ./ σSWE.^2) + sum(Mcost.^2));
-    log_file =  "$logDir/Pix_$(i)_$(j).txt"  # original
+    log_file =  "$logDir/Pix_$(i)_$(j)_$(twindow).txt"  # original
     # solve
     redirect_stdio(stdout=log_file, stderr=log_file) do
       optimize!(m)
@@ -81,7 +81,7 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir)
     
     # 5 output
     out_vars = hcat(SWEhat, GmeltHat, Ghat, Phat, Ushat, G_pv, Gmelt_pv, U_pv, SWEpv, SCFobs)
-    writedlm("$(exp_dir)/Pix_$(i)_$(j).txt", out_vars)
+    writedlm("$(exp_dir)/Pix_$(i)_$(j)_$(twindow).txt", out_vars)
     
     # 6 clean up
     m = nothing
@@ -186,8 +186,8 @@ function define_hyperparameters(SCF_smooth_season,nt,Pprior,SWEprior,AirT, SCFob
             tmelt[i] = 1
         end
     end    
-    twindow = 30
-    tmelt_smooth = smoothdata(tmelt,twindow,nt,"mean");
+    # twindow = 30
+    tmelt_smooth = smoothdata(tmelt,30,nt,"mean");
     
     # 2.2 Extreme / limit values
     # 2.2.1 SWE
