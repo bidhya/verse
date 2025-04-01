@@ -4,7 +4,7 @@ using Ipopt
 using DelimitedFiles
 Random.seed!(1234)  # seed for reproducibility
 
-function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir, twindow)
+function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir, twindow=5)
   """
   inputs
   ==============
@@ -25,12 +25,13 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir,
     # 0 handle variable sizes
     nt = length(SCFinst)
     Pprior = Pprior[1:nt-1]
-    
-    # 1 Smooth SCF observations    
-    # twindow = 5
-    SCFobs = smoothdata(SCFinst,twindow,nt,"mean");    
+
+    # # 1 Smooth SCF observations    
+    # # twindow = 5
+    # SCFobs = smoothdata(SCFinst,twindow,nt,"mean")
+    SCFobs = fix_modis(SCFinst)  # apply MODIS fix developed by Jack (Feb 04, 2025)
     # twindow = 60
-    SCF_smooth_season = smoothdata(SCFinst,60,nt,"mean");
+    SCF_smooth_season = smoothdata(SCFinst,60,nt,"mean")
 
     # 2 Define hyperparameters
     tmelt,tmelt_smooth,SWEmax,SWEmin_global,Meltmax,σP,σSWE,k,Melt0,L=define_hyperparameters(SCF_smooth_season,nt,Pprior,SWEprior,AirT, SCFobs)
@@ -39,19 +40,19 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir,
     m = Model(optimizer_with_attributes(Ipopt.Optimizer,"max_iter"=>5000))
     # set_silent(m)
     # define variables and bounds
-    @variable(m, SWEmin_global <= SWE[i=1:nt] <= SWEmax[i], start=SWEprior[i]);
+    @variable(m, SWEmin_global <= SWE[i=1:nt] <= SWEmax[i], start=SWEprior[i])
     @variable(m, Precip[i=1:nt-1]>=0. ,start=Pprior[i]);
-    @variable(m, 0. <= Melt[i=1:nt-1]<= Meltmax);
-    @variable(m, Mcost[i=1:nt-1] >=0);
+    @variable(m, 0. <= Melt[i=1:nt-1]<= Meltmax)
+    @variable(m, Mcost[i=1:nt-1] >=0)
     # define constraints
     for i in 1:nt-1
-      @NLconstraint(m,Mcost[i]==L/(1+exp( -k*(Melt[i]-Melt0)   ) ))
+      @NLconstraint(m,Mcost[i]==L/(1+exp( -k*(Melt[i]-Melt0))))
     end
     for i in 1:nt-1
       @constraint(m,SWE[i+1]==SWE[i]+Precip[i]-Melt[i])
     end
     # define objective function
-    @objective(m,Min,sum((Precip-Pprior).^2 ./σP.^2) + sum((SWE-SWEprior ).^2 ./ σSWE.^2) + sum(Mcost.^2));
+    @objective(m,Min,sum((Precip-Pprior).^2 ./σP.^2) + sum((SWE-SWEprior ).^2 ./ σSWE.^2) + sum(Mcost.^2))
     log_file =  "$logDir/Pix_$(i)_$(j)_$(twindow).txt"  # original
     # solve
     redirect_stdio(stdout=log_file, stderr=log_file) do
@@ -61,9 +62,9 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir,
     
     # 4 extract
     NODATAvalue = -9999
-    SWEhat=JuMP.value.(SWE);
+    SWEhat=JuMP.value.(SWE)
     Phat=zeros(nt,1)
-    Phat[1:nt-1] = JuMP.value.(Precip);           
+    Phat[1:nt-1] = JuMP.value.(Precip)
     Melt_hat = zeros(nt,1)
     Melt_hat[1:nt-1] = JuMP.value.(Melt);
     
@@ -96,7 +97,7 @@ function smoothdata(SCF_inst,twindow,nt,smoothfunc)
         iend = trunc(Int,i+round(twindow/2))        
         # if i < twindow || i > nt-twindow
         if istart < 1 || iend > nt
-            SCF_smooth[i]=0
+            SCF_smooth[i]=0  # BY?: why not keep whatever the original value was. Moreover, this is already initialized to 0 at the beginning.
         else            
             if smoothfunc == "mean"
                 SCF_smooth[i] = mean(SCF_inst[istart:iend])
@@ -214,4 +215,58 @@ function define_hyperparameters(SCF_smooth_season,nt,Pprior,SWEprior,AirT, SCFob
     L = 1
     
     return tmelt,tmelt_smooth,SWEmax,SWEmin_global,Meltmax,σP,σSWE,k,Melt0,L
+end
+
+function fix_modis(SCF)
+  # Define length of array (365)
+  nt = length(SCF)
+
+  # %% 1.1 Calculate deltaSCF
+  # We calculate the value ΔSCF which is defined as
+  # Σ[ abs[SCF(i)-SCF(i+1)] + abs[SCF(i+1)-SCF(i+2)] ]
+  # Depending on value of ΔSCF we do one of three things
+  
+  for i in 150:nt-2  # Python uses 0-based indexing, so 150 in MATLAB is 149 in Python
+      deltaSCF = abs(SCF[i] - SCF[i+1]) + abs(SCF[i+1] - SCF[i+2])
+      # print(deltaSCF)
+      if deltaSCF == 2  # If ΔSCF == 2, that means the SCF went from 1→0→1 which is bad
+          tmp = SCF[i:i+2]  #.copy()
+          tmp[tmp .== 0] .= 0.667  # In this case we find the 0 SCF day (which should be in the middle) and then we set that days SCF = 0.667
+          SCF[i:i+2] = tmp
+          # println(2)
+      elseif deltaSCF > 1.5  # Elif ΔSCF > 1.5, we set any 0 SCF day to 1/3 of value Σ[abs(ΔSCF(i:1+2))]
+          tmp = SCF[i:i+2]  #.copy()
+          tmp[tmp .== 0] .= deltaSCF/3
+          SCF[i:i+2] = tmp
+          println(1.5)
+      elseif deltaSCF > 0.9  # Elif ΔSCF > 0.9, we set any 0 SCF day to 1/2 of value Σ[abs(ΔSCF(i:1+2))]
+          tmp = SCF[i:i+2] #.copy()
+          tmp[tmp .== 0] .= deltaSCF/2
+          SCF[i:i+2] = tmp
+          # print(0.9)
+      end
+  end
+  # %% 1.2 Find final day of snow off
+  # After the loop above finishes, find the final day of snow off
+
+  # extra to check for 
+  stopIdx = 0
+  for i in 150:nt
+      if SCF[i] == 0  # Find a day with zero SCF
+          global stopIdx = i  # Set counter value to whatever idx i is
+          numSCF = sum(SCF[i:nt])  # Sum all remaining SCF values
+          if numSCF == 0  # If there is no more SCF for the rest of the year, break
+              break
+          end
+      end
+  end
+  # Add a single step down day to the SCF timeseries
+  # This ensures if the last day of SCF is above 50% snow cover
+  # We add a single extra day to the timeseries where we cut that value down
+  # by 50% to add an easier downramp for the melt timeseries
+  # use try/catch to avoid error if stopIdx was not assigned above
+  if stopIdx > 1 && SCF[stopIdx-1] > 0.49  # error if stopIdx was not assigned above; hence, wrapping in try block
+      SCF[stopIdx] = 0.5 * SCF[stopIdx-1]
+  end
+  return SCF
 end
