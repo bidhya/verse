@@ -101,8 +101,9 @@ def doy_to_date(modis_date, reverse=False):
     """Convert modis year and doy (day or year) to standard python datetime
         date of year should be contexualized vis-a-vis year
         because day of year in all years will not be same (leap year for example)
+        
         modis_date [string] : Modis native date that include year and year of day
-        NOT CURRENTLY USED  
+        reverse: NOT CURRENTLY USED. Placeholder for converting regular date to modis date  
     """
     begin_year = int(modis_date[:4])
     begin_days = int(modis_date[4:])
@@ -117,6 +118,7 @@ start_date = datetime.datetime.strptime(f"{int(water_year) - 1}-10-01", "%Y-%m-%
 end_date = datetime.datetime.strptime(f"{water_year}-09-30", "%Y-%m-%d")  # 
 date_generated = pd.date_range(start_date, end_date)
 # print(date_generated.strftime("%d-%m-%Y"))
+# convert to DOY format of MODIS naming convention
 year_doy_list = list(date_generated.strftime("%Y%j"))  # Does this match Day of year for MODIS nameing convention?  
 # year_doy_list = ["2016001", "2016002", "2016003"]
 # year_doy_list = os.listdir(modis_download_folder)
