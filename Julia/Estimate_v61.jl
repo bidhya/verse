@@ -28,13 +28,13 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir,
 
     # # 1 Smooth SCF observations    
     # # twindow = 5
-    # SCFobs = smoothdata(SCFinst,twindow,nt,"mean")
-    SCFobs = fix_modis(SCFinst)  # apply MODIS fix developed by Jack (Feb 04, 2025)
+    SCFobs = smoothdata(SCFinst, twindow, nt, "median")
+    # SCFobs = fix_modis(SCFinst)  # apply MODIS fix developed by Jack (Feb 04, 2025)
     # twindow = 60
-    SCF_smooth_season = smoothdata(SCFinst,60,nt,"mean")
+    SCF_smooth_season = smoothdata(SCFinst, 60, nt, "mean")
 
     # 2 Define hyperparameters
-    tmelt,tmelt_smooth,SWEmax,SWEmin_global,Meltmax,σP,σSWE,k,Melt0,L=define_hyperparameters(SCF_smooth_season,nt,Pprior,SWEprior,AirT, SCFobs)
+    tmelt,tmelt_smooth,SWEmax,SWEmin_global,Meltmax,σP,σSWE,k,Melt0,L=define_hyperparameters(SCF_smooth_season, nt, Pprior, SWEprior, AirT, SCFobs)
 
     # 3 Solve
     m = Model(optimizer_with_attributes(Ipopt.Optimizer,"max_iter"=>5000))
@@ -73,12 +73,12 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir,
     Lf = 0.334E6; #Latent heat of fusion J/kg    
     GmeltHat = Melt_hat/Δt*Lf*ρw
     
-    Ghat = ones(nt,1)*NODATAvalue;    
-    Ushat = ones(nt,1)*NODATAvalue;
-    G_pv = ones(nt,1)*NODATAvalue;
-    U_pv = ones(nt,1)*NODATAvalue;
-    Gmelt_pv = ones(nt,1)*NODATAvalue;
-    SWEpv = ones(nt,1)*NODATAvalue;
+    Ghat = ones(nt,1)*NODATAvalue
+    Ushat = ones(nt,1)*NODATAvalue
+    G_pv = ones(nt,1)*NODATAvalue
+    U_pv = ones(nt,1)*NODATAvalue
+    Gmelt_pv = ones(nt,1)*NODATAvalue
+    SWEpv = ones(nt,1)*NODATAvalue
     
     # 5 output
     out_vars = hcat(SWEhat, GmeltHat, Ghat, Phat, Ushat, G_pv, Gmelt_pv, U_pv, SWEpv, SCFobs)
@@ -91,7 +91,7 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir,
 end
 
 function smoothdata(SCF_inst,twindow,nt,smoothfunc)
-    SCF_smooth=zeros(nt,1);
+    SCF_smooth=zeros(nt,1)
     for i=1:nt
         istart = trunc(Int,i-round(twindow/2))
         iend = trunc(Int,i+round(twindow/2))        
@@ -110,9 +110,9 @@ function smoothdata(SCF_inst,twindow,nt,smoothfunc)
     return SCF_smooth
 end
 
-function define_uncertainty(Pprior,SWEprior,AirT,SCFobs,nt,tmelt_smooth)
+function define_uncertainty(Pprior, SWEprior, AirT, SCFobs, nt, tmelt_smooth)
     # convert air temperature K-> C
-    AirT=AirT.-273.15
+    AirT = AirT.-273.15
     
     # 2.2.1 Precipitation Uncertainty
     RelPUnc = 0.3; #[-] this applies to cumulative precipitation
@@ -129,7 +129,7 @@ function define_uncertainty(Pprior,SWEprior,AirT,SCFobs,nt,tmelt_smooth)
     end    
     # adjust uncertainty to apply to the number of snow days
     nsnowday = 0
-    Tprecip_thresh=1.5
+    Tprecip_thresh = 1.5
     for i=1:nt-1
         if Pprior[i]>Pthresh && AirT[i] < Tprecip_thresh
             nsnowday += 1
@@ -183,12 +183,12 @@ function define_hyperparameters(SCF_smooth_season,nt,Pprior,SWEprior,AirT, SCFob
     tmelt = zeros(nt,1)
     ΔSCFthresh = -0.01
     for i=2:nt
-        if SCF_smooth_season[i]-SCF_smooth_season[i-1] < ΔSCFthresh
+        if SCF_smooth_season[i] - SCF_smooth_season[i-1] < ΔSCFthresh
             tmelt[i] = 1
         end
     end    
     # twindow = 30
-    tmelt_smooth = smoothdata(tmelt,30,nt,"mean");
+    tmelt_smooth = smoothdata(tmelt, 30, nt, "mean")
     
     # 2.2 Extreme / limit values
     # 2.2.1 SWE
@@ -208,13 +208,13 @@ function define_hyperparameters(SCF_smooth_season,nt,Pprior,SWEprior,AirT, SCFob
     Meltmax = 0.075;
     
     # 2.3 Define uncertainty
-    σP,σSWE = define_uncertainty(Pprior,SWEprior,AirT,SCFobs,nt,tmelt_smooth)
+    σP,σSWE = define_uncertainty(Pprior, SWEprior, AirT, SCFobs, nt, tmelt_smooth)
     # 2.4 Melt cost function parameters
     k = 500
     Melt0 = 0.05
     L = 1
     
-    return tmelt,tmelt_smooth,SWEmax,SWEmin_global,Meltmax,σP,σSWE,k,Melt0,L
+    return tmelt, tmelt_smooth, SWEmax, SWEmin_global, Meltmax, σP, σSWE, k, Melt0, L
 end
 
 function fix_modis(SCF)
