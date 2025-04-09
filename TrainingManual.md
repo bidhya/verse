@@ -32,23 +32,21 @@ sbatch pixel.job 2016 2
 
 
 Week2
-=========
-Watershed run
-Learn the workflow
-Check slrum output and logs files
-Check results
+======  
+Watershed run  
+Learn the workflow  
+Check slrum output and logs files  
+Check results  
+
 Week3
+======  
+Continental Run  
+Combine NetCDF slices  
 
-Continental Run
-Combine NetCDF slices
-Optional
-
-Python Env setup: MD and JD
-Create Inputs for Blender
-QA/QC of Blender runs
-Analysis
-Plotting
-Challenges/Unknowns/Pitfalls
-
-Many changes and updates in last 2 months
-Availability of Nodes
+Optional  
+Python Env setup: MD and JD  
+Create Inputs for Blender  
+QA/QC of Blender runs  
+Analysis  
+Plotting  
+Challenges/Unknowns/Pitfalls  

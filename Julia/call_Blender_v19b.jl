@@ -46,6 +46,10 @@ start_idx = parse(Int64, start_idx)
 end_idx = parse(Int64, end_idx)
 # RES = ARGS[4] # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
 opt = parse(Int, ARGS[4])  # 1 or 2 optional choices for different parameterization of G
+# Now leveraging opt for other things as well. currently used for twindow for smoothing SCF [Mar 27, 2025]
+# opt = parse(Int, ARGS[4])  # 1 or 2 optional choices for different parameterization of G
+# twindow = opt
+# out_subfolder = "$(out_subfolder)_$(twindow)"
 # Extra arguments for various test runs: pixel, watershed, modis_fix etc.
 if arg_len > 4
     ws_pix_idx = parse(Int64, ARGS[5])  # watershed or pixel index. hardcoded below if run for wshed.
@@ -294,12 +298,13 @@ running_time = (time_ns() - start_time)/1e9/60
 @info("Starting with blender loop.")
 @info("---------------------------")
 @info("Processing $(length(ind)) of $(length(valid_pix_ind))")
-σWRFGmin_list = collect(0:5:200)  # as range 1:5:120
-# σWRFGmin_list[1] = 1  # to ensure that 1 is included in the list
-# σWRFGmin_list = [1, 5, 10, 15, 25, 50, 100, 200, 300, 400,500]
-σWRFGmin_list = [10]
-@info(σWRFGmin_list)
-@info("Fix MODIS flag = $fix_modis_flag")
+# σWRFGmin_list = collect(0:5:200)  # as range 1:5:120
+# # σWRFGmin_list[1] = 1  # to ensure that 1 is included in the list
+# # σWRFGmin_list = [1, 5, 10, 15, 25, 50, 100, 200, 300, 400,500]
+# σWRFGmin_list = [10]
+# @info("Fix MODIS flag = $fix_modis_flag")
+twindow_list = collect(0:1:15)  # for smoothing SCF.
+@info(twindow_list)
 # @sync makes the code wait for all processes to finish their part of the computation before moving on from the loop
 # ie, without @sync, the on of the processors may move to next while loop is still running, creating error and crash whole script prematurely 
 # Threads.@threads for ij in ind
@@ -315,10 +320,11 @@ running_time = (time_ns() - start_time)/1e9/60
     AirT = A["Tair_f_tavg"][X=i, Y=j].data/100
     MSCF = A["SCF"][X=i, Y=j].data; #/100 Convert to fraction. multiplication and devision works without dot. but add/subtract will need dot.
     # blender(out_folder, i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)  # Call blender for the pixel. OLD.
-    # @sync @distributed for σWRFGmin in σWRFGmin_list
-        # blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt, σWRFGmin, fix_modis_flag)
-    blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
+    # @sync @distributed for twindow in twindow_list  # σWRFGmin in σWRFGmin_list
+    #     # blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt, σWRFGmin, fix_modis_flag)
+    #     blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, twindow)
     # end
+    blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
 end
 # without sync above one of the processor to the next step (combining text files to netcdf) which will cause error
 sleep(10)
@@ -333,9 +339,9 @@ else
     running_time = running_time/60 # convert to hours
     @info("Running Time (blender For Loop) = $(round(running_time, digits=2)) hours")
 end
-# if pixel_run
-#     exit(0)  # exit here to avoid running 2nd part (text2nc)
-# end
+if pixel_run
+    exit(0)  # exit here to avoid running 2nd part (text2nc)
+end
 # ===================================================================================================================================
 
 # Step 4. PostProcessing: Combine text files into a grid and save as netcdf
