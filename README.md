@@ -1,31 +1,10 @@
-# Blender
+# Blender description of HPC (NASA Discover)
 The notes here are now only specific to LIS related 1km runs.  
 
 ## Project folder: `/discover/nobackup/projects/coressd`  
-- everything is relative to this main folder on Discover  
+Everything is relative to this main folder on Discover  
 
-## Verse Structure (Julia and Python codes)  
-The project directory is structured as follows:  
-```
-../Github/verse
-├── Julia
-│   ├── Estimate_v61.jl
-│   ├── call_Blender_v19b.jl
-│   ├── combine_nc_files.jl
-│   └── submit_slurm.jl
-├── Python
-│   ├── Extract_LIS.py
-│   ├── process_modis_cgf.py
-│   └── tictoc.py
-├── README.md
-├── Updates.md
-└── data
-    ├── README.txt
-    ├── pixels.csv
-    └── wshed.csv
-```
-
-General structure of project directory on Discover  
+### General structure of project directory on Discover  
 ```
 /discover/nobackup/projects/coressd
 ├── OSU
@@ -64,7 +43,27 @@ General structure of project directory on Discover
     - `MOD10A1F` : modis snow-cover data corrected for tree and clipped to match LIS data
 3. `Runs`: Blender runs saved here relative to water_year.
     - `WY2015/temp_nc`: temporary netcdf files for each slice or run. Temporary netcdf files. Delete after creating final outputs.
-    - `WY2015/outputs`: Final PAN Americal Outputs created by merging files from "temp_nc" folder
+    - `WY2015/outputs`: Final PAN Americal Outputs created by merging files from "temp_nc" folder  
+
+### Verse Structure (Julia and Python codes)  
+```
+../Github/verse
+├── Julia
+│   ├── Estimate_v61.jl
+│   ├── call_Blender_v19b.jl
+│   ├── combine_nc_files.jl
+│   └── submit_slurm.jl
+├── Python
+│   ├── Extract_LIS.py
+│   ├── process_modis_cgf.py
+│   └── tictoc.py
+├── README.md
+├── Updates.md
+└── data
+    ├── README.txt
+    ├── pixels.csv
+    └── wshed.csv
+```
 
 # Order of Script Execution for coressd project
 ## I. Generate Input Files for Blender Run
@@ -106,20 +105,13 @@ Required Julia packages: `JuMP Ipopt Rasters NCDatasets CSV LoggingExtras Distr
    - calls: julia verse/Julia/combine_nc_files.jl WY$water_year
 
 ## Edge Cases
-Test run:
-
-- Use "test" prefix to WY. Example: `test_WY2015` while calling call_Blender julia script.
-- folder and sub-folders created within script to save outputs.
-- usage: `julia verse/Julia/call_Blender_v19.jl "test/test_WY2015" 3204 3204 2`  
-
-Pixel run:
-
+These configurations are used for testing and prototyping. Two of these configurations include "pixel" and "watershed" runs.  
+Pixel run:  
 - Use "pixel" prefix to WY. Example: `pixel_WY2015` while calling call_Blender julia script. 
 - folder and sub-folders created within script to save outputs.
 - usage: `julia verse/Julia/call_Blender_v19.jl "pixel/pixel_WY2015" 200 200 2 1`
 
 Watershed run:  
-
 - need a csv file of watershed bounding box (`../coressd/Blender/coordinates/wshed.csv`)
 - select watershed by passing the index (1-based in Julia) of watershed
 - usage: `julia verse/Julia/call_Blender_v19.jl "wshed/Tuolumne/wshed_WY2015" 100 100 2 1`
