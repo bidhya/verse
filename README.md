@@ -16,6 +16,11 @@ Everything is relative to this main folder on Discover
 │   ├── Inputs
 │   ├── Modis
 │   └── Runs
+├── Github
+│   ├── verse
+│   ├── Slurm_Blender
+│   ├── slurm_jobs
+│   └── wshed
 └── installs
     ├── miniconda3
     ├── julia-1-11.4
