@@ -1,13 +1,22 @@
 # Updates to codebase in reverse chronological order
 ====================================================   
-## Mar 21, 2024  
+## Apr 12, 2025  
+- Everything merged into develop branch
+- call_Blender_v19.jl uses Estimate_v61.jl  
+- update Readme and created Training Manual  
+- Both pixel and watershed runs can be used at test run
+- These test runs uses data/pixel.csv and data/wshed.csv for runs  
+- simplication for modis smoothing function  
+
+## Mar 21, 2025  
 - Estimate_v61.jl created by Mike as a new optimization routine that only used mass balance  
 - removing "test" keywork from runs because pixel and watershed runs are test runs  
 - data folder with pixel and wshed csv files  
 - code cleanup by removing older files to Archive folder  
 - plan to merge "GFix" branch to "develop" branch using squash  
+- older files moved to Archive folder  
 
-## Mar 11, 2024  
+## Mar 11, 2025  
 - Removed "RES" resolution from all scripts to simplify the code for 1-km LIS only data
 - Removed "lis" subfolder of input files
 - Converted Extract_LIS_1km.ipynb  to Extract_LIS.py script  
