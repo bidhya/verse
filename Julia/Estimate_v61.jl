@@ -31,7 +31,7 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir,
     SCFobs = smoothdata(SCFinst, twindow, nt, "median")
     # SCFobs = fix_modis(SCFinst)  # apply MODIS fix developed by Jack (Feb 04, 2025)
     # twindow = 60
-    SCF_smooth_season = smoothdata(SCFinst, 60, nt, "mean")
+    SCF_smooth_season = smoothdata(SCFinst, 30, nt, "mean")  # before it was 60
 
     # 2 Define hyperparameters
     tmelt,tmelt_smooth,SWEmax,SWEmin_global,Meltmax,σP,σSWE,k,Melt0,L=define_hyperparameters(SCF_smooth_season, nt, Pprior, SWEprior, AirT, SCFobs)
@@ -90,23 +90,51 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir,
     return nothing    
 end
 
-function smoothdata(SCF_inst,twindow,nt,smoothfunc)
-    SCF_smooth=zeros(nt,1)
-    for i=1:nt
-        istart = trunc(Int,i-round(twindow/2))
-        iend = trunc(Int,i+round(twindow/2))        
-        # if i < twindow || i > nt-twindow
-        if istart < 1 || iend > nt
-            SCF_smooth[i]=0  # BY?: why not keep whatever the original value was. Moreover, this is already initialized to 0 at the beginning.
-        else            
-            if smoothfunc == "mean"
-                SCF_smooth[i] = mean(SCF_inst[istart:iend])
-            elseif smoothfunc=="median"
-                SCF_smooth[i] = median(SCF_inst[istart:iend])
-            end
-        end
-    end
+# function smoothdata(SCF_inst,twindow,nt,smoothfunc)
+#     SCF_smooth=zeros(nt,1)
+#     for i=1:nt
+#         istart = trunc(Int,i-round(twindow/2))
+#         iend = trunc(Int,i+round(twindow/2))        
+#         # if i < twindow || i > nt-twindow
+#         if istart < 1 || iend > nt
+#             SCF_smooth[i]=0  # BY?: why not keep whatever the original value was. Moreover, this is already initialized to 0 at the beginning.
+#         else            
+#             if smoothfunc == "mean"
+#                 SCF_smooth[i] = mean(SCF_inst[istart:iend])
+#             elseif smoothfunc=="median"
+#                 SCF_smooth[i] = median(SCF_inst[istart:iend])
+#             end
+#         end
+#     end
     
+#     return SCF_smooth
+# end
+
+
+function smoothdata(SCF_inst, twindow, nt, smoothfunc)
+    """
+    Smooth data using a moving average or median filter.
+    Parameters:
+    ============
+    SCF_inst: Input data to be smoothed.
+    twindow: Window size for smoothing.
+        example: 1 means smooth using 1 data point on either side of the current point.
+        In this formulation, use half the value that was originally used by Mike (ie, 60 is now 30 etc.).
+    nt: Length of the input data.
+    smoothfunc: Type of smoothing function ('mean' or 'median').
+
+    """
+    # println(twindow, nt, smoothfunc)
+    # better to copy "SCF_inst" so the smooth function doesn't modify the original data. Even better apppend border on both sides of the data.
+    SCF_smooth=zeros(nt,1)
+    for i=(1+twindow):(nt-twindow)
+        # adding 1 (ie, 1+twindow) in the for loop because Julia is 1-based indexing
+        if smoothfunc == "mean"
+            SCF_smooth[i] = mean(SCF_inst[i-twindow:i+twindow])
+        elseif smoothfunc=="median"
+            SCF_smooth[i] = median(SCF_inst[i-twindow:i+twindow])
+        end
+    end    
     return SCF_smooth
 end
 
@@ -188,7 +216,7 @@ function define_hyperparameters(SCF_smooth_season,nt,Pprior,SWEprior,AirT, SCFob
         end
     end    
     # twindow = 30
-    tmelt_smooth = smoothdata(tmelt, 30, nt, "mean")
+    tmelt_smooth = smoothdata(tmelt, 15, nt, "mean")  # before it was 30
     
     # 2.2 Extreme / limit values
     # 2.2.1 SWE
