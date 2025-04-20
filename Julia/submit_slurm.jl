@@ -26,7 +26,7 @@ step = parse(Int32, step)
 memory = "184gb"
 
 # mkpath(logDir)
-mkpath("slurm_jobs/$(water_year)/.out")  # /$(RES)
+mkpath("slurm_jobs/$(water_year)/OUT")  # /$(RES)
 cd("slurm_jobs/$(water_year)")  # /$(RES)
 
 # 1. Setup inputs and output directories and file locations
@@ -87,8 +87,8 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
             write(f, """#SBATCH --constraint="[cascade|skylake]"\n""")
         end
         write(f, "#SBATCH --job-name=$(jobname).job\n")
-        write(f, "#SBATCH --output=.out/$(jobname).out\n")
-        write(f, "#SBATCH --error=.out/$(jobname).err\n")
+        write(f, "#SBATCH --output=OUT/$(jobname).out\n")
+        write(f, "#SBATCH --error=OUT/$(jobname).err\n")
         write(f, "#SBATCH --time=$(runtime):00:00\n")
         write(f, "#SBATCH --nodes=1 --ntasks=$(cores)\n")  # 
         write(f, "#SBATCH --exclusive\n")  #  use whole node with all cores without sharing 
