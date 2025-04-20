@@ -173,7 +173,7 @@ using Dates
 # Make a folder insise HPC node because we want to copy existing files there
 exp_dir = "$out_subfolder/outputs_txt_$(start_idx)_$(end_idx)"  #"$out_folder/outputs_txt"  # tmp_txtDir(old name) To save text outputs for each pixel
 mkpath(exp_dir)  # mkdir
-logDir = "$out_subfolder/JuMP_logs_$(start_idx)_$(end_idx)"  # to save logs created by optimizer. 
+logDir = "$out_subfolder/logs_$(start_idx)_$(end_idx)"  # Save logs created by JuMP. 
 # logDir = "$base_folder/Runs/$out_subfolder/logs/logs_$(start_idx)_$(end_idx)"  # For Debug: save on same folder and outputs  
 mkpath(logDir)  # mkdir; must create here, else error in the current setup  
 # Error on Discover (Nov 08, 2023): rm: cannot remove '/lscratch/tdirs/batch/slurm.24967584.byadav/logs': Directory not empty; Solution: #SBATCH --no-requeue

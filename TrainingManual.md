@@ -64,7 +64,7 @@ Learn the workflow
 Check slrum output and logs files  
 Check results  
 
-Week2
+Week4
 ======  
 Continental Run  
 Combine NetCDF slices  

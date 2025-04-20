@@ -1,5 +1,10 @@
 # Updates to codebase in reverse chronological order
 ====================================================   
+## Apr 20, 2025  
+- Cleaning up v19b for final continental scale run  
+- submit_slurm.jl now uses _v19b.jl  
+
+
 ## Apr 12, 2025  
 - Everything merged into develop branch
 - call_Blender_v19.jl uses Estimate_v61.jl  

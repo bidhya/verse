@@ -4,7 +4,7 @@
     julia verse/Julia/submit_slurm.jl 2016 1
         good values for stepsize: 1, 2, ... upto 10. last tested with 3. Use 1 for more finer control.  
 
-    Note: 1. This script will call the main script call_Blender_v18.jl
+    Note: 1. This script will call the main script call_Blender_v19b.jl
           2. The script is called with 3 arguments: water_year, resolution, stepsize
           3. The script reads the input netcdf file, and creates slurm jobs for each set of rows (stepsize) in the Y-direction.
           4. The script calculates the number of pixels in each set of rows, and based on a threshold, creates a slurm job.
@@ -119,7 +119,7 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         else
             write(f, "cp -r ~/Github/verse .\n")
         end
-        write(f, "julia verse/Julia/call_Blender_v18.jl $(out_subfolder) $(start_idx) $(end_idx)\n\n")  #  $(RES)
+        write(f, "julia verse/Julia/call_Blender_v19b.jl $(out_subfolder) $(start_idx) $(end_idx)\n\n")  #  $(RES)
         write(f, "squeue --job \$SLURM_JOBID \n")
         write(f, "echo List of files on TMPDIR\n")
         write(f, "echo ---------------------------------------------------------------------\n")
