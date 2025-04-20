@@ -4,7 +4,7 @@ using Ipopt
 using DelimitedFiles
 Random.seed!(1234)  # seed for reproducibility
 
-function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir, twindow=5)
+function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir, twindow=2)
   """
   inputs
   ==============
@@ -26,8 +26,8 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir,
     nt = length(SCFinst)
     Pprior = Pprior[1:nt-1]
 
-    # # 1 Smooth SCF observations    
-    # # twindow = 5
+    # 1 Smooth SCF observations    
+    # twindow = 5
     SCFobs = smoothdata(SCFinst, twindow, nt, "median")
     # SCFobs = fix_modis(SCFinst)  # apply MODIS fix developed by Jack (Feb 04, 2025)
     # twindow = 60
@@ -246,6 +246,12 @@ function define_hyperparameters(SCF_smooth_season,nt,Pprior,SWEprior,AirT, SCFob
 end
 
 function fix_modis(SCF)
+    """ This function is used to fix the MODIS snow cover fraction (SCF) data is designed by Jack Dechow.
+        It corrects the SCF data by adjusting values based on the differences between consecutive days.
+        The function iterates through the SCF data, calculates the differences, and applies corrections based on specific thresholds.
+        The function also includes a mechanism to find the final day of snow off and adjust the SCF value accordingly.
+        The function is designed to handle edge cases and ensure that the final SCF value is reasonable.            
+    """
   # Define length of array (365)
   nt = length(SCF)
 
@@ -276,7 +282,6 @@ function fix_modis(SCF)
   end
   # %% 1.2 Find final day of snow off
   # After the loop above finishes, find the final day of snow off
-
   # extra to check for 
   stopIdx = 0
   for i in 150:nt
