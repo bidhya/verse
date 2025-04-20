@@ -36,6 +36,7 @@ Nov 20, 2024 : call_Blender_v19.jl uses Estimate_v60.jl . Currently in prototypi
 Dec 17, 2024 : Adding option to run for just one pixel for testing. 
 Mar 02, 2025 : Removing "RES" everywhere to simplify the script. 
 Mar 20, 2025 : Removing test runs because both pixel and watershed runs are now available and can be concidered as test run.
+Apr 20, 2025 : remove opt and modis fix flag from arguments list to simplify and prepare for new continental runs.
 """
 arg_len = length(ARGS)
 out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_text and nc_outputs saved here
@@ -45,19 +46,19 @@ end_idx = ARGS[3]
 start_idx = parse(Int64, start_idx)
 end_idx = parse(Int64, end_idx)
 # RES = ARGS[4] # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
-opt = parse(Int, ARGS[4])  # 1 or 2 optional choices for different parameterization of G
+# opt = parse(Int, ARGS[4])  # 1 or 2 optional choices for different parameterization of G
 # Now leveraging opt for other things as well. currently used for twindow for smoothing SCF [Mar 27, 2025]
 # opt = parse(Int, ARGS[4])  # 1 or 2 optional choices for different parameterization of G
 # twindow = opt
 # out_subfolder = "$(out_subfolder)_$(twindow)"
 # Extra arguments for various test runs: pixel, watershed, modis_fix etc.
-if arg_len > 4
-    ws_pix_idx = parse(Int64, ARGS[5])  # watershed or pixel index. hardcoded below if run for wshed.
+if arg_len > 3
+    ws_pix_idx = parse(Int64, ARGS[4])  # watershed or pixel index. hardcoded below if run for wshed.
 end
-fix_modis_flag = 0  # default=0 means don't apply fix to MODIS.
-if arg_len > 5
-    fix_modis_flag = parse(Int64, ARGS[6]) # 0=false, 1=true  # to fix MODIS using Jack's approach.
-end
+# fix_modis_flag = 0  # default=0 means don't apply fix to MODIS.
+# if arg_len > 4
+#     fix_modis_flag = parse(Int64, ARGS[5]) # 0=false, 1=true  # to fix MODIS using Jack's approach.
+# end
 # Get path to the directory of the script. This is only used to access the test data for pixel and watershed runs
 verse_dir = joinpath(splitpath(@__DIR__)[1:end-1])  # get parent folder of current script; later used to retrieve pixel or wshed csv file
 
@@ -79,20 +80,20 @@ using DelimitedFiles
 using Distributed  # otherwise everywhere macro won't work; Oct 8 2024: Error in Julia 1.11.0: Illegal instruction
 # using SharedArrays  # move this line below addprocs(cores), else won't work in Julia 1.10.0
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 # 1. Setup inputs and output directories and file locations
 # select the root directory (this will be different on windows, linux or Mac) 
 host_machine = gethostname()
-# if occursin("STAFF-BY-M", host_machine)
 if occursin("L-JY0R5X3", host_machine)
-    system_machine = "Windows"  # a bit misnomer flag because this flag also works for WLS linux. Better flag could be local vs hpc/remote execution
+    system_machine = "Windows"  # my laptop (also works for WLS linux)
     if Sys.iswindows()
-        root_dir = "D:"  #for windows machine
+        root_dir = "D:"  # Windows 10 machine
     elseif Sys.islinux()
-        root_dir = "/mnt/d"  #for Ubuntu (WSL2 on windows machine
+        root_dir = "/mnt/d"  # Ubuntu (WSL2 on windows machine)
     end
     base_folder = "$root_dir/coressd/Blender"
-    DataDir = "$root_dir/coressd/Blender/Inputs"  # _$(RES)  must exist  (Old = NoahMP)
-    OUTDIR = "$base_folder/Runs"  # /$(RES)
+    DataDir = "$root_dir/coressd/Blender/Inputs"  # must exist
+    OUTDIR = "$base_folder/Runs"  # will be created if missing
     log_filename = string("logs/", start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
     addprocs()
 else
@@ -100,7 +101,6 @@ else
     system_machine = "Slurm"
     log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/logs/",start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
     if wshed_run
-        # log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/wshed", water_year, "_v19_", opt, ".log")
         log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/logs/wshed", water_year, "_v19_", ws_pix_idx, ".log")
     elseif pixel_run
         log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/logs/pixel", water_year, "_v19_", ws_pix_idx, ".log")
@@ -113,24 +113,21 @@ else
     if occursin("borg", host_machine)  # TODO: discover
         root_dir = "/discover/nobackup"
         base_folder = "$root_dir/projects/coressd/Blender"
-        # base_folder = "$root_dir/byadav/coressd/Blender"  # used when project directory was full.  
-        tmpdir =  ENV["LOCAL_TMPDIR"]  #tempdir() to save tempoary text files on hpc node. 
-        # DataDir = "$root_dir/projects/coressd/Blender/Inputs"  # INDIR. must exist  (Old = NoahMP)
-        DataDir = "$root_dir/projects/coressd/Blender/Inputs"  # _$(RES) INDIR. must exist  (Old = NoahMP)
-        OUTDIR = "$base_folder/Runs"  # /$(RES) Blender Run outputs saved here. (../temp_nc/, ../logs/, ../Outputs/ etc)
+        tmpdir =  ENV["LOCAL_TMPDIR"]  # tempdir() to save tempoary text files on hpc node. 
+        DataDir = "$root_dir/projects/coressd/Blender/Inputs"  # must exist
+        OUTDIR = "$base_folder/Runs"  # will be created if missing
     elseif occursin(".osc.edu", host_machine)
         root_dir = "/fs/ess/PAS1785"  # "/fs/scratch/PAS1785/coressd"
         base_folder = "$root_dir/coressd/Blender"
         tmpdir =  ENV["TMPDIR"]  #tempdir()
-        DataDir = "$root_dir/coressd/Blender/Inputs"  # _$(RES)
-        OUTDIR = "$base_folder/Runs"  # /$(RES)
-    elseif occursin("asc.ohio-state.edu", host_machine)  # .unity
-        root_dir = "/fs/project/howat.4/yadav.111"  # homedir()  #  Unity
-        # base_folder = "/home/yadav.111/Github/Blender"  # old
-        base_folder = "$root_dir/coressd/Blender"  # "$root_dir/Github/coressd/Blender"
-        tmpdir =  ENV["TMPDIR"]  #tempdir()
-        DataDir = "$root_dir/coressd/Blender/Inputs"  # _$(RES)
-        OUTDIR = "$base_folder/Runs"  # /$(RES)
+        DataDir = "$root_dir/coressd/Blender/Inputs"
+        OUTDIR = "$base_folder/Runs"
+    elseif occursin("asc.ohio-state.edu", host_machine)
+        root_dir = "/fs/project/howat.4/yadav.111"  # homedir()
+        base_folder = "$root_dir/coressd/Blender"
+        tmpdir =  ENV["TMPDIR"]  # tempdir()
+        DataDir = "$root_dir/coressd/Blender/Inputs"
+        OUTDIR = "$base_folder/Runs"
         # @info("SLURM_SUBMIT_DIR: $(ENV["SLURM_SUBMIT_DIR"])")
     else
         @info("Unknown computer system. Aborting ...  ")
@@ -143,7 +140,7 @@ else
     # addprocs(SlurmManager())  # to use all available nodes and cores automatically. comment this line and uncomment one above this to match _v8.jl
 end
 # addprocs()  # Works but on cluster will use all cores, even though we not asked for. 
-# also with exclusive option will use all cores which may result in memory error.  
+# exclusive option will also use all cores which may result in memory error.  
 mkpath(dirname(log_filename))  # dirname gets the directory part of name (ie, without the filename) ; mkpath("logs")
 logger = FormatLogger(open("$log_filename", "a+"), 0) do io, args  # w=write (original); a(a+)=(read), write,create,append
     # Write the module, level and message only
@@ -190,34 +187,7 @@ if isdir(nc_outDir)  # process only if the pixel is not already processed
     exit(0)
 end
 
-# # # 2. Read the Input netCDF file
-# # A = RasterStack("$DataDir/WY_merged/2016_clip_noahmp_modscag.nc")  #, mappedcrs=EPSG(4326); for NoahMP with MODSCAG mapped to NoahMP resolution
-# # Following check are for prototyping only when running code locally, because I do not yet have NorthAmerica netcdf file
-# if occursin("L-JY0R5X3", host_machine) #|| test_run  # use this for testing as well
-#     @info("Test Run only.")
-#     A = RasterStack("$(DataDir)/WY_merged/$(water_year)_seup_modis.nc", lazy=true)
-#     # subset = A[X(Between(-120.5, -120)), Y(Between(60, 60.5))]  # 10 by 10 pixels; use small chip for prototyping
-# else
-#     # # copy to local Node (machine) on slurm
-#     # # cp("$DataDir/WY_merged/$water_year" * "_seup_modis.nc", "$tmpdir/$water_year" * "_seup_modis.nc", force=true)  #force=true will first remove an existing dst.
-#     # # cp("$DataDir/lis/WY$(water_year)/SWE_tavg.nc", "$tmpdir/WY$(water_year)/SWE_tavg.nc", force=true)  #force=true will first remove an existing dst.
-#     # # true required for discover when running on same node again after node_failure.
-#     # # A = RasterStack("$tmpdir/$water_year" * "_seup_modis.nc", lazy=true)  ## , lazy=true https://github.com/rafaqz/Rasters.jl/issues/449
-#     # A = RasterStack("$tmpdir/WY$(water_year)/SWE_tavg.nc", lazy=true)
-
-#     # June 04, 2024
-#     # cp("$DataDir/lis/WY$(water_year)", "$tmpdir/WY$(water_year)", force=true)  #force=true will first remove an existing dst. New for v18
-#     # Full path to Datadir
-#     files = (
-#         "$DataDir/lis/WY$(water_year)/SCF.nc",
-#         "$DataDir/lis/WY$(water_year)/Snowf_tavg.nc",
-#         "$DataDir/lis/WY$(water_year)/SWE_tavg.nc",
-#         "$DataDir/lis/WY$(water_year)/Tair_f_tavg.nc",
-#         "$DataDir/lis/WY$(water_year)/Qg_tavg.nc"
-#         )
-#     A = RasterStack(files; lazy=true)
-# end
-
+# 2. Read the Input netCDF file
 files = (
     "$DataDir/WY$(water_year)/SCF.nc",
     "$DataDir/WY$(water_year)/Snowf_tavg.nc",
@@ -225,10 +195,8 @@ files = (
     "$DataDir/WY$(water_year)/Tair_f_tavg.nc",
     "$DataDir/WY$(water_year)/Qg_tavg.nc"
     )
-A = RasterStack(files; lazy=true)
+A = RasterStack(files; lazy=true)  # lazy=true https://github.com/rafaqz/Rasters.jl/issues/449
 
-
-# end_time = time_ns()
 running_time = (time_ns() - start_time)/1e9/60
 @info("Time until copying input netcdf to Node = $(round(running_time, digits=2)) minutes")
 
