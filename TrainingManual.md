@@ -68,6 +68,14 @@ Week4
 ======  
 Continental Run  
 Combine NetCDF slices  
+``` Because of folder locks, we will create this run from our own folder  
+cd /discover/nobackup/your-user-name
+mkdir Github
+cd Github
+julia /discover/nobackup/projects/coressd/Github/verse/Julia/submit_slurm.jl 2017  
+```
+This creates a hunderds of slurm jobs for the WaterYear passed as Argument  
+Check inside "slurm_jobs" to see the jobs and "OUT" subfolder for slurm_output, errors etc.   
 
 Optional  
 Python Env setup: MD and JD  
