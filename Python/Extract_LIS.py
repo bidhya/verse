@@ -62,7 +62,7 @@ parser.add_argument('water_year', help='Water Year', type=str)
 args = parser.parse_args()
 water_year = args.water_year
 # RES = args.RES  # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
-logging.basicConfig(filename=f"out/extract_lis_{water_year}.log", level=logging.INFO, format='%(asctime)s : %(message)s')  # _{RES}
+logging.basicConfig(filename=f"OUT/extract_lis_{water_year}.log", level=logging.INFO, format='%(asctime)s : %(message)s')  # _{RES}
 
 # Hardcoded: Path to LIS data and Output folder. Will only work on Discover.
 lis_folder = "/discover/nobackup/projects/coressd/mwrzesie/runOL/out.OL/SURFACEMODEL"  # new 1 km data
