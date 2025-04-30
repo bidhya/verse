@@ -231,7 +231,6 @@ if pixel_run
     write("$subset_folder/pixel_$ws_pix_idx.nc", A, force=true)  # !isfile("$subset_folder/pixel.nc") && ## error when two processors try to write at the same time
 elseif wshed_run
     @info("Watershed Run  ")
-    # A = A[1101:1109, start_idx:end_idx, :]  # now deleted test run slice
     # # A = A[X=Near([-100.2]), Y=Near([50.1])]  # Using lon/lat. Ti is optional here.  
     # For watershed: give lower left and upper right longitude/latitude as corners of the bounding box (or hardcode here).
     # data_cells, header_cells = readdlm("$base_folder/coordinates/wshed.csv", ',', header=true, skipblanks=true)
@@ -251,7 +250,9 @@ elseif wshed_run
     write("$subset_folder/wshed_$ws_pix_idx.nc", A, force=true)  ## error when two processors try to write at the same time
 else
     @info("DEFAULT RUN  ")
-    A = A[1:end, start_idx:end_idx, :]  # use for default runs
+    # A = A[1:end, start_idx:end_idx, :]  # use for default runs
+    # A = A[X(1:end), Y(start_idx:end_idx)]
+    A = A[2109:5329, start_idx:end_idx, :]  # Uncomment this for debugging and testing.
 end
 # Use cartesian index for iteration
 # valid_pix_ind = findall(!ismissing, A["SWE_tavg"][Ti=1])  # Extract cartesian index for non-missing (ie, all) data using one-day of data 
@@ -279,6 +280,7 @@ twindow_list = collect(0:1:15)  # for smoothing SCF.
 # @distributed for ij in ind
 @sync @distributed for ij in ind
 # for ij in ind
+    # @info("Processing pixel $(ij[1]) $(ij[2])")
     i = ij[1]
     j = ij[2]
     # TODO replace the following 5 lines with the direct access to file
@@ -292,6 +294,8 @@ twindow_list = collect(0:1:15)  # for smoothing SCF.
     #     # blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt, σWRFGmin, fix_modis_flag)
     #     blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, twindow)
     # end
+    # println("MSCF: ", MSCF)
+    # println("WRFG: ", WRFG)
     blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir)
 end
 # without sync above one of the processor to the next step (combining text files to netcdf) which will cause error
