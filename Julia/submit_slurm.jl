@@ -19,8 +19,10 @@ arg_len = length(ARGS)
 out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_nc saved here
 water_year = out_subfolder[end-3:end] #last 4 chars are assumed year, else error
 # step is the count of rows (y-direction) of netcdf file to process in one job/run 
-step = ARGS[2] #|| 35 on discover
-step = parse(Int32, step)
+step = 1  # default step size is 1 row (y-direction) for each job/run.
+if arg_len > 1
+    step = parse(Int32, ARGS[2])  # use the step size if passed as argument
+end
 # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
 # RES = ARGS[3] # 010
 memory = "184gb"
@@ -72,7 +74,7 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         # fh.writelines("#SBATCH --account=s2701\n")  # for DISCOVER
         # fh.writelines('#SBATCH --constraint="[cas|sky]"\n')
         if hpc == "discover"
-            write(f, "#SBATCH --account=s2701\n")
+            write(f, "#SBATCH --account=s2484\n")  # s2701
             write(f, """#SBATCH --constraint="[mil]"\n""")  # |cas|sky
             if runtime > 12
                 write(f, "#SBATCH --qos=long\n")  # for jobs 12-24 hours.
