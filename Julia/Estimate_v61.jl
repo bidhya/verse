@@ -127,8 +127,8 @@ function smoothdata(SCF_inst, twindow, nt, smoothfunc)
     smoothfunc: Type of smoothing function ('mean' or 'median').
 
     """
-    println("Inside Smoothing data...")
-    println("$twindow, $nt, $smoothfunc")
+    # println("Inside Smoothing data...")
+    # println("$twindow, $nt, $smoothfunc")
     # better to copy "SCF_inst" so the smooth function doesn't modify the original data. Even better apppend border on both sides of the data.
     SCF_smooth=zeros(nt,1)
     for i=(1+twindow):(nt-twindow)
