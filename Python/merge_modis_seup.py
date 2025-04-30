@@ -46,7 +46,7 @@ import argparse
 
 ss = platform.system()
 node = platform.node()
-logging.basicConfig(filename='out/merge_modis_seup.log', level=logging.INFO, format='%(asctime)s:%(message)s')
+logging.basicConfig(filename='OUT/merge_modis_seup.log', level=logging.INFO, format='%(asctime)s:%(message)s')
 
 parser = argparse.ArgumentParser(description='Merge SEUP and MODIS data.')
 parser.add_argument('water_year', help='Water Year for processing', type=str)
