@@ -34,6 +34,7 @@
 
     June 01, 2024: Switching back to NetCDF from Zarr for MODIS CGF data. Though Zarr is faster, it is not currently usable because in the end we need NetCDF file.
     May 16, 2024: Saving the zarr files with zarr LIS inputs as well. 
+    Apr 27, 2025: removed  and f.startswith("MOD10A1F") so that MYD can be used to replace missing MODIS data
 
     Input
     =====
@@ -71,19 +72,13 @@ from joblib import Parallel, delayed
 
 parser = argparse.ArgumentParser(description='Extract MODIS CGF files for North America.')
 parser.add_argument('water_year', help='Water Year for processing', type=str)
-parser.add_argument('--log_name', help='Name of Log file', type=str, default='process_modis_cgf')
 parser.add_argument('--cores', help='Number of cores to use for multiprocessing', type=int, default=2)  # don' use -1 on DISCOVER  
-# parser.add_argument('--RES', help='Grid size (Resolution) of SEUP Inputs', type=str)
 args = parser.parse_args()
 water_year = args.water_year
 cores = args.cores
-log_name = args.log_name
-log_name = f"{log_name}{water_year}.log"
-# RES = args.RES  # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
 chunk = {"x": 2**8, "y": 2**8}
-# chunk = {"y": 2**7}  # use this same chunk size everywhere
 
-logging.basicConfig(filename=f'out/{log_name}', level=logging.INFO, format='%(asctime)s:%(message)s')
+logging.basicConfig(filename=f"OUT/process_modis_cgf_{water_year}.log", level=logging.INFO, format='%(asctime)s : %(message)s')
 logging.info('  ')
 logging.info('-------------------------START LOGGING--------------------------------------')
 logging.info(f'water_year={water_year}     \ncores={cores}')
@@ -186,7 +181,7 @@ def extract_modis(download_folder, daF):
     Full path to netcdf file that was processed at NASA discover
     not tested: hdf4 file not tested but should work seamlessly
     """
-    files = [f for f in os.listdir(download_folder) if f.endswith(".hdf") and f.startswith("MOD10A1F")]
+    files = [f for f in os.listdir(download_folder) if f.endswith(".hdf")]  # removed  and f.startswith("MOD10A1F") so that MYD can be used to replace missing MODIS data
     # Get the subset of modis 10 degree files for this day
     subset = [f for f in files if f.split(".")[2] in modis_tile_list]
     hdf_filename = subset[0]
