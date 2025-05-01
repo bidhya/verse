@@ -134,9 +134,9 @@ function smoothdata(SCF_inst, twindow, nt, smoothfunc)
     for i=(1+twindow):(nt-twindow)
         # adding 1 (ie, 1+twindow) in the for loop because Julia is 1-based indexing
         if smoothfunc == "mean"
-            SCF_smooth[i] = mean(SCF_inst[i-twindow:i+twindow])
+            SCF_smooth[i] = mean(skipmissing(SCF_inst[i-twindow:i+twindow]))
         elseif smoothfunc=="median"
-            SCF_smooth[i] = median(SCF_inst[i-twindow:i+twindow])
+            SCF_smooth[i] = median(skipmissing(SCF_inst[i-twindow:i+twindow]))
         end
     end    
     return SCF_smooth
