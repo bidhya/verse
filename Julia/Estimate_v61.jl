@@ -28,6 +28,14 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir,
     # println("Inside Estimate_v61...")
     # println(SCFinst)
 
+    # # 1a Fill in missing SCF [Feb 23, 2023]
+    # for i=1:nt
+    #     if ismissing(SCFinst[i])
+    #         # make it a function of SWEprior
+    #         SCFinst[i]=1  # June 20, 2024: cannot convert a value to missing for assignment. When using uint8 based data.
+    #     end
+    # end
+    
     # 1 Smooth SCF observations    
     # twindow = 5
     SCFobs = smoothdata(SCFinst, twindow, nt, "median")
@@ -134,9 +142,11 @@ function smoothdata(SCF_inst, twindow, nt, smoothfunc)
     for i=(1+twindow):(nt-twindow)
         # adding 1 (ie, 1+twindow) in the for loop because Julia is 1-based indexing
         if smoothfunc == "mean"
-            SCF_smooth[i] = mean(skipmissing(SCF_inst[i-twindow:i+twindow]))
+            SCF_smooth[i] = mean(SCF_inst[i-twindow:i+twindow])
+            # SCF_smooth[i] = mean(skipmissing(SCF_inst[i-twindow:i+twindow]))  # use this when there is missing data
         elseif smoothfunc=="median"
-            SCF_smooth[i] = median(skipmissing(SCF_inst[i-twindow:i+twindow]))
+            SCF_smooth[i] = mean(SCF_inst[i-twindow:i+twindow])
+            # SCF_smooth[i] = mean(skipmissing(SCF_inst[i-twindow:i+twindow]))  # use this when there is missing data
         end
     end    
     return SCF_smooth
@@ -224,8 +234,8 @@ function define_hyperparameters(SCF_smooth_season,nt,Pprior,SWEprior,AirT, SCFob
     
     # 2.2 Extreme / limit values
     # 2.2.1 SWE
-    SWEmax_global = 5;
-    SWEmin_global = 1.0e-6; #1/1000 mm
+    SWEmax_global = 5
+    SWEmin_global = 1.0e-6 #1/1000 mm TODO (BNY) we can use this for missing values due flags such as to water etc. ie, give those pixels a zero value
     # define SWEmax as a function of time and of SCF
     #    set SWEmax to 0 if SCF is low
     SWEmax = zeros(nt,1)
