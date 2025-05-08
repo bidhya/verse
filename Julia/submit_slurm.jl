@@ -126,6 +126,7 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         write(f, "echo List of files on TMPDIR\n")
         write(f, "echo ---------------------------------------------------------------------\n")
         write(f, "ls -ltrh\n")
+        write(f, "cd $(out_subfolder)\n")  # for v19b onwards, Outputs are saved in WaterYear subfolder.
         write(f, "echo -n Count of outputs_txt files: ; ls outputs_txt_*|wc -l\n")  # more specific: outputs_txt_$(start_idx)_$(end_idx)
         # write(f, "echo -n Logs: ; ls logs_$(start_idx)_$(end_idx)|wc -l\n")  # logs_* can be  misleading as it matches other files with logs prefix, so be explicit.  
         
@@ -173,7 +174,7 @@ szY = size(A, 2)  # get size in Y-dimension; here dim = 2. 6500 for 1km run.
 job_count = 0
 delay_multiplier = 0.5 # delay the consecutive slurm job by ~1 minutes
 if occursin("asc.ohio-state.edu", host_machine)
-    delay_multiplier = 5  # longer delay on unity becuase of slow speeds in moving data (network related)
+    delay_multiplier = 2  # longer delay on unity becuase of slow speeds in moving data (network related)
 end
 total_runtime = 0
 cum_valid_pix_count = 0
