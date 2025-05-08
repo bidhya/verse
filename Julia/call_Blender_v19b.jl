@@ -42,9 +42,9 @@ arg_len = length(ARGS)
 out_subfolder = ARGS[1]  # WY2016. output subfolder relative to input files; temp_text and nc_outputs saved here
 water_year = out_subfolder[end-3:end] #last 4 chars are assumed year, else error. 
 start_idx = ARGS[2]  # this is string
-end_idx = ARGS[3]
+stop_idx = ARGS[3]
 start_idx = parse(Int64, start_idx)
-end_idx = parse(Int64, end_idx)
+stop_idx = parse(Int64, stop_idx)
 # RES = ARGS[4] # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
 # opt = parse(Int, ARGS[4])  # 1 or 2 optional choices for different parameterization of G
 # Now leveraging opt for other things as well. currently used for twindow for smoothing SCF [Mar 27, 2025]
@@ -94,12 +94,12 @@ if occursin("L-JY0R5X3", host_machine)
     base_folder = "$root_dir/coressd/Blender"
     DataDir = "$root_dir/coressd/Blender/Inputs"  # must exist
     OUTDIR = "$base_folder/Runs"  # will be created if missing
-    log_filename = string("LOGS/", start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
+    log_filename = string("LOGS/", start_idx, "_", stop_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
     addprocs()
 else
     # Prepare folder, environment and workers for parallel compute for SLURM
     system_machine = "Slurm"
-    log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/LOGS/",start_idx, "_", end_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
+    log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/LOGS/",start_idx, "_", stop_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
     if wshed_run
         log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/LOGS/wshed", water_year, "_v19_", ws_pix_idx, ".log")
     elseif pixel_run
@@ -171,15 +171,15 @@ using Dates
 # DataDir = "$root_dir/projects/coressd/Blender/Inputs"  # must exist  (Old = NoahMP)
 
 # Make a folder insise HPC node because we want to copy existing files there
-exp_dir = "$out_subfolder/outputs_txt_$(start_idx)_$(end_idx)"  #"$out_folder/outputs_txt"  # tmp_txtDir(old name) To save text outputs for each pixel
+exp_dir = "$out_subfolder/outputs_txt_$(start_idx)_$(stop_idx)"  # To save text outputs for each pixel
 mkpath(exp_dir)  # mkdir
-logDir = "$out_subfolder/logs_$(start_idx)_$(end_idx)"  # Save logs created by JuMP. 
-# logDir = "$base_folder/Runs/$out_subfolder/logs/logs_$(start_idx)_$(end_idx)"  # For Debug: save on same folder and outputs  
+logDir = "$out_subfolder/logs_$(start_idx)_$(stop_idx)"  # Save logs created by JuMP. 
+# logDir = "$base_folder/Runs/$out_subfolder/logs/logs_$(start_idx)_$(stop_idx)"  # For Debug: save on same folder and outputs  
 mkpath(logDir)  # mkdir; must create here, else error in the current setup  
 # Error on Discover (Nov 08, 2023): rm: cannot remove '/lscratch/tdirs/batch/slurm.24967584.byadav/logs': Directory not empty; Solution: #SBATCH --no-requeue
 
 # cp("$base_folder/Runs/$out_subfolder/outputs_txt", "$tmp_txtDir/$water_year")  # copy to local machine; error if running the first time as this dir would not exist
-nc_outDir = "$OUTDIR/$out_subfolder/temp_nc/outputs_$(start_idx)_$(end_idx)"
+nc_outDir = "$OUTDIR/$out_subfolder/temp_nc/outputs_$(start_idx)_$(stop_idx)"
 # if !ispath(exp_dir * "/SWEpv.txt") # ispath is generic for both file and folder
 # if !isfile(exp_dir * "/SWEpv.txt")  # This is better check: process the pixel only if the last file exported by optimzer (SWEpv.txt) does not yet exist
 if isdir(nc_outDir)  # process only if the pixel is not already processed
@@ -208,8 +208,8 @@ A = A[(:Snowf_tavg, :SWE_tavg, :Tair_f_tavg, :Qg_tavg, :SCF)];  # to remove spat
 
 """
 szY = size(A, 2)  # get size in Y-dimension; here dim = 2
-if end_idx > szY
-    end_idx = szY
+if stop_idx > szY
+    stop_idx = szY
 end
 if pixel_run
     @info("Pixel Run  ")
@@ -250,9 +250,9 @@ elseif wshed_run
     write("$subset_folder/wshed_$ws_pix_idx.nc", A, force=true)  ## error when two processors try to write at the same time
 else
     @info("DEFAULT RUN  ")
-    # A = A[1:end, start_idx:end_idx, :]  # use for default runs
-    # A = A[X(1:end), Y(start_idx:end_idx)]
-    A = A[2109:5329, start_idx:end_idx, :]  # Uncomment this for debugging and testing.
+    # A = A[1:end, start_idx:stop_idx, :]  # use for default runs
+    A = A[X(1:end), Y(start_idx:stop_idx)]
+    # A = A[2109:5329, start_idx:stop_idx, :]  # Uncomment this for debugging and testing.
 end
 # Use cartesian index for iteration
 # valid_pix_ind = findall(!ismissing, A["SWE_tavg"][Ti=1])  # Extract cartesian index for non-missing (ie, all) data using one-day of data 
@@ -267,13 +267,16 @@ running_time = (time_ns() - start_time)/1e9/60
 @info("Starting with blender loop.")
 @info("---------------------------")
 @info("Processing $(length(ind)) of $(length(valid_pix_ind))")
+
+# Next few lines are for testing twindow and σWRFGmin only.
 # σWRFGmin_list = collect(0:5:200)  # as range 1:5:120
 # # σWRFGmin_list[1] = 1  # to ensure that 1 is included in the list
 # # σWRFGmin_list = [1, 5, 10, 15, 25, 50, 100, 200, 300, 400,500]
 # σWRFGmin_list = [10]
 # @info("Fix MODIS flag = $fix_modis_flag")
-twindow_list = collect(0:1:15)  # for smoothing SCF.
-@info(twindow_list)
+# twindow_list = collect(0:1:15)  # for smoothing SCF.
+# @info(twindow_list)
+
 # @sync makes the code wait for all processes to finish their part of the computation before moving on from the loop
 # ie, without @sync, the on of the processors may move to next while loop is still running, creating error and crash whole script prematurely 
 # Threads.@threads for ij in ind
