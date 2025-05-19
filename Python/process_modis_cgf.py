@@ -57,6 +57,7 @@
 import os
 # from datetime import timedelta
 import datetime
+import time
 import pandas as pd
 
 # from giuh_helpers import tic, toc
@@ -212,7 +213,7 @@ def extract_modis(download_folder, daF):
     da.data = da.data.astype(np.float32)  # float
     # Replace with Nans: They both look to give same result
     # da.data[da.data >100] = np.nan  #this causes most of the pixels to be nan. Hence, cannot be used in Blender
-    da.data[da.data == da._FillValue] = np.nan
+    # da.data[da.data == da._FillValue] = np.nan
     da.data[da.data == 211] = np.nan  # Night 
     # da.data[da.data == 239] = np.nan  # Ocean . This nan seems to problem around edges because LIS will have valid data but MODIS may have some missing data.  
 
@@ -231,7 +232,8 @@ def extract_modis(download_folder, daF):
     # Correct for Forest Tree Cover Fraction. Memory error for 1 km run, hence, using Milan node on Discover.
     # da.data = da.data / (1 - (daF + np.finfo(np.float32).eps))  # 2.220446049250313e-16 for float64; 1.1920929e-07 for float32
     # da.data = da.data / (1 - (daF - np.finfo(np.float32).eps))
-    da.data = da.data / (1 - daF)  # none of daF for 20 year data is 100 or greater, so no need for eps
+    da.data = da.data / (1 - daF)  # no need for eps because none of daF values is greater than 100 (checked manually) 
+    da.data[da.data > 1] = 1  # to correct any bias introduced by above equation
 
     # da.data = da.data/100  # mabye do at the end
     # Clip on original globa data was >2 minutes
@@ -279,6 +281,7 @@ for year_doy in year_doy_list:
 #     extract_modis(download_folder)  # Serial processing
 tic()
 Parallel(n_jobs=cores)(delayed(extract_modis)(download_folder, daF) for download_folder in download_folder_list)
+time.sleep(5)  # wait for all threads to finish
 # with n_jobs=-1 give out of memory error on Discover, likely because it is using all cores even though only a few
 # requested by Slurm. Hence, write a explicit number rather than -1. Keep cores below 30 to avoid NodeFailError  
 # Runtime ~10 mins for 1 year with 26 cores.
