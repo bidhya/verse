@@ -3,7 +3,7 @@
 """ Extract MODIS CGF over North America matching the LIS/SEUP Data 
 
     Usage       : 
-    python ../verse/Python/process_modis_cgf.py 2016 --RES 010 --cores 8  
+    python ../verse/Python/process_modis_cgf.py 2016 --cores 8  
     sbatch b_process_modis_cgf.sh $water_year $RES # $cores  (Slurm script for Discover)
 
     Resources
@@ -65,7 +65,7 @@ import numpy as np
 import xarray as xr
 import rioxarray
 from rioxarray.merge import merge_arrays
-# from rasterio.enums import Resampling  # for cubic, bilinear resampling etc during reprojection
+from rasterio.enums import Resampling  # for cubic, bilinear resampling etc during reprojection
 import logging
 import argparse
 from joblib import Parallel, delayed
@@ -137,8 +137,8 @@ DATAFIELD_NAME = "CGF_NDSI_Snow_Cover"  # or just hardcode the variable of inter
 # Create clip folder to save clipped modis files. Initially clipping from global mosaic, hence, named clipped. 
 # No more strictly clipping in new workflow because I manually select subset of MODIS tiles
 modis_folder = f"{coressd_folder}/Blender/Modis"  
-mosaic_folder = f"{modis_folder}/MOD10A1F/mosaic{water_year}"  # Feb 07, 2024: inserted temp for mosaics  
-os.makedirs(mosaic_folder, exist_ok=True)
+# mosaic_folder = f"{modis_folder}/MOD10A1F/mosaic{water_year}"  # Save mosaics for QA/QC and testing only. Not required for final run.  
+# os.makedirs(mosaic_folder, exist_ok=True)
 clip_folder = f"{modis_folder}/MOD10A1F/clipped{water_year}"  # _{RES}  Changed name to "clipped" folder; old name: NA{water_year}_{RES}
 os.makedirs(clip_folder, exist_ok=True)
 # combined_modis_folder = f"{modis_folder}/WaterYear"  # modis_wy_combined (old). Final concatenated MODIS CGF data for Blender run will be saved here. This file will be concatenated with lis variables by next script.  
@@ -172,6 +172,10 @@ da.to_netcdf(f"{clip_folder}/{out_tif_name}.nc")
 
 """
 logging.info("Start Reproj match of MODIS.")
+# New May 16, 2025: Use the a-priori saved template raster for reprojection match
+MOD10A1F_mosaic_template = rioxarray.open_rasterio(f"{coressd_folder}/Blender/Template/MOD10A1F_NA_mosaic.tif")
+bounds_tuple = MOD10A1F_mosaic_template.rio.bounds()
+logging.info(f"MOD10A1F_mosaic_template Bounds tuple = {bounds_tuple}")
 
 
 def extract_modis(download_folder, daF):
@@ -184,68 +188,67 @@ def extract_modis(download_folder, daF):
     files = [f for f in os.listdir(download_folder) if f.endswith(".hdf")]  # removed  and f.startswith("MOD10A1F") so that MYD can be used to replace missing MODIS data
     # Get the subset of modis 10 degree files for this day
     subset = [f for f in files if f.split(".")[2] in modis_tile_list]
-    hdf_filename = subset[0]
+    hdf_filename = subset[0]  # TODO: can be problematic if first file is the replacement AQUA (MYD) file
     product, year_doy, tile, version, _, _ = hdf_filename.split(".")  # Create filenme to one matching the pattern processed by Sarith
     logging.info(f"\t For {year_doy}, total number of tiles = {len(files)} and subset file count = {len(subset)}")
 
     out_tif_name = f"{product}.{version}_{year_doy[1:]}"
-    if not os.path.exists(f"{clip_folder}/{out_tif_name}.nc"):
-        # da = merge_arrays([rioxarray.open_rasterio(f'{download_folder}/{tif}')[DATAFIELD_NAME] for tif in subset])  # chunks={'x':2**13, 'y':2**13}
-        da = merge_arrays([rioxarray.open_rasterio(f'{download_folder}/{tif}')[DATAFIELD_NAME] for tif in subset], bounds=bounds_tuple)
-        da = da.squeeze()
-        # da.rio.to_raster(f"{mosaic_folder}/{out_tif_name}.tif", driver="COG")
-        # # New May 07, 2023: Save the original DNs. Float, convertion etc in subsequent script. This will also save space
-        # # Conver to Dataset, so this is proper nc file
-        # # TODO Feb 07, 2024: Comment next two lines. Was saved only to inspect data. Though 1 sample mosaic seems used for MOD44B data.  
-        # ds_mosaic = xr.Dataset({DATAFIELD_NAME: da})
-        # encoding = {DATAFIELD_NAME: {'zlib': True}}
-        # ds_mosaic.to_netcdf(f"{mosaic_folder}/{out_tif_name}.nc", encoding=encoding)
+    # if not os.path.exists(f"{clip_folder}/{out_tif_name}.nc"):
+    # da = merge_arrays([rioxarray.open_rasterio(f'{download_folder}/{tif}')[DATAFIELD_NAME] for tif in subset])  # chunks={'x':2**13, 'y':2**13}
+    da = merge_arrays([rioxarray.open_rasterio(f'{download_folder}/{tif}')[DATAFIELD_NAME] for tif in subset], bounds=bounds_tuple)
+    da = da.squeeze()
+    # da.rio.to_raster(f"{mosaic_folder}/{out_tif_name}.tif", driver="COG")  # saving temporarily only to check if everything is working.
+    # # New May 07, 2023: Save the original DNs. Float, convertion etc in subsequent script. This will also save space
+    # # Conver to Dataset, so this is proper nc file
+    # # TODO Feb 07, 2024: Comment next two lines. Was saved only to inspect data. Though 1 sample mosaic seems used for MOD44B data.  
+    # ds_mosaic = xr.Dataset({DATAFIELD_NAME: da})
+    # encoding = {DATAFIELD_NAME: {'zlib': True}}
+    # ds_mosaic.to_netcdf(f"{mosaic_folder}/{out_tif_name}.nc", encoding=encoding)
 
-        # da.rio.write_crs("epsg:4326", inplace=True)  # not used yet
-        # mosaic_tif = f"{mosaic_tif_folder}/{out_tif_name}.tif"  # This only temporary to make sure everything checks out
-        # da.rio.to_raster(mosaic_tif)
-        # More processing before reprojection_match operation
-        da.data = da.data.astype(np.float32)  # float
-        # Replace with Nans: They both look to give same result
-        # da.data[da.data >100] = np.nan  #this causes most of the pixels to be nan. Hence, cannot be used in Blender
-        da.data[da.data == da._FillValue] = np.nan
-        da.data[da.data == 211] = np.nan  # Night 
-        # da.data[da.data == 239] = np.nan  # Ocean . This nan seems to problem around edges because LIS will have valid data but MODIS may have some missing data.  
+    # da.rio.write_crs("epsg:4326", inplace=True)  # not used yet
+    # mosaic_tif = f"{mosaic_tif_folder}/{out_tif_name}.tif"  # This only temporary to make sure everything checks out
+    # da.rio.to_raster(mosaic_tif)
+    # More processing before reprojection_match operation
+    da.data = da.data.astype(np.float32)  # float
+    # Replace with Nans: They both look to give same result
+    # da.data[da.data >100] = np.nan  #this causes most of the pixels to be nan. Hence, cannot be used in Blender
+    da.data[da.data == da._FillValue] = np.nan
+    da.data[da.data == 211] = np.nan  # Night 
+    # da.data[da.data == 239] = np.nan  # Ocean . This nan seems to problem around edges because LIS will have valid data but MODIS may have some missing data.  
 
-        da.data[da.data > 100] = 0  # Give rest of the flags value of zero snow! TODO: change to nan because blender can handle missing now  
-        da.data = da.data / 100  # May 17, 2023: moved this from below: da_clipped.data = da_clipped.data / 100
-        # a) May 16, 2022: Convert NDSI to snow cover fraction (FRA); FRA = 0.06 + 1.21 * NDSI. (Salomonson and Appel, 2004)
-        da.data = 0.06 + 1.21 * da.data
-        # Correct of biases introduced by above equation
-        da.data[da.data <= 0.06] = 0
-        da.data[da.data > 1] = 1
-        # New 04/20/2024: Reproj match Tree cover data here, so we get higher resolution tree cover fraction with MODIS CGF
-        # daF = daF.rio.reproject_match(da)  # match directly to seup resolution   or TODO better to match to MODIS SCF resolution
-        # daF.data[daF.data > 100] = 0  # Give rest of the flags value of zero tree cover percent
-        # daF.data = daF.data / 100  # TODO: This could be chaning the original data so daF is progressively getting smaller. Remove from here do it as soon as daF is read.
+    da.data[da.data > 100] = 0  # Give rest of the flags value of zero snow! TODO: change to nan because blender can handle missing now  
+    da.data = da.data / 100  # May 17, 2023: moved this from below: da_clipped.data = da_clipped.data / 100
+    # a) May 16, 2022: Convert NDSI to snow cover fraction (FRA); FRA = 0.06 + 1.21 * NDSI. (Salomonson and Appel, 2004)
+    da.data = 0.06 + 1.21 * da.data
+    # Correct of biases introduced by above equation
+    da.data[da.data <= 0.06] = 0
+    da.data[da.data > 1] = 1
+    # New 04/20/2024: Reproj match Tree cover data here, so we get higher resolution tree cover fraction with MODIS CGF
+    # daF = daF.rio.reproject_match(da)  # match directly to seup resolution   or TODO better to match to MODIS SCF resolution
+    # daF.data[daF.data > 100] = 0  # Give rest of the flags value of zero tree cover percent
+    # daF.data = daF.data / 100  # TODO: This could be chaning the original data so daF is progressively getting smaller. Remove from here do it as soon as daF is read.
 
-        # Correct for Forest Tree Cover Fraction. Memory error for 1 km run, hence, using Milan node on Discover.
-        # da.data = da.data / (1 - (daF + np.finfo(np.float32).eps))  # 2.220446049250313e-16 for float64; 1.1920929e-07 for float32
-        # da.data = da.data / (1 - (daF - np.finfo(np.float32).eps))
-        da.data = da.data / (1 - daF)  # none of daF for 20 year data is 100 or greater, so no need for eps
+    # Correct for Forest Tree Cover Fraction. Memory error for 1 km run, hence, using Milan node on Discover.
+    # da.data = da.data / (1 - (daF + np.finfo(np.float32).eps))  # 2.220446049250313e-16 for float64; 1.1920929e-07 for float32
+    # da.data = da.data / (1 - (daF - np.finfo(np.float32).eps))
+    da.data = da.data / (1 - daF)  # none of daF for 20 year data is 100 or greater, so no need for eps
 
-        # da.data = da.data/100  # mabye do at the end
-        # Clip on original globa data was >2 minutes
-        da_clipped = da.rio.reproject_match(template_raster)  # seems similar to ds ; error in rasterio 1.3.8 so keep 1.3.7; was just memory error    
-        da_clipped.data[da_clipped.data == da_clipped._FillValue] = np.nan  # because reproj match introduced fill value of 255
-        # # b) Correct for Forest Tree Cover Fraction
-        # da_clipped.data = da_clipped.data / (1 - (daF + np.finfo(float).eps))  # ValueError: operands could not be broadcast together with shapes (14401,24000) (14401,24001)
-        da_clipped.data[da_clipped.data > 1] = 1
+    # da.data = da.data/100  # mabye do at the end
+    # Clip on original globa data was >2 minutes
+    da_clipped = da.rio.reproject_match(template_raster, resampling=Resampling.average)  # can have memory error    
+    da_clipped.data[da_clipped.data == da_clipped._FillValue] = np.nan  # because reproj match introduced fill value of 255
+    # # b) Correct for Forest Tree Cover Fraction
+    # da_clipped.data = da_clipped.data / (1 - (daF + np.finfo(float).eps))  # ValueError: operands could not be broadcast together with shapes (14401,24000) (14401,24001)
+    da_clipped.data[da_clipped.data > 1] = 1
 
-        # TODO: We will get some 255 values for nodata; check if other values also included (due to interpolation)
-        da_clipped.data[nan_mask] = np.nan  # done again, because reproj match will fill new nodata with 255 (perhaps this value from attrs)
-        # da_clipped.data = da_clipped.data / 100
-        # TODO: Fix attrs, no-data etc here so that data is self-describing
-        # Conver to Dataset, so this is proper nc file
-        ds_clipped = xr.Dataset({DATAFIELD_NAME: da_clipped})
-        encoding = {DATAFIELD_NAME: {'zlib': True}}
-        ds_clipped.to_netcdf(f"{clip_folder}/{out_tif_name}.nc", encoding=encoding)
-        # noah_ds_clip[var] = da_clipped  # Append Modis data to clipped dataset
+    # TODO: We will get some 255 values for nodata; check if other values also included (due to interpolation)
+    da_clipped.data[nan_mask] = np.nan  # done again, because reproj match will fill new nodata with 255 (perhaps this value from attrs)
+    # da_clipped.data = da_clipped.data / 100
+    # TODO: Fix attrs, no-data etc here so that data is self-describing
+    # Conver to Dataset, so this is proper nc file
+    ds_clipped = xr.Dataset({DATAFIELD_NAME: da_clipped})
+    encoding = {DATAFIELD_NAME: {'zlib': True}}
+    ds_clipped.to_netcdf(f"{clip_folder}/{out_tif_name}.nc", encoding=encoding)
 
 
 # Make of List of downloaded sub-folder. To make it easy to parallelize using Joblib
@@ -271,10 +274,6 @@ for year_doy in year_doy_list:
 # bounds_tuple = lower_left_da.rio.bounds()[:2] + upper_right_da.rio.bounds()[2:]  # left, bottom, right, top: float  
 # del lower_left_da, upper_right_da, lower_left_granule, upper_right_granule, files, download_folder
 
-# New May 16, 2025: Use the a-priori saved template raster for reprojection match
-MOD10A1F_mosaic_template = rioxarray.open_rasterio(f"{coressd_folder}/Blender/Template/MOD10A1F_NA_mosaic.tif")
-bounds_tuple = MOD10A1F_mosaic_template.rio.bounds()
-logging.info(f"MOD10A1F_mosaic_template Bounds tuple = {bounds_tuple}")
 # ------------------------------------------------------------------------------------------------
 # for download_folder in download_folder_list:
 #     extract_modis(download_folder)  # Serial processing
@@ -284,6 +283,11 @@ Parallel(n_jobs=cores)(delayed(extract_modis)(download_folder, daF) for download
 # requested by Slurm. Hence, write a explicit number rather than -1. Keep cores below 30 to avoid NodeFailError  
 # Runtime ~10 mins for 1 year with 26 cores.
 logging.info(f"Finished Reproj match of MODIS to SEUP Resolution. {toc()}")
+# Cleanup
+del template_raster
+del nan_mask
+del daF
+del MOD10A1F_mosaic_template
 
 # ========================================================================================================
 # ========================================================================================================
@@ -301,37 +305,49 @@ logging.info("Start Concatenating MODIS CGF along time dimension.")
 # lis_folder =     f"{coressd_folder}/Blender/Inputs_{RES}"  # NoahMP
 
 # nc_files = [f for f in os.listdir(modis_folder) if f.endswith(".nc4") and f.startswith("MOD10A1F")]  # sarith has nc4 extension
-nc_files = [f for f in os.listdir(clip_folder) if f.endswith(".nc") and f.startswith("MOD10A1F")]  # I have nc extension
-# Sort in ascending order of data
-# nc_files.sort(key = lambda x: pd.to_datetime(x.split("_")[2].split(".")[0]))
-# nc_files.sort(key=lambda x: int(x.split(".")[1][1:]))
-nc_files.sort(key=lambda x: int(x.split(".")[1].split("_")[-1]))
-# nc_files = nc_files[40:270]  # 60:240 for testing; remove later
+nc_files = [f for f in os.listdir(clip_folder) if f.endswith(".nc") and f.startswith("M")]  # no more MOD10A1F because we may have MYD files
+nc_files.sort(key=lambda x: int(x.split(".")[1].split("_")[-1]))  # Sort ascending order
 logging.info(f"Count of netcdf files: {len(nc_files)}")
-# Idea : Just extract and merge; then later convert to float, nans etc
-count = 0
-# 1. First concat the files along time dimension
-# da = None  # just declaring for red lines below
-# TODO THIS FOR LOOP IS THE MOST TIME CONSUMING. more than 10 hours for WY2011.
-for nc_file in nc_files:
-    # these are actually NetCDF files
-    # begin_dt = nc_file.split('.')[1][1:]
-    begin_dt = nc_file.split(".")[1].split("_")[-1]  # nc_file.split('.')[1][1:]
+# count = 0
+# # 1. First create a master template data-array by adding time dimension
+# nc_file = nc_files[0]
+# begin_dt = nc_file.split(".")[1].split("_")[-1]
+# begin_year = int(begin_dt[:4])
+# begin_days = int(begin_dt[4:])
+# begin_ymd = datetime.datetime(begin_year, 1, 1) + datetime.timedelta(begin_days - 1)
+# da = xr.open_dataset(f"{clip_folder}/{nc_file}", decode_coords="all")["CGF_NDSI_Snow_Cover"].squeeze()
+# da["time"] = begin_ymd
+# # 2. Then loop through the rest of the files and concatenate along time dimension
+# for nc_file in nc_files[1:20]:
+#     # TODO THIS FOR LOOP IS THE MOST TIME CONSUMING. more than 3 hours for WY2011.
+#     begin_dt = nc_file.split(".")[1].split("_")[-1]
+#     begin_year = int(begin_dt[:4])
+#     begin_days = int(begin_dt[4:])
+#     begin_ymd = datetime.datetime(begin_year, 1, 1) + datetime.timedelta(begin_days - 1)
+#     # TODO: chunks may be used here but be careful because we got some unknown error in the past  
+#     da_temp = xr.open_dataset(f"{clip_folder}/{nc_file}", decode_coords="all")["CGF_NDSI_Snow_Cover"].squeeze()
+#     da_temp["time"] = begin_ymd
+#     da = xr.concat([da, da_temp], dim='time')  # , dim='time'
+#     count += 1
+
+
+def concat_along_time(nc_file):
+    """ Concatenate the MODIS CGF data along time dimension
+    """
+    begin_dt = nc_file.split(".")[1].split("_")[-1]
     begin_year = int(begin_dt[:4])
     begin_days = int(begin_dt[4:])
     begin_ymd = datetime.datetime(begin_year, 1, 1) + datetime.timedelta(begin_days - 1)
-    # dt_list.append(begin_ymd)
-    if count == 0:
-        # da = rioxarray.open_rasterio(f"{clip_folder}/{nc_file}").squeeze()
-        da = xr.open_dataset(f"{clip_folder}/{nc_file}", decode_coords="all")["CGF_NDSI_Snow_Cover"].squeeze()
-        da["time"] = begin_ymd
-    else:
-        # TODO: use chunks here but be careful because we got some unknown error with chunks
-        da_temp = xr.open_dataset(f"{clip_folder}/{nc_file}", decode_coords="all")["CGF_NDSI_Snow_Cover"].squeeze()
-        da_temp["time"] = begin_ymd
-        da = xr.concat([da, da_temp], dim='time')  # , dim='time'
-    count += 1
+    da_temp = xr.open_dataset(f"{clip_folder}/{nc_file}", decode_coords="all")["CGF_NDSI_Snow_Cover"].squeeze()
+    da_temp["time"] = begin_ymd
+    return da_temp
+
+
+# Here da is a list of results. The results should include data arrays
+da = Parallel(n_jobs=cores)(delayed(concat_along_time)(nc_file) for nc_file in nc_files)
+da = xr.concat(da, dim='time')
 logging.info(f"\tFinished concatenation of modis data. Shape = {da.shape}")
+
 # # da = da.drop(["band", "spatial_ref"])  # after shifting to xarray, these coords were introduced; so remove before combining with seup
 # da = da.drop_vars(["band"])  # ValueError: These variables cannot be found in this dataset: ['spatial_ref'] 
 # da = da.drop_duplicates(dim="time")  # required for Sarith script; may not be required for mine as there should be no duplicate dates 
