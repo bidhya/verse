@@ -23,7 +23,7 @@ Everything is relative to this main folder on Discover
 │   └── wshed
 └── installs
     ├── miniconda3
-    ├── julia-1-11.4
+    ├── julia-1-11.5
     └── .julia
 ```  
 ### Important subfolder paths and description    
@@ -89,7 +89,7 @@ Use multiple cores
    - uses `../OSU/MOD10A1F.061/MODIS_Proc/download_snow/..` for snow-cover data
    - uses `MOD44B` for tree-cover correction
    - Hard dependency to use `Qg_tavg.nc` as template and mask
-   - intermediate outputs: `../coressd/Blender/Modis/MOD10A1F/clipped2015_010`: clipped and matched to seup resolution
+   - intermediate outputs: `../coressd/Blender/Modis/MOD10A1F/clipped2015`: clipped and matched to LIS resolution
    - `../Blender/Inputs/WY2015/SCF.nc` : ie, same location as LIS outputs as above.  
 
 ## II. Run Blender (Julia) Code
@@ -99,7 +99,7 @@ Required Julia packages: `JuMP Ipopt Rasters NCDatasets CSV LoggingExtras Distr
    - cd to `Github` folder
       - `julia verse/Julia/submit_slurm.jl 2015 1`  # generate and submit slurm jobs for WY2015 with adaptive slice = 1 row.
       - generate ~ 500 slurm jobs that calls the following julia script:
-      - `julia verse/Julia/call_Blender_v18.jl WY2015 1 17`  : example script for Blender run for WY2015 for slice 1 to 17
+      - `julia verse/Julia/call_Blender_v18.jl WY2015 1 10`  : example script for Blender run for WY2015 for slice 1 to 10
       - slurm job folder: 
           - ../slurm_jobs/2015/
              - .out/ : slurm outputs saved here  
@@ -107,17 +107,18 @@ Required Julia packages: `JuMP Ipopt Rasters NCDatasets CSV LoggingExtras Distr
 
 2. Post-processing (Required for continental map): Combine individual nc_files into PAN American netcdf file  
    - uses:  ../Github/Slurm_Blender/c_combine_out_nc_files.sh
-   - calls: julia verse/Julia/combine_nc_files.jl WY$water_year
+   - calls: julia verse/Julia/combine_nc_files.jl WY2015
 
 ## Edge Cases
 These configurations are used for testing and prototyping. Two of these configurations include "pixel" and "watershed" runs.  
 Pixel run:  
+- need a csv file of pixel locations (`data/pixel.csv`)
 - Use "pixel" prefix to WY. Example: `pixel_WY2015` while calling call_Blender julia script. 
 - folder and sub-folders created within script to save outputs.
-- usage: `julia verse/Julia/call_Blender_v19.jl "pixel/pixel_WY2015" 200 200 2 1`
+- usage: `julia verse/Julia/call_Blender_v19b.jl "pixel/pixel_WY2015" 200 200 2`
 
 Watershed run:  
-- need a csv file of watershed bounding box (`../coressd/Blender/coordinates/wshed.csv`)
+- need a csv file of watershed bounding box (`data/wshed.csv`)
 - select watershed by passing the index (1-based in Julia) of watershed
-- usage: `julia verse/Julia/call_Blender_v19.jl "wshed/Tuolumne/wshed_WY2015" 100 100 2 1`
+- usage: `julia verse/Julia/call_Blender_v19b.jl "wshed/wshed_WY2015" 100 100 2`
 

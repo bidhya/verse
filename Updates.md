@@ -1,5 +1,12 @@
 # Updates to codebase in reverse chronological order
 ====================================================   
+## May 21, 2025  
+- MODIS data processed using newer workflow
+- Add Aqua (MYD) for a few missing (~25 for 2004 to 2006) Terra (MOD) Modis tiles  
+- Corrections for tree-cover fraction applied at MOD10A1F resolution (higher res)  
+- Taking mean during resampling rather than nearest neighborhood
+- Most of the Modis flags classified to zero except 'Nights' flag which is retained as NaN    
+
 ## Apr 20, 2025  
 - Cleaning up v19b for final continental scale run  
 - submit_slurm.jl now uses _v19b.jl  
