@@ -4,8 +4,9 @@ using Ipopt
 using DelimitedFiles
 Random.seed!(1234)  # seed for reproducibility
 
-function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir, twindow=2)
+function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir, twindow=1)
   """
+  changing twindow from 2 to 1 (May 19, 2025)
   inputs
   ==============
   i,j are pixel locations
