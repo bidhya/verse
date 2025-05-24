@@ -2,83 +2,120 @@
 
 """ Extract MODIS CGF over North America matching the LIS/SEUP Data 
 
-    Usage       : 
+    Usage
+    ====== 
     python ../verse/Python/process_modis_cgf.py 2016 --cores 8  
-    sbatch b_process_modis_cgf.sh $water_year $RES # $cores  (Slurm script for Discover)
+    sbatch b_process_modis_cgf.sh $water_year (Slurm script for Discover)
 
-    Resources
-    =========
-    Whole Milan node with 50 cores. More than this causes NodeFailError, likely due to memory limit.
-    Need ~28 GB per core
-    For 1 year with 32 GB/8cores runtime ~20 minutes, with output of ~6GB
+    Description
+    ===========
+    This script extracts MODIS CGF data for North America matching the LIS data resolution (1 km).
+    It uses MOD44B tree cover fraction data to correct for forest cover fraction.
+    
+    STEPS
+    -----
+    1. Use sample templates for "SWE_tavg" for matching MOD10A1F to LIS resolution
+    2. Generate year_doy_list in MODIS naming convention
+    3. Read MOD44B and divide by 100 to convert 0 to 1 range
+    4. Merge daily adjascent MOD10A1F tiles (40 for North America)
+        - convert to float32
+        - replace 211 flag (Nights) with nans
+        - convert from NDSI to Snow cover fraction
+        - Correct for cover fraction
+    5. Reproject and match to LIS template
+    6. Use nan mask from LIS and replace in MODIS pixels  
+    7. Combine daily data to produce annual data
+    8. Save the final output "SCF.nc" inside the same folder with LIS input files  
+    After this, data in ready for Blender run
 
-    NB:
-    ===
-    1. This script is part of the Blender workflow. It extracts MODIS CGF data for North America
-    2. The MODIS CGF data is mosaicked and matched to LIS/SEUP data resolution
-    3. The final output is a concatenated MODIS CGF data for the entire water year
-    4. The final output is saved in the same folder as SEUP data for Blender run
-
-    History
-    =======
-    June 21, 2024: 
-    - Revert back to saving final ouput as float32 but with rounding and values between (0 - 100)
-    - rouding saves space
-    - divide by 100 to get fraction between 0 and 1 in Blender run.  
-    - Error for unit8 was caused in Estimate_v59.jl, likely due to mix of missing due to actual nodata and polar-nights nodata.  
-
-    June 12, 2024: 
-    - Saving final ouput as uint8 (0 - 100 and _FillValue=255)and renamed as SCF.nc => updated call_Blender_v18 with this name as well
-    - Will require settig 255 to nodata/missing and dividing by 100 to get fraction between 0 and 1..
-    - saving intermediate clipped modis files as np.float32. Reduced folder size from 14 GB to 6.2 GB.
-
-    June 01, 2024: Switching back to NetCDF from Zarr for MODIS CGF data. Though Zarr is faster, it is not currently usable because in the end we need NetCDF file.
-    May 16, 2024: Saving the zarr files with zarr LIS inputs as well. 
-    Apr 27, 2025: removed  and f.startswith("MOD10A1F") so that MYD can be used to replace missing MODIS data
+    Compute Resources
+    =================
+    Milan node with 32 cores and 300 GB RAM. 
+    More than this causes NodeFailError, likely due to memory limit.   
+    Runtime ~1 hour for 1 year with 32 cores with parallelization.
 
     Input
     =====
     Raw downloaded files in original sinusoidal projection
     modis_download_folder   = /discover/nobackup/projects/coressd/OSU/MOD10A1F.061/MODIS_Proc/download_snow     # /2016001/001
-    template_raster         = /discover/nobackup/projects/coressd/Blender/Inputs/WY2016/SWE_tavg.nc  # _010/lis
-    Tree cover fraction     = /discover/nobackup/projects/coressd/Blender/Modis/MOD44B/Percent_Tree_Cover/NA/MOD44B.A{water_year}065.061.nc
+    modis_mosaic_template   = /discover/nobackup/projects/coressd/Blender/Template/MOD10A1F_NA_mosaic.tif  # used only to get bounds for mosaicking 40 tiles
+    lis_template            = /discover/nobackup/projects/coressd/Blender/Inputs/WY2016/SWE_tavg.nc
+    TreeCoverFraction       = /discover/nobackup/projects/coressd/Blender/Modis/MOD44B/Reproj/MOD44B.A{water_year}065.061.nc
 
     Outputs 
     =======
-    Folder: /discover/nobackup/projects/coressd/Blender/Modis/  
-    - MOD10A1F/mosaic2016_010: temporary mosaics only and consider deleting (or not saving)
-        - MOD10A1F.061_2010261.tif # notice tif file retained instead of nc. Is a daily North America mosaic in original Sinusoidal projection
-    - MOD10A1F/clipped2016_010: clipped files
-        - MOD10A1F.061_2010265.nc # clipped and reprojected to LIS resolution and extent. 15 GB.
-    - WaterYear: Final concatenated MODIS CGF data for Blender run.
-        - 2016_modis.nc
+    Intermediate Folders: 
+    - /discover/nobackup/projects/coressd/Blender/Modis/MOD10A1F  
+        - mosaic2016: temporary mosaics only and consider deleting (or not saving)
+            - MOD10A1F.061_2010261.tif # notice tif file retained instead of nc. Is a daily North America mosaic in original Sinusoidal projection
+        - clipped2016_010: clipped files
+            - MOD10A1F.061_2010265.nc # clipped and reprojected to LIS resolution and extent. 15 GB.
+    Final Output: 
+    - /discover/nobackup/projects/coressd/Blender/Inputs/WY2016/SCF.nc (~12 GB)  
+    - Final water year concatenated MODIS CGF data for Blender run.
+
+    TODO
+    =====
+    - Create a different layer that holds info on QA/QC related to the data and processing
+    - Can use bitmask layer to hold this information
+    - Do AND operation on the bitmask layer for all the pixels that are covered by LIS data
+    - Idea is to use this layer in Blender script to make necessary corrections
+    - For example, if SCF is zero, and bitmask 3 is set, then we give some reasonable value to SCF
+    - Might be much harder to implement on a short timeline  
+    - There are systematic issues with MOD10A1F data 
+    - Thus these actions points can also be ignored and just convert all flags to zero except polar nights (as is already implemented)
+
+    History
+    =======
+    June 01, 2024:
+    - Tested saving the zarr files. Though zarr is faster, it is not currently usable we NetCDF files for Blender (Julia) run. 
+    - Switching back to saving NetCDF files. 
+    June 12, 2024: 
+    - Saving final ouput as uint8 (0 - 100 and _FillValue=255)and renamed as SCF.nc => updated call_Blender_v18 with this name as well
+    - Will require settig 255 to nodata/missing and dividing by 100 to get fraction between 0 and 1..
+    - saving intermediate clipped modis files as np.float32. Reduced folder size from 14 GB to 6.2 GB.
+    June 21, 2024: 
+    - Revert back to saving final ouput as float32 but with rounding and values between (0 - 100)
+    - rouding saves space
+    - divide by 100 to get fraction between 0 and 1 in Blender run.  
+    - Error for unit8 was caused in Estimate_v59.jl, likely due to mix of missing due to actual nodata and polar-nights nodata.  
+    May 22, 2025:
+    - removed  and f.startswith("MOD10A1F") so that MYD can be used to replace missing MODIS data    
+    - Correction of Tree cover fraction done at higer resolution (~500 m MOD10A1F) instead of older LIS resolution (1 km)
+    - Replace default nearest-neighbor resampling with average resampling. This may help reduce isolated zero SCF pixels.
+    - Added parallelization using joblib. Reduced runtime from ~6 hours to ~1 hour without increasing compute cost.
+
+    Author
+    ======
+    Bidhya N Yadav
+    The Ohio State University
+    2022-2025
 
 """
 import os
-# from datetime import timedelta
 import datetime
 import time
 import pandas as pd
-
-# from giuh_helpers import tic, toc
 from tictoc import tic, toc
 import numpy as np
 import xarray as xr
 import rioxarray
 from rioxarray.merge import merge_arrays
-from rasterio.enums import Resampling  # for cubic, bilinear resampling etc during reprojection
+from rasterio.enums import Resampling  # for average, cubic, bilinear etc. resampling during reprojection
 import logging
 import argparse
 from joblib import Parallel, delayed
 
 parser = argparse.ArgumentParser(description='Extract MODIS CGF files for North America.')
 parser.add_argument('water_year', help='Water Year for processing', type=str)
-parser.add_argument('--cores', help='Number of cores to use for multiprocessing', type=int, default=2)  # don' use -1 on DISCOVER  
+parser.add_argument('--cores', help='Number of cores for parallelization', type=int, default=2)  # don' use -1 on DISCOVER MILAN node  
 args = parser.parse_args()
 water_year = args.water_year
 cores = args.cores
 chunk = {"x": 2**8, "y": 2**8}
 
+# Create "OUT" folder for Slurm output and Python logging
+os.makedirs("OUT", exist_ok=True)  # must be created manually for Slurm output
 logging.basicConfig(filename=f"OUT/process_modis_cgf_{water_year}.log", level=logging.INFO, format='%(asctime)s : %(message)s')
 logging.info('  ')
 logging.info('-------------------------START LOGGING--------------------------------------')
@@ -109,11 +146,10 @@ def doy_to_date(modis_date, reverse=False):
 
 coressd_folder = "/discover/nobackup/projects/coressd"
 modis_download_folder = f"{coressd_folder}/OSU/MOD10A1F.061/MODIS_Proc/download_snow"  # /2016001/001
-# Generate the date range for WY2016 and convert to DOY format of MODIS naming convention
+# Manually generate a date range for water year and convert to DOY format of MODIS naming convention
 start_date = datetime.datetime.strptime(f"{int(water_year) - 1}-10-01", "%Y-%m-%d")  # 
 end_date = datetime.datetime.strptime(f"{water_year}-09-30", "%Y-%m-%d")  # 
 date_generated = pd.date_range(start_date, end_date)
-# print(date_generated.strftime("%d-%m-%Y"))
 # convert to DOY format of MODIS naming convention
 year_doy_list = list(date_generated.strftime("%Y%j"))  # Does this match Day of year for MODIS nameing convention?  
 # year_doy_list = ["2016001", "2016002", "2016003"]
@@ -122,61 +158,31 @@ year_doy_list = list(date_generated.strftime("%Y%j"))  # Does this match Day of 
 # Global variablees
 # Get a template raster for reprojection match. This is the SEUP data. Any nc file from ../coressd/Blender/Inputs_050/combined/SWE_tavg will work.
 lis_folder = f"{coressd_folder}/Blender/Inputs"  # _{RES} NoahMP
-# template_raster = xr.open_dataset(f'{lis_folder}/combined/SWE_tavg/{water_year}04.nc')  # Use April month  #OLD Harcoded: 201509, 200109  
-# template_raster = xr.open_zarr(f'{lis_folder}/lis/{water_year}_lis.zarr', chunks="auto")  # New LIS data saved as zarr  
-template_raster = xr.open_dataset(f'{lis_folder}/WY{water_year}/SWE_tavg.nc', chunks="auto")  # lis/  switching back to nc again.  
+lis_template = xr.open_dataset(f'{lis_folder}/WY{water_year}/SWE_tavg.nc', chunks="auto")  
+lis_template = lis_template.isel(time=0)  # Just one day of data sufficient. Use this template for reprojection match of MODIS data
+lis_template.rio.write_crs("EPSG:4326", inplace=True)  # TODO : check if this should Plate Caree  projection  
+nan_mask = np.isnan(lis_template["SWE_tavg"].data)  # we'll use this nan mask to replace MODIS data so they match exactly with noahmp
+DATAFIELD_NAME = "CGF_NDSI_Snow_Cover"  # we need this variable from MOD10AF
 
-# Select just one day data
-# noah_ds_clip = noah_ds_clip.sel(time = noah_ds_clip2.time)
-template_raster = template_raster.isel(time=0)
-template_raster.rio.write_crs("EPSG:4326", inplace=True)  # TODO : check if this should Plate Caree  projection  
-nan_mask = np.isnan(template_raster["SWE_tavg"].data)  # we'll use this nan mask to replace MODIS data so they match exactly with noahmp
-# variables = ["CGF_NDSI_Snow_Cover", "Cloud_Persistence", "Basic_QA", "Algorithm_Flags_QA", "MOD10A1_NDSI_Snow_Cover"]
-# DATAFIELD_NAME = variables[0]  # for now just check one important varialbes; may need to check all
-
-DATAFIELD_NAME = "CGF_NDSI_Snow_Cover"  # or just hardcode the variable of interest
-# Create clip folder to save clipped modis files. Initially clipping from global mosaic, hence, named clipped. 
-# No more strictly clipping in new workflow because I manually select subset of MODIS tiles
+# Create folder to save intermediate modis files. 
 modis_folder = f"{coressd_folder}/Blender/Modis"  
-# mosaic_folder = f"{modis_folder}/MOD10A1F/mosaic{water_year}"  # Save mosaics for QA/QC and testing only. Not required for final run.  
+# mosaic_folder = f"{modis_folder}/MOD10A1F/mosaic{water_year}"  # uncomment if Saving mosaics for QA/QC and testing only. Not required for final run.  
 # os.makedirs(mosaic_folder, exist_ok=True)
-clip_folder = f"{modis_folder}/MOD10A1F/clipped{water_year}"  # _{RES}  Changed name to "clipped" folder; old name: NA{water_year}_{RES}
+clip_folder = f"{modis_folder}/MOD10A1F/clipped{water_year}"  # intermediate daily Geotiff files saved here.
 os.makedirs(clip_folder, exist_ok=True)
-# combined_modis_folder = f"{modis_folder}/WaterYear"  # modis_wy_combined (old). Final concatenated MODIS CGF data for Blender run will be saved here. This file will be concatenated with lis variables by next script.  
-# os.makedirs(combined_modis_folder, exist_ok=True)
 
 # Get Tree cover fraction data. This new MOD44B data is already matched to MOD10A1F Snow Cover data.
-# daF = rioxarray.open_rasterio(f'{coressd_folder}/Blender/Modis/MOD44B/Percent_Tree_Cover/NA/MOD44B.A{water_year}065.061.nc').squeeze()
 daF = rioxarray.open_rasterio(f'{coressd_folder}/Blender/Modis/MOD44B/Reproj/MOD44B.A{water_year}065.061.tif').squeeze()
 logging.info(f"daF Shape = {daF.shape}")
 daF.data = daF.data.astype(np.float32)  # default might be 64 bit, so being explicit here.
-# # daF.data[daF.data == daF._FillValue] = np.nan  # Lets not use Nans because minimum values are already zero (May 15, 2025)
-# # # da.data[da.data == 200] = np.nan  # water ; maybe it water implies zero forest cover?; so don't use nan here
-# daF.data[daF.data > 100] = 0  # Give rest of the flags value of zero tree cover percent
 daF.data = daF.data / 100
-# daF = daF.rio.reproject_match(template_raster)  # match directly to seup resolution   or TODO better to match to MODIS SCF resolution
 
-# # Replace MOD44B with VCF5KYR (0.05 degree 1 global file per year, ending in 2016)
-# daF = rioxarray.open_rasterio(f'{coressd_folder}/Blender/Modis/VCF5KYR/downloads/VCF5KYR_{water_year}.tif')  # squeeze not required here.  
-# daF = daF.sel(band=1)  # tree-cover fraction in band 1.  
-# daF = daF.rio.reproject_match(template_raster)  # match directly to seup resolution   
-# daF.data = daF.data / 100  # opposite of above. but works without having to convert to float.  todo: more verification.  
-
-# TODO: First just merge and save data in original format (both cgf and tree cover), ie, as follows
-""" Even same just one merged files at temporary template: required for daF reproj match
-da = merge_arrays([rioxarray.open_rasterio(f'{download_folder}/{tif}')[DATAFIELD_NAME] for tif in subset])  # chunks={'x':2**13, 'y':2**13}
-da = da.squeeze()
-# New May 07, 2023: Save the original DNs. Float, convertion etc in subsequent script. This will also save space
-# Conver to Dataset, so this is proper nc file
-da = xr.Dataset({DATAFIELD_NAME: da})
-da.to_netcdf(f"{clip_folder}/{out_tif_name}.nc")
-
-"""
 logging.info("Start Reproj match of MODIS.")
-# New May 16, 2025: Use the a-priori saved template raster for reprojection match
+# New May 16, 2025: Use the a-priori saved template raster to get the bounds when mosaicking the 40 tiles.
 MOD10A1F_mosaic_template = rioxarray.open_rasterio(f"{coressd_folder}/Blender/Template/MOD10A1F_NA_mosaic.tif")
 bounds_tuple = MOD10A1F_mosaic_template.rio.bounds()
 logging.info(f"MOD10A1F_mosaic_template Bounds tuple = {bounds_tuple}")
+del MOD10A1F_mosaic_template
 
 
 def extract_modis(download_folder, daF):
@@ -195,58 +201,37 @@ def extract_modis(download_folder, daF):
 
     out_tif_name = f"{product}.{version}_{year_doy[1:]}"
     # if not os.path.exists(f"{clip_folder}/{out_tif_name}.nc"):
-    # da = merge_arrays([rioxarray.open_rasterio(f'{download_folder}/{tif}')[DATAFIELD_NAME] for tif in subset])  # chunks={'x':2**13, 'y':2**13}
-    da = merge_arrays([rioxarray.open_rasterio(f'{download_folder}/{tif}')[DATAFIELD_NAME] for tif in subset], bounds=bounds_tuple)
+    da = merge_arrays([rioxarray.open_rasterio(f'{download_folder}/{tif}')[DATAFIELD_NAME] for tif in subset], bounds=bounds_tuple)  # chunks={"x": 2**8, "y": 2**8}
     da = da.squeeze()
     # da.rio.to_raster(f"{mosaic_folder}/{out_tif_name}.tif", driver="COG")  # saving temporarily only to check if everything is working.
-    # # New May 07, 2023: Save the original DNs. Float, convertion etc in subsequent script. This will also save space
-    # # Conver to Dataset, so this is proper nc file
-    # # TODO Feb 07, 2024: Comment next two lines. Was saved only to inspect data. Though 1 sample mosaic seems used for MOD44B data.  
-    # ds_mosaic = xr.Dataset({DATAFIELD_NAME: da})
-    # encoding = {DATAFIELD_NAME: {'zlib': True}}
-    # ds_mosaic.to_netcdf(f"{mosaic_folder}/{out_tif_name}.nc", encoding=encoding)
 
-    # da.rio.write_crs("epsg:4326", inplace=True)  # not used yet
-    # mosaic_tif = f"{mosaic_tif_folder}/{out_tif_name}.tif"  # This only temporary to make sure everything checks out
-    # da.rio.to_raster(mosaic_tif)
-    # More processing before reprojection_match operation
+    # Convert to float and replace various flags to appropriate values
     da.data = da.data.astype(np.float32)  # float
-    # Replace with Nans: They both look to give same result
     # da.data[da.data >100] = np.nan  #this causes most of the pixels to be nan. Hence, cannot be used in Blender
     # da.data[da.data == da._FillValue] = np.nan
     da.data[da.data == 211] = np.nan  # Night 
     # da.data[da.data == 239] = np.nan  # Ocean . This nan seems to problem around edges because LIS will have valid data but MODIS may have some missing data.  
-
     da.data[da.data > 100] = 0  # Give rest of the flags value of zero snow! TODO: change to nan because blender can handle missing now  
-    da.data = da.data / 100  # May 17, 2023: moved this from below: da_clipped.data = da_clipped.data / 100
+    da.data = da.data / 100  # to get zero to one range. This is required for calculations in next steps.
     # a) May 16, 2022: Convert NDSI to snow cover fraction (FRA); FRA = 0.06 + 1.21 * NDSI. (Salomonson and Appel, 2004)
     da.data = 0.06 + 1.21 * da.data
     # Correct of biases introduced by above equation
     da.data[da.data <= 0.06] = 0
     da.data[da.data > 1] = 1
-    # New 04/20/2024: Reproj match Tree cover data here, so we get higher resolution tree cover fraction with MODIS CGF
-    # daF = daF.rio.reproject_match(da)  # match directly to seup resolution   or TODO better to match to MODIS SCF resolution
-    # daF.data[daF.data > 100] = 0  # Give rest of the flags value of zero tree cover percent
-    # daF.data = daF.data / 100  # TODO: This could be chaning the original data so daF is progressively getting smaller. Remove from here do it as soon as daF is read.
-
-    # Correct for Forest Tree Cover Fraction. Memory error for 1 km run, hence, using Milan node on Discover.
+    # Apply correction for Forest Tree Cover Fraction. Memory error for 1 km run, hence, using Milan node on Discover.
     # da.data = da.data / (1 - (daF + np.finfo(np.float32).eps))  # 2.220446049250313e-16 for float64; 1.1920929e-07 for float32
     # da.data = da.data / (1 - (daF - np.finfo(np.float32).eps))
     da.data = da.data / (1 - daF)  # no need for eps because none of daF values is greater than 100 (checked manually) 
     da.data[da.data > 1] = 1  # to correct any bias introduced by above equation
 
-    # da.data = da.data/100  # mabye do at the end
-    # Clip on original globa data was >2 minutes
-    da_clipped = da.rio.reproject_match(template_raster, resampling=Resampling.average)  # can have memory error    
+    # Match to LIS template using reproj match   
+    da_clipped = da.rio.reproject_match(lis_template, resampling=Resampling.average)  # can have memory error    
     da_clipped.data[da_clipped.data == da_clipped._FillValue] = np.nan  # because reproj match introduced fill value of 255
-    # # b) Correct for Forest Tree Cover Fraction
-    # da_clipped.data = da_clipped.data / (1 - (daF + np.finfo(float).eps))  # ValueError: operands could not be broadcast together with shapes (14401,24000) (14401,24001)
     da_clipped.data[da_clipped.data > 1] = 1
-
     # TODO: We will get some 255 values for nodata; check if other values also included (due to interpolation)
     da_clipped.data[nan_mask] = np.nan  # done again, because reproj match will fill new nodata with 255 (perhaps this value from attrs)
     # da_clipped.data = da_clipped.data / 100
-    # TODO: Fix attrs, no-data etc here so that data is self-describing
+    # OPTIONAL: Fix attrs, no-data etc here so that data is self-describing
     # Conver to Dataset, so this is proper nc file
     ds_clipped = xr.Dataset({DATAFIELD_NAME: da_clipped})
     encoding = {DATAFIELD_NAME: {'zlib': True}}
@@ -263,6 +248,7 @@ for year_doy in year_doy_list:
     # extract_modis(download_folder)
 
 # ------------------------------------------------------------------------------------------------
+# # This is no more required as we are using the bounds from MOD10A1F_mosaic_template that was created as part of Tree Cover Fraction processing
 # # Lower left (h07v06) and Upper Right (h16v01) MODIS Granule for North America
 # # Use bounds from this two files in mosaicking. esle there is one extra pixel in x, y or both direction.
 # # This should help constrain and we always get same size of output raster
@@ -275,8 +261,8 @@ for year_doy in year_doy_list:
 # upper_right_da = rioxarray.open_rasterio(f"{download_folder}/{upper_right_granule}")[DATAFIELD_NAME]
 # bounds_tuple = lower_left_da.rio.bounds()[:2] + upper_right_da.rio.bounds()[2:]  # left, bottom, right, top: float  
 # del lower_left_da, upper_right_da, lower_left_granule, upper_right_granule, files, download_folder
-
 # ------------------------------------------------------------------------------------------------
+
 # for download_folder in download_folder_list:
 #     extract_modis(download_folder)  # Serial processing
 tic()
@@ -287,55 +273,23 @@ time.sleep(5)  # wait for all threads to finish
 # Runtime ~10 mins for 1 year with 26 cores.
 logging.info(f"Finished Reproj match of MODIS to SEUP Resolution. {toc()}")
 # Cleanup
-del template_raster
+del lis_template
 del nan_mask
 del daF
-del MOD10A1F_mosaic_template
 
 # ========================================================================================================
 # ========================================================================================================
 
 logging.info("Start Concatenating MODIS CGF along time dimension.")
-# May 08, 2024: Moving MODIS concatenation part from merge_modis_seup.py to here
-# TODO: check variable folder names that do not crash existing names ...
-# Part I: Read daily MODIS-CGF North America mosiaics and create WaterYear data [ie, concatenate by time]
-# ========================================================================================================
-# modis_folder = f"{coressd_folder}/MOD10A1F.061_clip/WY16"  # C:/Github/Blender/MOD10A1F/WY16"  # ones processed by sarith copied here for prototyping convenience
-# modis_folder = f"{coressd_folder}/Blender/Modis/MOD10A1F/NA{water_year}_{RES}"  # Read daily North America mosaicked ModisCGF. [Older = CGF_NDSI_Snow_Cover]  
-# modis_folder = clip_folder  #=  f"{coressd_folder}/Blender/Modis/MOD10A1F/NA{water_year}_{RES}"
-# Following two folders will be created by this script as required (below).
-# combined_folder = f"{coressd_folder}/Blender/Inputs_{RES}/WY"  # Modis/MOD10A1F/combined temp To save concatenated with origianl flags for QA/QC in future; but not really necessary for this or other workflow
-# lis_folder =     f"{coressd_folder}/Blender/Inputs_{RES}"  # NoahMP
-
 # nc_files = [f for f in os.listdir(modis_folder) if f.endswith(".nc4") and f.startswith("MOD10A1F")]  # sarith has nc4 extension
 nc_files = [f for f in os.listdir(clip_folder) if f.endswith(".nc") and f.startswith("M")]  # no more MOD10A1F because we may have MYD files
 nc_files.sort(key=lambda x: int(x.split(".")[1].split("_")[-1]))  # Sort ascending order
 logging.info(f"Count of netcdf files: {len(nc_files)}")
-# count = 0
-# # 1. First create a master template data-array by adding time dimension
-# nc_file = nc_files[0]
-# begin_dt = nc_file.split(".")[1].split("_")[-1]
-# begin_year = int(begin_dt[:4])
-# begin_days = int(begin_dt[4:])
-# begin_ymd = datetime.datetime(begin_year, 1, 1) + datetime.timedelta(begin_days - 1)
-# da = xr.open_dataset(f"{clip_folder}/{nc_file}", decode_coords="all")["CGF_NDSI_Snow_Cover"].squeeze()
-# da["time"] = begin_ymd
-# # 2. Then loop through the rest of the files and concatenate along time dimension
-# for nc_file in nc_files[1:20]:
-#     # TODO THIS FOR LOOP IS THE MOST TIME CONSUMING. more than 3 hours for WY2011.
-#     begin_dt = nc_file.split(".")[1].split("_")[-1]
-#     begin_year = int(begin_dt[:4])
-#     begin_days = int(begin_dt[4:])
-#     begin_ymd = datetime.datetime(begin_year, 1, 1) + datetime.timedelta(begin_days - 1)
-#     # TODO: chunks may be used here but be careful because we got some unknown error in the past  
-#     da_temp = xr.open_dataset(f"{clip_folder}/{nc_file}", decode_coords="all")["CGF_NDSI_Snow_Cover"].squeeze()
-#     da_temp["time"] = begin_ymd
-#     da = xr.concat([da, da_temp], dim='time')  # , dim='time'
-#     count += 1
 
 
 def concat_along_time(nc_file):
     """ Concatenate the MODIS CGF data along time dimension
+        Required for parallelization using joblib
     """
     begin_dt = nc_file.split(".")[1].split("_")[-1]
     begin_year = int(begin_dt[:4])
@@ -351,9 +305,6 @@ da = Parallel(n_jobs=cores)(delayed(concat_along_time)(nc_file) for nc_file in n
 da = xr.concat(da, dim='time')
 logging.info(f"\tFinished concatenation of modis data. Shape = {da.shape}")
 
-# # da = da.drop(["band", "spatial_ref"])  # after shifting to xarray, these coords were introduced; so remove before combining with seup
-# da = da.drop_vars(["band"])  # ValueError: These variables cannot be found in this dataset: ['spatial_ref'] 
-# da = da.drop_duplicates(dim="time")  # required for Sarith script; may not be required for mine as there should be no duplicate dates 
 # da.data = np.round(da.data * 100)  # Just rounding also saves space for float32 compared to unrounded. Also used uint8.
 # da = da.fillna(255)  # a)required uint8; else we only get 0 and 1 values upon conversion. 
 # da.data = da.data.astype(np.uint8)  # b)required uint8. np.float32; np.(int8 or ubyte): 0-255 (unsigned); np.byte: -128 to 127)  data was previously float64; but even int8 should be enough (TODO)
@@ -363,9 +314,7 @@ ds = xr.Dataset({"SCF": da})  # MODSCAG so we can save to netcdf or append to SE
 logging.info("Saving concatenated MODIS_CGF")
 ds = ds.chunk(chunks=chunk)
 ds = ds.compute()  # Load numpy array in memory before saving. Faster but can create memory error. If memory error, then comment this line
-# ds.to_netcdf(f"{combined_modis_folder}/{water_year}_modis.nc", encoding={"MODSCAG": {'zlib': True}})
 ds.to_netcdf(f"{lis_folder}/WY{water_year}/SCF.nc", encoding={"SCF": {'zlib': True}}, format="NETCDF4", engine="h5netcdf")  # lis/ keep filename same as variable name. required for new rasterstack in Julia.
-
 # ds.to_zarr(f"{combined_modis_folder}/{water_year}_modis.zarr")  # time consuming; 1.5 hours
 logging.info(f"\t Finished saving final Modis concatenated file: {lis_folder}/WY{water_year}/SCF.nc")
 logging.info("Finished Job.")
