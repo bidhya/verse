@@ -29,15 +29,23 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir,
     # println("Inside Estimate_v61...")
     # println(SCFinst)
 
-    # # 1a Fill in missing SCF [Feb 23, 2023]
-    # for i=1:nt
-    #     if ismissing(SCFinst[i])
-    #         # make it a function of SWEprior
-    #         SCFinst[i]=1  # June 20, 2024: cannot convert a value to missing for assignment. When using uint8 based data.
-    #     end
-    # end
-    
-    # 1 Smooth SCF observations    
+    # TODO This is prototype only to Fill in missing SCF values
+    #  Write a function that returns SCF based on LIS SWE prior.
+    for i=1:nt
+        if ismissing(SCFinst[i])
+            if SWEprior[i] <= 0  # if SWE is zero, then SCF is zero
+                SCFinst[i] = 0
+            elseif SWEprior[i] > 0 && SWEprior[i] < 0.1
+                SCFinst[i] = 0.1
+            elseif SWEprior[i] >= 0.1 && SWEprior[i] < 0.5
+                SCFinst[i] = 0.5
+            elseif SWEprior[i] >= 0.5
+                SCFinst[i] = 0.75
+            end
+        end
+    end
+
+    # 1 Smooth SCF observations
     # twindow = 5
     SCFobs = smoothdata(SCFinst, twindow, nt, "median")
     # SCFobs = fix_modis(SCFinst)  # apply MODIS fix developed by Jack (Feb 04, 2025)
@@ -64,7 +72,7 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir,
     end
     # define objective function
     @objective(m,Min,sum((Precip-Pprior).^2 ./σP.^2) + sum((SWE-SWEprior ).^2 ./ σSWE.^2) + sum(Mcost.^2))
-    log_file =  "$logDir/Pix_$(i)_$(j)_$(twindow).txt"  # original
+    log_file =  "$logDir/Pix_$(i)_$(j).txt"  # _$(twindow)
     # solve
     redirect_stdio(stdout=log_file, stderr=log_file) do
       optimize!(m)
@@ -93,7 +101,8 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, logDir, exp_dir,
     
     # 5 output
     out_vars = hcat(SWEhat, GmeltHat, Ghat, Phat, Ushat, G_pv, Gmelt_pv, U_pv, SWEpv, SCFobs)
-    writedlm("$(exp_dir)/Pix_$(i)_$(j)_$(twindow).txt", out_vars)
+    # writedlm("$(exp_dir)/Pix_$(i)_$(j)_$(twindow).txt", out_vars)
+    writedlm("$(exp_dir)/Pix_$(i)_$(j).txt", out_vars)
     
     # 6 clean up
     m = nothing

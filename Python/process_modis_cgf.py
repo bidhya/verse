@@ -79,11 +79,11 @@
     - rouding saves space
     - divide by 100 to get fraction between 0 and 1 in Blender run.  
     - Error for unit8 was caused in Estimate_v59.jl, likely due to mix of missing due to actual nodata and polar-nights nodata.  
-    May 22, 2025:
+    May 27, 2025:
     - removed  and f.startswith("MOD10A1F") so that MYD can be used to replace missing MODIS data    
     - Correction of Tree cover fraction done at higer resolution (~500 m MOD10A1F) instead of older LIS resolution (1 km)
     - Replace default nearest-neighbor resampling with average resampling. This may help reduce isolated zero SCF pixels.
-    - Added parallelization using joblib. Reduced runtime from ~6 hours to ~1 hour without increasing compute cost.
+    - Added parallelization using joblib. Reduced runtime from ~6 hours to 1 to 2.5 hours without increasing compute cost.
 
     Author
     ======
@@ -177,7 +177,7 @@ logging.info(f"daF Shape = {daF.shape}")
 daF.data = daF.data.astype(np.float32)  # default might be 64 bit, so being explicit here.
 daF.data = daF.data / 100
 
-logging.info("Start Reproj match of MODIS.")
+logging.info("Start Reproj match of Modis (MOD10A1F).")
 # New May 16, 2025: Use the a-priori saved template raster to get the bounds when mosaicking the 40 tiles.
 MOD10A1F_mosaic_template = rioxarray.open_rasterio(f"{coressd_folder}/Blender/Template/MOD10A1F_NA_mosaic.tif")
 bounds_tuple = MOD10A1F_mosaic_template.rio.bounds()
@@ -271,16 +271,15 @@ time.sleep(5)  # wait for all threads to finish
 # with n_jobs=-1 give out of memory error on Discover, likely because it is using all cores even though only a few
 # requested by Slurm. Hence, write a explicit number rather than -1. Keep cores below 30 to avoid NodeFailError  
 # Runtime ~10 mins for 1 year with 26 cores.
-logging.info(f"Finished Reproj match of MODIS to SEUP Resolution. {toc()}")
+logging.info(f"Finished Reproj match of Modis (MOD10A1F) to LIS Resolution. {toc()}")
 # Cleanup
 del lis_template
 del nan_mask
 del daF
-
 # ========================================================================================================
 # ========================================================================================================
 
-logging.info("Start Concatenating MODIS CGF along time dimension.")
+logging.info("Start Concatenation Reproj matched Modis (MOD10A1F) along time dimension.")
 # nc_files = [f for f in os.listdir(modis_folder) if f.endswith(".nc4") and f.startswith("MOD10A1F")]  # sarith has nc4 extension
 nc_files = [f for f in os.listdir(clip_folder) if f.endswith(".nc") and f.startswith("M")]  # no more MOD10A1F because we may have MYD files
 nc_files.sort(key=lambda x: int(x.split(".")[1].split("_")[-1]))  # Sort ascending order
