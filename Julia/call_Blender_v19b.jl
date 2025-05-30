@@ -292,6 +292,7 @@ running_time = (time_ns() - start_time)/1e9/60
     WRFG = A["Qg_tavg"][X=i, Y=j].data
     AirT = A["Tair_f_tavg"][X=i, Y=j].data/100
     MSCF = A["SCF"][X=i, Y=j].data; #/100 Convert to fraction. multiplication and devision works without dot. but add/subtract will need dot.
+    # TODO: extract latitude and pass to blender function. can be used to spatially fix MODIS SCF
     # blender(out_folder, i, j, WRFSWE, WRFP, WRFG, MSCF, AirT)  # Call blender for the pixel. OLD.
     # @sync @distributed for twindow in twindow_list  # σWRFGmin in σWRFGmin_list
     #     # blender(i, j, WRFSWE, WRFP, WRFG, MSCF, AirT, logDir, exp_dir, opt, σWRFGmin, fix_modis_flag)
@@ -306,8 +307,9 @@ sleep(10)
 @everywhere GC.gc()
 
 end_time = time_ns()
-running_time = (end_time - start_time)/1e9/60  # 3600
-# @info("Running Time (blender For Loop) = $(round(running_time, digits=2)) minutes\n")  # hours
+running_time = (end_time - start_time)/1e9/60  # minutes. or divide by 3600 for seconds
+efficiency = (running_time * 60 * nworkers()) / valid_pix_count  # processing time (seconds) per pixel  
+@info("Pixel processing Efficiency (seconds per pixel) = $(round(efficiency, digits=2)) \n")
 if running_time < 60
     @info("Running Time (blender For Loop) = $(round(running_time, digits=2)) minutes")
 else
