@@ -261,6 +261,8 @@ valid_pix_count = length(valid_pix_ind)
 ind = valid_pix_ind
 @info("Total valid pixel count = $(valid_pix_count)")
 # println("Total valid pixel count = $(valid_pix_count)")  # debug
+# y_dim = dims(A, Y)  # # Returns a Y-dimensional (latitude) lookup array
+# @info("y_dim = $(collect(y_dim))")  # collect will remove extra metadata and just print values
 
 running_time = (time_ns() - start_time)/1e9/60
 @info("Pre-generating output nc files = $(round(running_time, digits=2)) minutes")
@@ -286,6 +288,7 @@ running_time = (time_ns() - start_time)/1e9/60
     # @info("Processing pixel $(ij[1]) $(ij[2])")
     i = ij[1]
     j = ij[2]
+    # lat = y_dim[j]  # pixel latitude. can be used to correct MODIS SCF based on latitude 
     # TODO replace the following 5 lines with the direct access to file
     WRFSWE = A["SWE_tavg"][X=i, Y=j].data/1000  # Here "data" is an AbstractArray.
     WRFP = A["Snowf_tavg"][X=i, Y=j].data/1000
