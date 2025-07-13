@@ -1,5 +1,10 @@
 # Updates to codebase in reverse chronological order
 ====================================================   
+## Jun 14, 2025  
+- Created call_blender_v20.jl as exact copy of v19b.jl.  
+- _v19b.jl frozen.  
+- Increase the threshold of packing more rows of pixels per run.    
+
 ## May 21, 2025  
 - MODIS data processed using newer workflow
 - Add Aqua (MYD) for a few missing (~25 for 2004 to 2006) Terra (MOD) Modis tiles  
