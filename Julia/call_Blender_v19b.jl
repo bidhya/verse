@@ -198,7 +198,7 @@ files = (
 A = RasterStack(files; lazy=true)  # lazy=true https://github.com/rafaqz/Rasters.jl/issues/449
 
 running_time = (time_ns() - start_time)/1e9/60
-@info("Time until copying input netcdf to Node = $(round(running_time, digits=2)) minutes")
+@info("Time until creating Rasterstack from separate input netcdf files = $(round(running_time, digits=2)) minutes")
 
 # Subset only the required variables because the nc file can have extraneous vars that cause problem with julia
 A = A[(:Snowf_tavg, :SWE_tavg, :Tair_f_tavg, :Qg_tavg, :SCF)];  # to remove spatial ref that cause problem during subsetting
@@ -265,7 +265,7 @@ ind = valid_pix_ind
 # @info("y_dim = $(collect(y_dim))")  # collect will remove extra metadata and just print values
 
 running_time = (time_ns() - start_time)/1e9/60
-@info("Pre-generating output nc files = $(round(running_time, digits=2)) minutes")
+@info("Elapsed Time = $(round(running_time, digits=2)) minutes")
 @info("Starting with blender loop.")
 @info("---------------------------")
 @info("Processing $(length(ind)) of $(length(valid_pix_ind))")
