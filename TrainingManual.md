@@ -7,16 +7,16 @@ Julia Setup: MD and JD
 
 ## Julia Setup: 
 Use installation documentation: https://julialang.org/downloads/  
-Use the latest available version (Julia 1.11.4 as of this writing)  
+Use the latest available version (Julia 1.11.6 as of this writing)  
 Steps  
 ```
 cd /discover/nobackup/your-user-name
-wget https://julialang-s3.julialang.org/bin/linux/x64/1.11/julia-1.11.5-linux-x86_64.tar.gz
-tar zxvf julia-1.11.5-linux-x86_64.tar.gz
+wget https://julialang-s3.julialang.org/bin/linux/x64/1.11/julia-1.11.6-linux-x86_64.tar.gz
+tar zxvf julia-1.11.6-linux-x86_64.tar.gz
 cd ~  
 vim .bashrc  
 Press i to enter Insert Mode and paste following 2 lines (towards the end)  
-export PATH=$PATH:/discover/nobackup/your-user-name/julia-1.11.4/bin  
+export PATH=$PATH:/discover/nobackup/your-user-name/julia-1.11.6/bin  
 export JULIA_DEPOT_PATH=/discover/nobackup/your-user-name/.julia  
 Hit Escape  
 type :wq # write and quit  

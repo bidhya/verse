@@ -10,7 +10,7 @@ The script is currently capable of running on my following platforms.
 - Ubuntu (WSL2-based)
 - OSC HPC
 - Ohio-State Unity HPC 
-Julia Versions = 1.11.5 
+Julia Versions = 1.11.6 
 Minimum extra Julia Packages to install  
 - JuMP, Ipopt, Rasters, NCDatasets, LoggingExtras, Distributions 
 

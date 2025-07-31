@@ -22,8 +22,8 @@ Everything is relative to this main folder on Discover
 │   ├── slurm_jobs
 │   └── wshed
 └── installs
-    ├── miniconda3
-    ├── julia-1-11.5
+    ├── miniforge3
+    ├── julia-1-11.6
     └── .julia
 ```  
 ### Important subfolder paths and description    
@@ -55,7 +55,7 @@ Everything is relative to this main folder on Discover
 ../Github/verse
 ├── Julia
 │   ├── Estimate_v61.jl
-│   ├── call_Blender_v19b.jl
+│   ├── call_Blender_v20.jl
 │   ├── combine_nc_files.jl
 │   └── submit_slurm.jl
 ├── Python
@@ -115,10 +115,10 @@ Pixel run:
 - need a csv file of pixel locations (`data/pixel.csv`)
 - Use "pixel" prefix to WY. Example: `pixel_WY2015` while calling call_Blender julia script. 
 - folder and sub-folders created within script to save outputs.
-- usage: `julia verse/Julia/call_Blender_v19b.jl "pixel/pixel_WY2015" 200 200 2`
+- usage: `julia verse/Julia/call_Blender_v20.jl "pixel/pixel_WY2015" 200 200 2`
 
 Watershed run:  
 - need a csv file of watershed bounding box (`data/wshed.csv`)
 - select watershed by passing the index (1-based in Julia) of watershed
-- usage: `julia verse/Julia/call_Blender_v19b.jl "wshed/wshed_WY2015" 100 100 2`
+- usage: `julia verse/Julia/call_Blender_v20.jl "wshed/wshed_WY2015" 100 100 2`
 
