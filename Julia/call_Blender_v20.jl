@@ -10,7 +10,7 @@ The script is currently capable of running on my following platforms.
 - Ubuntu (WSL2-based)
 - OSC HPC
 - Ohio-State Unity HPC 
-Julia Versions >= 1.11.5 
+Julia Versions = 1.11.5 
 Minimum extra Julia Packages to install  
 - JuMP, Ipopt, Rasters, NCDatasets, LoggingExtras, Distributions 
 
@@ -92,9 +92,9 @@ else
     system_machine = "Slurm"
     log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/LOGS/",start_idx, "_", stop_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
     if wshed_run
-        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/LOGS/wshed", water_year, ws_pix_idx, ".log")
+        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/LOGS/wshed", water_year, "_", ws_pix_idx, ".log")
     elseif pixel_run
-        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/LOGS/pixel", water_year, ws_pix_idx, ".log")
+        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/LOGS/pixel", water_year, "_", ws_pix_idx, ".log")
     end
     # cores = parse(Int, ENV["SLURM_CPUS_PER_TASK"])  # ERROR: LoadError: KeyError: key "SLURM_CPUS_PER_TASK" not found [when not supplied on slurm scipt]
     cores = parse(Int, ENV["SLURM_NTASKS"])  # pick ntasks from slurm job script. must be provided.    
