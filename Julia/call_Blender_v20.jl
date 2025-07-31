@@ -1,5 +1,5 @@
 """
-USAGE: julia verse/Julia/call_Blender_v19b.jl test_WY2010 3005 3006 2
+USAGE: julia verse/Julia/call_Blender_v20.jl test_WY2010 3005 3006 2
     - start and end indices are for y-axis only. All x's selected by default  
 
 SWE estimation using Blender algorithm.
@@ -10,20 +10,17 @@ The script is currently capable of running on my following platforms.
 - Ubuntu (WSL2-based)
 - OSC HPC
 - Ohio-State Unity HPC 
-Julia Versions >= 1.11.3 
+Julia Versions >= 1.11.5 
 Minimum extra Julia Packages to install  
 - JuMP, Ipopt, Rasters, NCDatasets, LoggingExtras, Distributions 
 
 Approach
 ========
-This script will call Estimate_v59.jl for each script at a time, and save temporary outputs to text file. Thus can readily be parallelzed.
+This script will call Estimate_v61.jl for each script at a time, and save temporary outputs to text file. Thus can readily be parallelzed.
 Threads was stright forward but did not work here due to known limitation of Ipopt and threads module.
 Working on alternative parallelization scheme using DISTRIBUTED module
 Finally, all text output files are assembled into a nc file. The script can thus run on parts of pixels at different times, and finally combined into one nc file.
 ==============================================================================================
-Sep 04, 2023 : text and log files saved in separate folders; created call_Blender_v12.jl uses Estimate_v56.jl
-Oct 29, 2023 : Save nc files to temp_nc folder using call_Blender_v14.jl uses Estimate_v57.jl
-Dec 03, 2023 : New call_Blender_v15.jl uses Estimate_v58.jl (modifications by Jack)
 Jun 20, 2024 : call_Blender_v18.jl uses Estimate_v59.jl
     - read five input files separately rather than one merged file: required for 1 km run due to data volume
     - uses Qg_tavg as template replacing SWE_tavg.
@@ -45,12 +42,6 @@ start_idx = ARGS[2]  # this is string
 stop_idx = ARGS[3]
 start_idx = parse(Int64, start_idx)
 stop_idx = parse(Int64, stop_idx)
-# RES = ARGS[4] # "050"  # Grid Resolution: 050 = 0.050 degree (5km); 025 = 0.025 degree; 010 = 0.01 degree; 001 = 0.001 degree (100 meters) etc
-# opt = parse(Int, ARGS[4])  # 1 or 2 optional choices for different parameterization of G
-# Now leveraging opt for other things as well. currently used for twindow for smoothing SCF [Mar 27, 2025]
-# opt = parse(Int, ARGS[4])  # 1 or 2 optional choices for different parameterization of G
-# twindow = opt
-# out_subfolder = "$(out_subfolder)_$(twindow)"
 # Extra arguments for various test runs: pixel, watershed, modis_fix etc.
 if arg_len > 3
     ws_pix_idx = parse(Int64, ARGS[4])  # watershed or pixel index. hardcoded below if run for wshed.
@@ -59,6 +50,7 @@ end
 # if arg_len > 4
 #     fix_modis_flag = parse(Int64, ARGS[5]) # 0=false, 1=true  # to fix MODIS using Jack's approach.
 # end
+
 # Get path to the directory of the script. This is only used to access the test data for pixel and watershed runs
 verse_dir = joinpath(splitpath(@__DIR__)[1:end-1])  # get parent folder of current script; later used to retrieve pixel or wshed csv file
 
@@ -78,7 +70,6 @@ using Logging, LoggingExtras
 using Tar
 using DelimitedFiles
 using Distributed  # otherwise everywhere macro won't work; Oct 8 2024: Error in Julia 1.11.0: Illegal instruction
-# using SharedArrays  # move this line below addprocs(cores), else won't work in Julia 1.10.0
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 # 1. Setup inputs and output directories and file locations
@@ -101,9 +92,9 @@ else
     system_machine = "Slurm"
     log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/LOGS/",start_idx, "_", stop_idx, ".log")  # on HPC created inside computer local node, so move to outside at end of job
     if wshed_run
-        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/LOGS/wshed", water_year, "_v19_", ws_pix_idx, ".log")
+        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/LOGS/wshed", water_year, ws_pix_idx, ".log")
     elseif pixel_run
-        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/LOGS/pixel", water_year, "_v19_", ws_pix_idx, ".log")
+        log_filename = string(ENV["SLURM_SUBMIT_DIR"], "/LOGS/pixel", water_year, ws_pix_idx, ".log")
     end
     # cores = parse(Int, ENV["SLURM_CPUS_PER_TASK"])  # ERROR: LoadError: KeyError: key "SLURM_CPUS_PER_TASK" not found [when not supplied on slurm scipt]
     cores = parse(Int, ENV["SLURM_NTASKS"])  # pick ntasks from slurm job script. must be provided.    
@@ -167,16 +158,12 @@ using Dates
 @everywhere using Rasters, NCDatasets, Distributions  # Distributions for garbage collection using uniform distribution
 @everywhere include("Estimate_v61.jl")  #https://docs.julialang.org/en/v1/manual/code-loading/; evaluated in global scope
 
-# DataDir = "$base_folder/Inputs"  # must exist  (Old = NoahMP)
-# DataDir = "$root_dir/projects/coressd/Blender/Inputs"  # must exist  (Old = NoahMP)
-
 # Make a folder insise HPC node because we want to copy existing files there
 exp_dir = "$out_subfolder/outputs_txt_$(start_idx)_$(stop_idx)"  # To save text outputs for each pixel
 mkpath(exp_dir)  # mkdir
 logDir = "$out_subfolder/logs_$(start_idx)_$(stop_idx)"  # Save logs created by JuMP. 
 # logDir = "$base_folder/Runs/$out_subfolder/logs/logs_$(start_idx)_$(stop_idx)"  # For Debug: save on same folder and outputs  
 mkpath(logDir)  # mkdir; must create here, else error in the current setup  
-# Error on Discover (Nov 08, 2023): rm: cannot remove '/lscratch/tdirs/batch/slurm.24967584.byadav/logs': Directory not empty; Solution: #SBATCH --no-requeue
 
 # cp("$base_folder/Runs/$out_subfolder/outputs_txt", "$tmp_txtDir/$water_year")  # copy to local machine; error if running the first time as this dir would not exist
 nc_outDir = "$OUTDIR/$out_subfolder/temp_nc/outputs_$(start_idx)_$(stop_idx)"
