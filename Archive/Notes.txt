@@ -1,2 +1,0 @@
-
-process_modis_cgf_May15_2025: Backup. Original file will be modified to read a-priori template directly for bounds, reproj match etc.
