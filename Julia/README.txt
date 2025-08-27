@@ -3,17 +3,17 @@ Files here are listed in the order it should be run. Only the required files are
 submit_slurm.jl 
 ===============
 - create a slurm job (~ 500) and run on Discover.
-- uses `call_Blender_vxx.jl` 
+- uses `call_Blender.jl` 
 - call this directly on a bash terminal from Github folder on Discover.
 - takes a few minutes to generate and also submit slurm jobs.
 - check the created jobs in the following subfolder: ../Github/slurm_job/2015
 - this subfolder will be created automatically by the script
 
-call_Blender_vxx.jl
+call_Blender.jl
 ===================  
 This reads the input files, selects a subset of pixel (by slice) can calls Julia optimization routine.  
 
-Estimate_vxx.jl
+Estimate.jl
 ===============  
 - This is main JuMP/Ipopt optimzation code.  
 

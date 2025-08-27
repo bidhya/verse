@@ -156,7 +156,7 @@ using Dates
 
 # Everywhere should come after cores are already added
 @everywhere using Rasters, NCDatasets, Distributions  # Distributions for garbage collection using uniform distribution
-@everywhere include("Estimate_v61.jl")  #https://docs.julialang.org/en/v1/manual/code-loading/; evaluated in global scope
+@everywhere include("Estimate.jl")  #https://docs.julialang.org/en/v1/manual/code-loading/; evaluated in global scope
 
 # Make a folder insise HPC node because we want to copy existing files there
 exp_dir = "$out_subfolder/outputs_txt_$(start_idx)_$(stop_idx)"  # To save text outputs for each pixel
