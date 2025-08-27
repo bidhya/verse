@@ -1,5 +1,14 @@
 # Updates to codebase in reverse chronological order
 ====================================================   
+## Aug 27, 2025  
+- Code re-organization.
+- Delete base Archive Folder
+- Created Julia/Archive subfolder to move older files here
+- Removed version info (eg, _v20.jl) for core julia files. 
+- Core files will always have this name and older files will be moved to archive and version number increased.    
+- Similarly for Python files, extraneous files moved to "Extra" subfolder.  
+- Updates made everywhere and all test runs were successful.  
+
 ## Jun 14, 2025  
 - Created call_blender_v20.jl as exact copy of v19b.jl.  
 - _v19b.jl frozen.  
