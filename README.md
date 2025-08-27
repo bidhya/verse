@@ -54,8 +54,8 @@ Everything is relative to this main folder on Discover
 ```
 ../Github/verse
 ├── Julia
-│   ├── Estimate_v61.jl
-│   ├── call_Blender_v20.jl
+│   ├── Estimate.jl
+│   ├── call_Blender.jl
 │   ├── combine_nc_files.jl
 │   └── submit_slurm.jl
 ├── Python
@@ -99,7 +99,7 @@ Required Julia packages: `JuMP Ipopt Rasters NCDatasets CSV LoggingExtras Distr
    - cd to `Github` folder
       - `julia verse/Julia/submit_slurm.jl 2015 1`  # generate and submit slurm jobs for WY2015 with adaptive slice = 1 row.
       - generate ~ 500 slurm jobs that calls the following julia script:
-      - `julia verse/Julia/call_Blender_v18.jl WY2015 1 10`  : example script for Blender run for WY2015 for slice 1 to 10
+      - `julia verse/Julia/call_Blender.jl WY2015 1 10`  : example script for Blender run for WY2015 for slice 1 to 10
       - slurm job folder: 
           - ../slurm_jobs/2015/
              - .out/ : slurm outputs saved here  
@@ -115,10 +115,10 @@ Pixel run:
 - need a csv file of pixel locations (`data/pixel.csv`)
 - Use "pixel" prefix to WY. Example: `pixel_WY2015` while calling call_Blender julia script. 
 - folder and sub-folders created within script to save outputs.
-- usage: `julia verse/Julia/call_Blender_v20.jl "pixel/pixel_WY2015" 200 200 2`
+- usage: `julia verse/Julia/call_Blender.jl "pixel/pixel_WY2015" 200 200 2`
 
 Watershed run:  
 - need a csv file of watershed bounding box (`data/wshed.csv`)
 - select watershed by passing the index (1-based in Julia) of watershed
-- usage: `julia verse/Julia/call_Blender_v20.jl "wshed/wshed_WY2015" 100 100 2`
+- usage: `julia verse/Julia/call_Blender.jl "wshed/wshed_WY2015" 100 100 2`
 
