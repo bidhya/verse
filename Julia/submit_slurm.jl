@@ -40,10 +40,7 @@ if occursin("discover", host_machine) #|| occursin("borg", host_machine)
     # base_folder = "$root_dir/byadav/coressd/Blender"  # aside: temporary when main storage was full.
     DataDir = "$root_dir/projects/coressd/Blender/Inputs"  # _$(RES)  INDIR. must exist  (Old = NoahMP)
     hpc_name = "discover"
-    cores = 125  # 110 for stepsize 125 for 5 km run.
-    # if RES == "010"
-    #     cores = 125  # 120, 95, 80. # maybe use less cores to prevent NODE_FAIL error for 1km run (TBD). 
-    # end
+    cores = 125
     memory = "0" #"184gb"
 elseif occursin(".osc.edu", host_machine)
     root_dir = "/fs/ess/PAS1785/coressd"  # "/fs/scratch/PAS1785/coressd"
@@ -69,12 +66,9 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
     # job_file = "$(pwd())/$(jobname).job"  # this also works same
     job_file = "$(jobname).job"  # this looks much cleaner because files will created relative to where the script is called from.
     open(job_file, "w") do f
-        # write(f, "A, B, C, D\n")
         write(f, "#!/usr/bin/env bash\n\n")
-        # fh.writelines("#SBATCH --account=s2701\n")  # for DISCOVER
-        # fh.writelines('#SBATCH --constraint="[cas|sky]"\n')
         if hpc == "discover"
-            write(f, "#SBATCH --account=s2484\n")  # s2701
+            write(f, "#SBATCH --account=s2701\n")  # s2701  s2484
             write(f, """#SBATCH --constraint="[mil]"\n""")  # |cas|sky
             if runtime > 12
                 write(f, "#SBATCH --qos=long\n")  # for jobs 12-24 hours.
@@ -103,8 +97,8 @@ function create_job(hpc, jobname, cores, memory, runtime, out_subfolder, start_i
         write(f, "echo ==============================================================================\n")
         write(f, "echo \$SLURM_SUBMIT_DIR\n")    
         if hpc == "discover"
-            write(f, "cd \$LOCAL_TMPDIR\n")
-            # # New for using Julia installed using conda on Discover (June 20, 2024). Will not work any
+            write(f, "cd \$LOCAL_TMPDIR\n")  # on discover node storage is called LOCAL_TMPDIR
+            # # New for using Julia installed using conda on Discover (June 20, 2024). Will not work anymore
             # write(f, "module load anaconda\n")
             # write(f, "conda activate julia\n")
         else
