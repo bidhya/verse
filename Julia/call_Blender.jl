@@ -133,8 +133,8 @@ end
 # addprocs()  # Works but on cluster will use all cores, even though we not asked for. 
 # exclusive option will also use all cores which may result in memory error.  
 mkpath(dirname(log_filename))  # dirname gets the directory part of name (ie, without the filename) ; mkpath("logs")
-logger = FormatLogger(open("$log_filename", "a+"), 0) do io, args  # w=write (original); a(a+)=(read), write,create,append
-    # Write the module, level and message only
+# logger = FormatLogger(open("$log_filename", "a+"), 0) do io, args  # # This is for older version (v1.1.0 or earlier) of LoggingExtras 
+logger = FormatLogger("$log_filename"; append=true) do io, args  # New (v1.2.0) The `FormatLogger` now handles opening the file for you. May work for older versions as well (at least v1.1.0 ).
     println(io, args._module, " | ", "[", args.level, "] ", args.message)
 end
 info_only_logger = MinLevelLogger(logger, Logging.Info);  # Logging.Error
