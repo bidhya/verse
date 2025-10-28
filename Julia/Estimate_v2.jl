@@ -21,13 +21,23 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, PSval, logDir, e
   P, Melt, and G are flux terms, so will be length nt-1
   for input, all variables are length nt, so just use Pprior[1:nt-1]. Note, Gprior currently unused
   for output in section 4, will output fluxes as nt, with the last element set to 0.    
+  PSval is [nx ny nt]
+  When read in from netcdf precip scalar is [nt nx 1] to save memory since value is static per year
+  Reshaped to [nx ny nt] in call_Blender_v2.jl
+
+  precipitation scalar
+  ======================
+  Precipitation scalar is implemented in this version v2 of Estimate.jl
+  Computed offline with Jack's scaling algorithm and exported as [nx ny 1] netcdf of same size as other inputs
+  PSval is uint16 between [0.1 2] and is static for an entire year per pixel
+  PSval is simple multiplicative scalar on SWE and precip priors
+  Applied before blender algorithm and other subroutines starts
 
   """
     # 0 handle variable sizes
     nt = length(SCFinst)
     Pprior = Pprior[1:nt-1]
-    # println("Inside Estimate_v61...")
-    # println(SCFinst)
+  
 
     # TODO This is prototype only to Fill in missing SCF values
     #  Write a function that returns SCF based on LIS SWE prior.
@@ -46,12 +56,13 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, PSval, logDir, e
     end
 
     # 1 Smooth SCF observations
-    # twindow = 5
+
     SCFobs = smoothdata(SCFinst, twindow, nt, "median")
-    # SCFobs = fix_modis(SCFinst)  # apply MODIS fix developed by Jack (Feb 04, 2025)
-    # twindow = 60
+
     SCF_smooth_season = smoothdata(SCFinst, 30, nt, "mean")  # before it was 60
-    # Quick check to make sure scalar never nans out
+
+    # 1.1 Apply Precipitation Scalar
+    # if PSval contains nans (from bad SCF measurements) fill with PSval = 1
     if isnan(first(PSval))
        PSval.=1;
     end
@@ -117,26 +128,7 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, PSval, logDir, e
     return nothing    
 end
 
-# function smoothdata(SCF_inst,twindow,nt,smoothfunc)
-#     # println("Inside smoothdata function: $twindow, $nt, $smoothfunc")
-#     SCF_smooth=zeros(nt,1)
-#     for i=1:nt
-#         istart = trunc(Int,i-round(twindow/2))
-#         iend = trunc(Int,i+round(twindow/2))        
-#         # if i < twindow || i > nt-twindow
-#         if istart < 1 || iend > nt
-#             SCF_smooth[i]=0  # BY?: why not keep whatever the original value was. Moreover, this is already initialized to 0 at the beginning.
-#         else            
-#             if smoothfunc == "mean"
-#                 SCF_smooth[i] = mean(SCF_inst[istart:iend])
-#             elseif smoothfunc=="median"
-#                 SCF_smooth[i] = median(SCF_inst[istart:iend])
-#             end
-#         end
-#     end
-    
-#     return SCF_smooth
-# end
+
 
 
 function smoothdata(SCF_inst, twindow, nt, smoothfunc)
@@ -160,10 +152,8 @@ function smoothdata(SCF_inst, twindow, nt, smoothfunc)
         # adding 1 (ie, 1+twindow) in the for loop because Julia is 1-based indexing
         if smoothfunc == "mean"
             SCF_smooth[i] = mean(SCF_inst[i-twindow:i+twindow])
-            # SCF_smooth[i] = mean(skipmissing(SCF_inst[i-twindow:i+twindow]))  # use this when there is missing data
         elseif smoothfunc=="median"
             SCF_smooth[i] = mean(SCF_inst[i-twindow:i+twindow])
-            # SCF_smooth[i] = mean(skipmissing(SCF_inst[i-twindow:i+twindow]))  # use this when there is missing data
         end
     end    
     return SCF_smooth
@@ -281,7 +271,9 @@ function fix_modis(SCF)
         It corrects the SCF data by adjusting values based on the differences between consecutive days.
         The function iterates through the SCF data, calculates the differences, and applies corrections based on specific thresholds.
         The function also includes a mechanism to find the final day of snow off and adjust the SCF value accordingly.
-        The function is designed to handle edge cases and ensure that the final SCF value is reasonable.            
+        The function is designed to handle edge cases and ensure that the final SCF value is reasonable.    
+            
+            CURRENTLY UNUSED AS OF OCTOBER 2025
     """
   # Define length of array (365)
   nt = length(SCF)
