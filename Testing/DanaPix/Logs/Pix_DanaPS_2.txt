@@ -1,0 +1,1 @@
+ Precipitation Scalar Record; PSval = 1.1700811939384272
