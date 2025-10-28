@@ -20,25 +20,14 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, PSval, logDir, e
   SWE and SCF are storage terms, so will be length nt. 
   P, Melt, and G are flux terms, so will be length nt-1
   for input, all variables are length nt, so just use Pprior[1:nt-1]. Note, Gprior currently unused
-  for output in section 4, will output fluxes as nt, with the last element set to 0. 
-  PSval(i,j) is a single value for the entire year so saved netcdf files are size [nx ny 1]
-  During call_Blender_v2.jl after rasters are clipped to run area we reshape to [nx ny nt]
-  The reshaped PSval of size [nx ny nt] is what is actually passed to blender()
-  
-
-  precipitation scalar implementation
-  =========================
-  This version of the file Estimate_v2.jl is the first version with precipitation scaling/redistribution
-  scheme impelemented. There is a new variable in the function call "PSval". PSval is a single value for the
-  entire year but to ease computations we create a dummy vec of size nt to pass into blender(). This is done
-  in call_Blender_v2.jl. This scaling value is an uint16 between [0.1 2] and is used to scale SWEprior and Pprior
-  %% jack dechow October 8 2025
+  for output in section 4, will output fluxes as nt, with the last element set to 0.    
 
   """
     # 0 handle variable sizes
     nt = length(SCFinst)
     Pprior = Pprior[1:nt-1]
-
+    # println("Inside Estimate_v61...")
+    # println(SCFinst)
 
     # TODO This is prototype only to Fill in missing SCF values
     #  Write a function that returns SCF based on LIS SWE prior.
@@ -57,17 +46,16 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, PSval, logDir, e
     end
 
     # 1 Smooth SCF observations
+    # twindow = 5
     SCFobs = smoothdata(SCFinst, twindow, nt, "median")
+    # SCFobs = fix_modis(SCFinst)  # apply MODIS fix developed by Jack (Feb 04, 2025)
+    # twindow = 60
     SCF_smooth_season = smoothdata(SCFinst, 30, nt, "mean")  # before it was 60
-
-    # 1.1 Apply Precipitation Scalar
-    # if PSval contains nans (from bad SCF measurements) fill with PSval = 1
+    # Quick check to make sure scalar never nans out
     if isnan(first(PSval))
        PSval.=1;
     end
-    # Assign scaling val to var
-	PSuse = PSval[1];
-    # elemntwise multiply priors
+	PSuse = PSval[1]
     Pprior = PSuse.*Pprior;
     SWEprior = PSuse.*SWEprior;
 
@@ -120,6 +108,7 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, PSval, logDir, e
     
     # 5 output
     out_vars = hcat(SWEhat, GmeltHat, Ghat, Phat, Ushat, G_pv, Gmelt_pv, U_pv, SWEpv, SCFobs)
+    # writedlm("$(exp_dir)/Pix_$(i)_$(j)_$(twindow).txt", out_vars)
     writedlm("$(exp_dir)/Pix_$(i)_$(j).txt", out_vars)
     
     # 6 clean up
@@ -127,6 +116,27 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, PSval, logDir, e
     GC.gc()
     return nothing    
 end
+
+# function smoothdata(SCF_inst,twindow,nt,smoothfunc)
+#     # println("Inside smoothdata function: $twindow, $nt, $smoothfunc")
+#     SCF_smooth=zeros(nt,1)
+#     for i=1:nt
+#         istart = trunc(Int,i-round(twindow/2))
+#         iend = trunc(Int,i+round(twindow/2))        
+#         # if i < twindow || i > nt-twindow
+#         if istart < 1 || iend > nt
+#             SCF_smooth[i]=0  # BY?: why not keep whatever the original value was. Moreover, this is already initialized to 0 at the beginning.
+#         else            
+#             if smoothfunc == "mean"
+#                 SCF_smooth[i] = mean(SCF_inst[istart:iend])
+#             elseif smoothfunc=="median"
+#                 SCF_smooth[i] = median(SCF_inst[istart:iend])
+#             end
+#         end
+#     end
+    
+#     return SCF_smooth
+# end
 
 
 function smoothdata(SCF_inst, twindow, nt, smoothfunc)
@@ -142,14 +152,18 @@ function smoothdata(SCF_inst, twindow, nt, smoothfunc)
     smoothfunc: Type of smoothing function ('mean' or 'median').
 
     """
-
+    # println("Inside Smoothing data...")
+    # println("$twindow, $nt, $smoothfunc")
+    # better to copy "SCF_inst" so the smooth function doesn't modify the original data. Even better apppend border on both sides of the data.
     SCF_smooth=zeros(nt,1)
     for i=(1+twindow):(nt-twindow)
         # adding 1 (ie, 1+twindow) in the for loop because Julia is 1-based indexing
         if smoothfunc == "mean"
             SCF_smooth[i] = mean(SCF_inst[i-twindow:i+twindow])
+            # SCF_smooth[i] = mean(skipmissing(SCF_inst[i-twindow:i+twindow]))  # use this when there is missing data
         elseif smoothfunc=="median"
             SCF_smooth[i] = mean(SCF_inst[i-twindow:i+twindow])
+            # SCF_smooth[i] = mean(skipmissing(SCF_inst[i-twindow:i+twindow]))  # use this when there is missing data
         end
     end    
     return SCF_smooth
@@ -267,9 +281,7 @@ function fix_modis(SCF)
         It corrects the SCF data by adjusting values based on the differences between consecutive days.
         The function iterates through the SCF data, calculates the differences, and applies corrections based on specific thresholds.
         The function also includes a mechanism to find the final day of snow off and adjust the SCF value accordingly.
-        The function is designed to handle edge cases and ensure that the final SCF value is reasonable.    
-            
-            CURRENTLY UNUSED AS OF OCTOBER 2025
+        The function is designed to handle edge cases and ensure that the final SCF value is reasonable.            
     """
   # Define length of array (365)
   nt = length(SCF)
