@@ -20,14 +20,23 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, PSval, logDir, e
   SWE and SCF are storage terms, so will be length nt. 
   P, Melt, and G are flux terms, so will be length nt-1
   for input, all variables are length nt, so just use Pprior[1:nt-1]. Note, Gprior currently unused
-  for output in section 4, will output fluxes as nt, with the last element set to 0.    
+  for output in section 4, will output fluxes as nt, with the last element set to 0.
+  PSval is [nx ny 1] when read in from netcdf in call_Blender_v2.jl
+  PSval is reshaped to [nx ny nt] in call_Blender_v2.jl 
+  PSval is [nx ny nt] when passed to blender()    
 
+  precipitation scalar
+  =====================
+  New feature implemented in v2 of all source files.
+  Precip scaling is done with a single value per year per pixel read in precip_scalar.nc
+  Values are computed offline with Jack's scaling algorithm
+  Applied in elementwise multiple during blender() setup before algorithm
+
+  ## jack l dechow oct 2025
   """
     # 0 handle variable sizes
     nt = length(SCFinst)
     Pprior = Pprior[1:nt-1]
-    # println("Inside Estimate_v61...")
-    # println(SCFinst)
 
     # TODO This is prototype only to Fill in missing SCF values
     #  Write a function that returns SCF based on LIS SWE prior.
@@ -46,16 +55,16 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, PSval, logDir, e
     end
 
     # 1 Smooth SCF observations
-    # twindow = 5
     SCFobs = smoothdata(SCFinst, twindow, nt, "median")
-    # SCFobs = fix_modis(SCFinst)  # apply MODIS fix developed by Jack (Feb 04, 2025)
-    # twindow = 60
     SCF_smooth_season = smoothdata(SCFinst, 30, nt, "mean")  # before it was 60
-    # Quick check to make sure scalar never nans out
+    # 1.1 Precip Scaling
+    # Check if PSval = nan and if true replace PSval = 1
     if isnan(first(PSval))
        PSval.=1;
     end
+    # grab first element of PSval vec
 	PSuse = PSval[1]
+    # Apply scaling
     Pprior = PSuse.*Pprior;
     SWEprior = PSuse.*SWEprior;
 
@@ -108,7 +117,6 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, PSval, logDir, e
     
     # 5 output
     out_vars = hcat(SWEhat, GmeltHat, Ghat, Phat, Ushat, G_pv, Gmelt_pv, U_pv, SWEpv, SCFobs)
-    # writedlm("$(exp_dir)/Pix_$(i)_$(j)_$(twindow).txt", out_vars)
     writedlm("$(exp_dir)/Pix_$(i)_$(j).txt", out_vars)
     
     # 6 clean up
@@ -116,28 +124,6 @@ function blender(i, j, SWEprior, Pprior, Gprior, SCFinst, AirT, PSval, logDir, e
     GC.gc()
     return nothing    
 end
-
-# function smoothdata(SCF_inst,twindow,nt,smoothfunc)
-#     # println("Inside smoothdata function: $twindow, $nt, $smoothfunc")
-#     SCF_smooth=zeros(nt,1)
-#     for i=1:nt
-#         istart = trunc(Int,i-round(twindow/2))
-#         iend = trunc(Int,i+round(twindow/2))        
-#         # if i < twindow || i > nt-twindow
-#         if istart < 1 || iend > nt
-#             SCF_smooth[i]=0  # BY?: why not keep whatever the original value was. Moreover, this is already initialized to 0 at the beginning.
-#         else            
-#             if smoothfunc == "mean"
-#                 SCF_smooth[i] = mean(SCF_inst[istart:iend])
-#             elseif smoothfunc=="median"
-#                 SCF_smooth[i] = median(SCF_inst[istart:iend])
-#             end
-#         end
-#     end
-    
-#     return SCF_smooth
-# end
-
 
 function smoothdata(SCF_inst, twindow, nt, smoothfunc)
     """
