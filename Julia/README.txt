@@ -1,5 +1,7 @@
 Files here are listed in the order it should be run. Only the required files are described. Refer to the main readme on how this files should be run. Many of these scripts are called by slurm job.   
 
+For any script, V2 indicates it has precipitation redistribution + scaling functionality included. Otherwise exactly the same as original versions of files.
+
 submit_slurm.jl 
 ===============
 - create a slurm job (~ 500) and run on Discover.
@@ -20,3 +22,7 @@ Estimate.jl
 combine_nc_files.jl  
 ===================
 Run this script at the end of Blender run. This will combine the individual netcdf outputs for different slice into a PAN-America NetCDF file.  
+
+RunBlenderMain_wScalar.ipynb
+=============================
+Test script that has most recent scaling implementation plus improved IO stability. Can run single watersheds from continental input files with just the TL/BR corner coordinates. Writes to single separate folder.
