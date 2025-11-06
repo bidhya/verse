@@ -47,10 +47,7 @@ stop_idx = parse(Int64, stop_idx)
 if arg_len > 3
     ws_pix_idx = parse(Int64, ARGS[4])  # watershed or pixel index. hardcoded below if run for wshed.
 end
-# fix_modis_flag = 0  # default=0 means don't apply fix to MODIS.
-# if arg_len > 4
-#     fix_modis_flag = parse(Int64, ARGS[5]) # 0=false, 1=true  # to fix MODIS using Jack's approach.
-# end
+
 
 # Get path to the directory of the script. This is only used to access the test data for pixel and watershed runs
 verse_dir = joinpath(splitpath(@__DIR__)[1:end-1])  # get parent folder of current script; later used to retrieve pixel or wshed csv file
@@ -110,6 +107,7 @@ else
         base_folder = "$root_dir/projects/coressd/Blender"
         tmpdir =  ENV["LOCAL_TMPDIR"]  # tempdir() to save tempoary text files on hpc node. 
         DataDir = "$root_dir/projects/coressd/Blender/Inputs"  # must exist
+        DataDirSmooth = "$root_dir/coressd/Blender/SmoothedInputs"
         OUTDIR = "$base_folder/Runs"  # will be created if missing
     elseif occursin(".osc.edu", host_machine)
         root_dir = "/fs/ess/PAS1785"  # "/fs/scratch/PAS1785/coressd"
@@ -181,8 +179,10 @@ PrecipDir = "$root_dir/projects/coressd/PrecipScalarFiles"
 # 2. Read the Input netCDF file
 files = (
     "$DataDir/WY$(water_year)/SCF.nc",
-    "$DataDir/WY$(water_year)/Snowf_tavg.nc",
-    "$DataDir/WY$(water_year)/SWE_tavg.nc",
+    # "$DataDir/WY$(water_year)/Snowf_tavg.nc", 
+    # "$DataDir/WY$(water_year)/SWE_tavg.nc",
+    "$DataDirSmooth/WY$(water_year)/Snowf_tavg_smooth.nc", # Smoothed Inputs!
+    "$DataDirSmooth/WY$(water_year)/SWE_tavg_smooth.nc", # Generated locally and uploaded by jld 11/6/25
     "$DataDir/WY$(water_year)/Tair_f_tavg.nc",
     "$DataDir/WY$(water_year)/Qg_tavg.nc"
         )
