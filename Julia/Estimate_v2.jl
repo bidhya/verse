@@ -256,7 +256,7 @@ function define_hyperparameters(SCF_smooth_season,nt,Pprior,SWEprior,AirT, SCFob
     σP,σSWE = define_uncertainty(Pprior, SWEprior, AirT, SCFobs, nt, tmelt_smooth)
     # 2.4 Melt cost function parameters
     k = 500
-    Melt0 = 0.05
+    Melt0 = 0.03
     L = 1
     
     return tmelt, tmelt_smooth, SWEmax, SWEmin_global, Meltmax, σP, σSWE, k, Melt0, L
