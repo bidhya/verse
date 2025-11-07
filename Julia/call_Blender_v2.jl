@@ -181,8 +181,8 @@ files = (
     "$DataDir/WY$(water_year)/SCF.nc",
     # "$DataDir/WY$(water_year)/Snowf_tavg.nc", 
     # "$DataDir/WY$(water_year)/SWE_tavg.nc",
-    "$DataDirSmooth/WY$(water_year)/Snowf_tavg_smooth.nc", # Smoothed Inputs!
-    "$DataDirSmooth/WY$(water_year)/SWE_tavg_smooth.nc", # Generated locally and uploaded by jld 11/6/25
+    "$DataDirSmooth/WY$(water_year)/Snowf_tavg.nc", # Smoothed Inputs!
+    "$DataDirSmooth/WY$(water_year)/SWE_tavg.nc", # Generated locally and uploaded by jld 11/6/25
     "$DataDir/WY$(water_year)/Tair_f_tavg.nc",
     "$DataDir/WY$(water_year)/Qg_tavg.nc"
         )
