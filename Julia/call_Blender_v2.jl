@@ -107,7 +107,7 @@ else
         base_folder = "$root_dir/projects/coressd/Blender"
         tmpdir =  ENV["LOCAL_TMPDIR"]  # tempdir() to save tempoary text files on hpc node. 
         DataDir = "$root_dir/projects/coressd/Blender/Inputs"  # must exist
-        DataDirSmooth = "$root_dir/coressd/Blender/SmoothedInputs"
+        DataDirSmooth = "$root_dir/projects/coressd/Blender/SmoothedInputs"
         OUTDIR = "$base_folder/Runs"  # will be created if missing
     elseif occursin(".osc.edu", host_machine)
         root_dir = "/fs/ess/PAS1785"  # "/fs/scratch/PAS1785/coressd"
